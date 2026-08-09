@@ -27,6 +27,7 @@ from pathlib import Path
 from gabarits import VERSION_ETAT, version_snapshot
 from grille import NB_NOEUDS, chaine_correspondance
 from livrables import COLONNES_ACTIONS
+from remplir_fiches import en_prose
 from validate import controler_actions, controler_versions
 
 IDS_GRILLE = set(range(1, NB_NOEUDS + 1))
@@ -236,6 +237,44 @@ def cas_correspondances(b: Bilan, racine: Path) -> None:
     )
 
 
+# ------------------------------------------------------------------- TF-0030
+
+
+TABLE = (
+    "La niche est **identifiable** mais large.\n\n"
+    "| Segment | Pages | Part |\n|---|---|---|\n"
+    "| Gîtes | 12 | 40 % |\n| Chambres | 18 | 60 % |\n\n"
+    "- Deux segments cohabitent, cf. `donnees/crawl/`."
+)
+
+BALISAGE = set("|*`>")
+
+
+def cas_prose(b: Bilan, racine: Path) -> None:
+    """Le rapport echappe le texte des fiches sans interpreter le markdown : un
+    tableau y sortirait en soupe de barres verticales. La regle est donc qu'AUCUN
+    balisage ne survit a en_prose -- et que la donnee, elle, survit."""
+    rendu = en_prose(TABLE)
+    b.attendu(
+        "aucun balisage ne survit a la mise en prose",
+        bool(BALISAGE & set(rendu)),
+        False,
+        rendu.replace("\n", " / ")[:110],
+    )
+    b.attendu(
+        "les valeurs du tableau survivent",
+        not all(v in rendu for v in ("Gîtes", "12", "40 %", "Chambres", "18", "60 %")),
+        False,
+        "6 cellules retrouvees dans la prose",
+    )
+    b.attendu(
+        "le tableau brut, lui, porte bien du balisage",
+        bool(BALISAGE & set(TABLE)),
+        True,
+        "fixture rouge : sans en_prose, le rapport recevrait ces caracteres",
+    )
+
+
 # ----------------------------------------------------------------------- main
 
 
@@ -243,6 +282,7 @@ CAS = [
     ("TF-0028 -- versions de schema", cas_versions),
     ("TF-0056 -- actions rattachees a la grille", cas_actions),
     ("TF-0048 -- tables de correspondance de grille", cas_correspondances),
+    ("TF-0030 -- mise en prose des fiches", cas_prose),
 ]
 
 

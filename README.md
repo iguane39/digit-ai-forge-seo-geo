@@ -34,6 +34,11 @@ python c:/dev/digit-ai-forge-seo/scripts/crawler.py --projet . --url https://acm
 # 4. ouvrir seo/METHODE.md — garde-fous, runbook, contrat de sortie. Constater et
 #    interpréter dans les fiches de seo/analyse/ : c'est la partie humaine.
 
+# 4 bis. (run de version) poser un contenu rédigé dans les 87 fiches, et reporter
+#        les constats du run précédent — appariés par (branche, nœud), jamais par id
+python c:/dev/digit-ai-forge-seo/scripts/remplir_fiches.py \
+       --projet . --contenu seo/fiches.json --reprise ../docs/seo/analyse
+
 # 5. assembler ce qui se déduit des fiches — snapshot, dette, compteurs
 python c:/dev/digit-ai-forge-seo/scripts/livrables.py --projet .
 
@@ -101,7 +106,7 @@ forge-seo/
 ├── seo/                 arborescence canonique générée depuis referentiel/ — lecture seule
 ├── scripts/             grille · gabarits · scaffold · new_mission · validate
 │                        · schema · crawler · livrables · gabarit_html · rapport_html
-│                        · oracle_interaction · autotest
+│                        · oracle_interaction · remplir_fiches · autotest
 ├── assets/vendor/       composant de filtres, copie verbatim tracée
 ├── output/              décisions et veille (livrables de la forge)
 ├── prompts/             archives datées du chantier
@@ -254,6 +259,19 @@ cérémoniel.
 7. versions de schéma de l'étude alignées sur la forge
 8. `actions-*.csv` **rattachées à la grille** — tout id cité existe au manifeste, et
    le taux de rattachement effectif est non nul sur un CSV non vide
+
+**Le moteur est dans la forge, le contenu chez la mission.** `remplir_fiches.py` pose un
+contenu rédigé dans les 87 fiches et reporte les constats d'un run précédent. Il vivait
+chez la première mission réelle — chemin de la forge en dur, compte de nœuds figé dans
+son nom — et chaque mission suivante l'aurait recopié puis fait diverger. Il porte deux
+règles qui justifient à elles seules le rapatriement : le report se fait par **(branche,
+nœud)** et jamais par identifiant — le passage de 82 à 87 nœuds en a déplacé 14, et
+reporter par id aurait écrit chaque constat dans le mauvais nœud —, et le markdown des
+fiches est **aplati en prose**, parce que le rapport HTML échappe ce texte sans
+l'interpréter : un tableau y sortirait en soupe de barres verticales. Le contenu, lui,
+reste chez la mission : c'est son travail d'audit, pas une pièce de la forge. Format
+recommandé, un JSON indexé par identifiant de nœud ; un module Python exposant `F` est
+accepté pour les études déjà écrites ainsi.
 
 **Une évolution de grille exige sa table de correspondance.** Le passage de 82 à 87
 nœuds a déplacé 14 identifiants : une étude ouverte avant continuait de citer les
