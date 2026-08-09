@@ -377,6 +377,16 @@ def _cout(a: dict) -> str:
     return v
 
 
+def _delai(a: dict) -> str:
+    """« effet mesurable sous 28 » ne dit pas 28 quoi. Le CSV porte un nombre de
+    jours nu ; on lui rend son unite quand il en manque une."""
+    v = str(a.get("delai_effet_mesurable")
+            or a.get("delai_effet_mesurable_jours") or "").strip()
+    if not v:
+        return ""
+    return f"{v} jours" if re.fullmatch(r"\d+([.,]\d+)?", v) else v
+
+
 def _filiere(a: dict) -> str:
     return f'{a.get("axe_execution") or "?"} + {a.get("axe_cout") or "?"}'
 
@@ -433,7 +443,7 @@ def bloc_actions(actions: list[dict]) -> str:
         # grammaticale et le detail contient l'ENONCE ENTIER, systematiquement.
         n1 = tete(libelle)
         noeuds = ", ".join(f'{n["id"]} · {n["noeud"]}' for n in a["_noeuds"]) or "—"
-        delai = a.get("delai_effet_mesurable") or a.get("delai_effet_mesurable_jours") or ""
+        delai = _delai(a)
         impact = (
             f'{badge_preuve("T4", compact=True)} gain estimé '
             f'{barre(a.get("gain"), 5, "gain")}'
@@ -451,7 +461,8 @@ def bloc_actions(actions: list[dict]) -> str:
         ]
         lignes.append([
             (f'<span class="num">{esc(a.get("id"))}</span>', str(_ids(a.get("id")) or [0])[1:-1]),
-            strate(md(n1), "énoncé complet, pourquoi et impact", n2),
+            strate(md(n1), "comprendre et engager cette action — énoncé complet, pourquoi, impact",
+                   n2, f'· {a.get("id")}'),
             esc(a["_branche"]),
             esc(a.get("horizon")),
             esc(a["_filiere"]),
@@ -812,8 +823,7 @@ def constat_li(n: dict, classe: str, actions_par_noeud: dict) -> str:
         gains = []
         for a in liees:
             g = a.get("gain")
-            delai = (a.get("delai_effet_mesurable")
-                     or a.get("delai_effet_mesurable_jours") or "")
+            delai = _delai(a)
             gains.append(
                 f'{esc(a.get("id"))} · {badge_preuve("T4", compact=True)} '
                 f'gain {barre(g, 5, "gain")}'
@@ -841,12 +851,18 @@ def constat_li(n: dict, classe: str, actions_par_noeud: dict) -> str:
         ("Preuves", md_bloc(n.get("preuves"))),
         ("Motif", md((n.get("motif_hors_perimetre") or "").strip('"'))),
     ]
+    # Le depliant garde sa raison d'etre -- l'opposabilite se verifie a la demande,
+    # elle n'encombre pas la lecture courante -- mais son libelle dit desormais A QUOI
+    # IL SERT, pas ce qu'il contient. « question d'audit, critère et preuves » est une
+    # table des matieres ; « vérifier ce constat » est un usage. Le numero de noeud
+    # remonte dans le summary : il economise la ligne de trace qui suivait.
     return (
         f'<li class="{classe}">'
         f'<p class="t">{badge_preuve(tier)} {esc(n["branche"])} / {esc(n["noeud"])}</p>'
         + chaine
-        + strate("", "question d'audit, critère et preuves", n2)
-        + f'<p class="trace">nœud {esc(n["id"])}</p></li>'
+        + strate("", "vérifier ce constat — question d'audit, critère, preuves",
+                 n2, f'· nœud {n["id"]}')
+        + "</li>"
     )
 
 
@@ -939,7 +955,8 @@ def bloc_requetes(d: dict) -> str:
             f'{esc(n["noeud"])} <span class="trace">#{esc(n["id"])}</span>',
             esc(n["branche"]),
             badge_preuve((n.get("niveau_preuve") or "NM").upper()),
-            strate(md(n1), "constat entier, question, critère, mécanisme", n2),
+            strate(md(n1), "vérifier ce verdict — constat entier, question, critère, mécanisme",
+                   n2, f'· nœud {n["id"]}'),
             esc(LIBELLE_VERDICT.get(v, v)),
             md(tete(" ".join((n.get("preuves") or "").split()), 90)),
         ])

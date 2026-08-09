@@ -135,24 +135,53 @@ def tete(texte: str, plafond: int = 170) -> str:
     return t
 
 
-def strate(n1: str, n2_titre: str, n2_corps: list[tuple[str, str]]) -> str:
+def champs(paires: list[tuple[str, str]]) -> str:
+    """Champs etiquetes, une ligne PLEINE LARGEUR par champ.
+
+    Constat utilisateur du 09/08 : « a qui sert ce bouton ? un tiers d'informations
+    supplementaires, aucun interet ». La cause n'etait pas la quantite d'information
+    mais sa mise en page -- une grille a deux colonnes dont la premiere, reservee aux
+    etiquettes, occupait 267 px sur 1 215 (22 %). Le contenu etait tasse a droite dans
+    les deux tiers restants, et la mesure L2 au rendu ne le voyait pas : chaque
+    colonne remplissait bien SA case de grille. L'angle mort etait la grille.
+
+    Une etiquette de champ s'ecrit EN TETE DE LIGNE, pas dans une colonne. Le texte
+    reprend toute la largeur, et l'etiquette reste reperable parce qu'elle est en
+    gras et en tete.
+    """
+    # <div> et non <p> : la valeur peut contenir des paragraphes rendus depuis le
+    # markdown d'une fiche, et un <p> dans un <p> fait FERMER le premier par le
+    # parseur -- le champ « Preuves » sortait alors du bloc et se posait dans la
+    # marge de la page. Vu sur la capture, invisible dans le code.
+    return "".join(
+        f'<div class="champ"><b>{esc(k)}</b> — {v}</div>'
+        for k, v in paires
+        if v
+    )
+
+
+def strate(n1: str, n2_titre: str, n2_corps: list[tuple[str, str]],
+           n2_suffixe: str = "") -> str:
     """Niveau 1 toujours visible, niveau 2 depliable EN PLACE, INTEGRAL.
+
+    `n2_titre` doit annoncer l'USAGE du depliant, pas son contenu : « verifier ce
+    constat », pas « details ». Un lecteur qui ne sait pas a quoi sert un bouton ne
+    l'ouvre pas -- et s'il l'ouvre, il juge inutile ce qu'il y trouve.
+    `n2_suffixe` : ce qui identifie l'element (numero de noeud, identifiant), remonte
+    dans le summary pour economiser une ligne dediee.
 
     Pas de ligne inseree : une <tr> supplementaire casserait le composant de filtres,
     qui itere les lignes du tbody.
     """
-    lignes = "".join(
-        f'<div class="kv"><dt>{esc(k)}</dt><dd>{v}</dd></div>'
-        for k, v in n2_corps
-        if v
-    )
+    lignes = champs(n2_corps)
     if not lignes:
         return f'<div class="st"><div class="n1">{n1}</div></div>'
+    suffixe = f'<span class="n2-s">{esc(n2_suffixe)}</span>' if n2_suffixe else ""
     return (
         '<div class="st">'
         f'<div class="n1">{n1}</div>'
-        f'<details class="n2"><summary>{esc(n2_titre)}</summary>'
-        f'<dl class="kv-l">{lignes}</dl></details></div>'
+        f'<details class="n2"><summary>{esc(n2_titre)}{suffixe}</summary>'
+        f'<div class="n2-c">{lignes}</div></details></div>'
     )
 
 
@@ -676,8 +705,8 @@ details.baremes[open]>summary::before{content:"−"}
 .bareme.large .bareme-l{list-style:none;padding-left:0}
 .bareme-l b{font-family:var(--mono);color:var(--ink)}
 
-.jeton{font-family:var(--mono);font-size:.9em;border-bottom:1px dotted var(--faint);
-  overflow-wrap:anywhere}
+.jeton{display:inline-block;max-width:100%;font-family:var(--mono);font-size:.9em;
+  border-bottom:1px dotted var(--faint);overflow-wrap:anywhere}
 /* La definition prend sa PROPRE ligne : le jeton se replie sur plusieurs lignes et
    sa boite couvrait alors celle de la definition posee a sa suite. Sur une ligne
    dediee, elle se lit mieux ET les boites cessent de se recouvrir (V4). */
@@ -782,14 +811,26 @@ details.n2>summary{list-style:none;cursor:pointer;font-size:.72rem;color:var(--a
 details.n2>summary::-webkit-details-marker{display:none}
 details.n2>summary::before{content:"+";font-family:var(--mono);font-weight:700}
 details.n2[open]>summary::before{content:"−"}
-.kv-l{margin:6px 0 0;display:grid;gap:4px}
-.kv{display:grid;grid-template-columns:minmax(60px,22%) minmax(0,1fr);gap:8px;font-size:.8rem}
-.kv dt{color:var(--faint);font-family:var(--head);font-size:.68rem;
-  text-transform:uppercase;letter-spacing:.04em;padding-top:2px}
-.kv dd{margin:0;color:var(--ink);overflow-wrap:anywhere}
-.kv dd p,.chaine .va p{margin:0 0 .4em;max-width:none}
-.kv dd p:last-child,.chaine .va p:last-child{margin:0}
-.kv dd .md-l,.chaine .va .md-l{margin:.2em 0 .4em}
+/* Champs etiquetes : etiquette EN TETE DE LIGNE, jamais en colonne. La grille a
+   deux colonnes precedente reservait 22 % de la largeur aux etiquettes (267px sur
+   1215) et tassait le contenu dans le reste -- « un tiers d'informations
+   supplementaires, aucun interet ». L2 au rendu ne l'attrapait pas : chaque colonne
+   remplissait bien SA case. L'angle mort etait la grille elle-meme. */
+.n2-c{margin:7px 0 2px}
+.champ{margin:0 0 .5em;font-size:.82rem;color:var(--ink);overflow-wrap:anywhere}
+.champ:last-child{margin:0}
+.champ>b{font-family:var(--head);font-size:.7rem;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--faint);font-weight:700}
+.champ p{margin:0 0 .4em;display:inline}
+.champ p+p{display:block;margin-top:.4em}
+.champ .md-l{margin:.2em 0 .4em;display:block}
+.champ table.mini{margin-top:.4em}
+.chaine .va p{margin:0 0 .4em;max-width:none}
+.chaine .va p:last-child{margin:0}
+.chaine .va .md-l{margin:.2em 0 .4em}
+/* --muted et non --faint : sur le fond bleu du summary, --faint rend 4,32:1,
+   sous le seuil WCAG AA de 4,5:1 a cette taille. Mesure V2. */
+.n2-s{color:var(--muted);font-family:var(--mono);font-size:.92em;margin-left:2px}
 
 /* --- barre d'outils de tableau --- */
 .tb{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 0 6px;
@@ -921,8 +962,8 @@ footer.doc{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);
 }
 @media (max-width:640px){
   .wrap{padding:12px 10px 40px}
-  .kv,.chaine>div{grid-template-columns:1fr;gap:0}
-  .kv dt,.chaine .et{padding-top:5px}
+  .chaine>div{grid-template-columns:1fr;gap:0}
+  .chaine .et{padding-top:5px}
   h1{font-size:1.4rem}
   .mx{font-size:.6rem}
   .mx .cell{min-height:38px}
