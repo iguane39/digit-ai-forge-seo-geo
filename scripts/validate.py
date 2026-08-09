@@ -7,6 +7,7 @@ dangereux du projet -- une arborescence fausse qui passe au vert.
 Usage :
     python scripts/validate.py
     python scripts/validate.py --mission C:/dev/mon-client
+    python scripts/validate.py --json            # sortie machine sur stdout
 
 Python 3, bibliotheque standard uniquement.
 """
@@ -54,18 +55,66 @@ ARTEFACTS_MISSION = ("donnees", "livrables", "analyse", "cadrage.md", "etat.json
 
 
 class Rapport:
-    def __init__(self) -> None:
-        self.echecs: list[str] = []
-        self.controles = 0
+    """Accumule les verdicts puis les rend, en texte ou en JSON.
 
-    def controle(self, nom: str, ok: bool, detail: str = "") -> None:
-        self.controles += 1
-        print(f"  [{'OK  ' if ok else 'ECHEC'}] {nom}" + (f" -- {detail}" if detail else ""))
+    Les deux sorties viennent des MEMES donnees : un mode qui recalculerait son
+    verdict a part finirait par diverger de l'autre, et c'est exactement le genre
+    de faux vert que ce script existe pour attraper.
+    """
+
+    def __init__(self, cible: str, json_mode: bool = False, projet: str | None = None) -> None:
+        self.cible = cible
+        self.projet = projet
+        self.json_mode = json_mode
+        self.echecs: list[str] = []
+        self.controles: list[dict] = []
+        self.erreur: str | None = None
+
+    def entete(self, titre: str) -> None:
+        if not self.json_mode:
+            print(titre + "\n")
+
+    def controle(
+        self, nom: str, ok: bool, detail: str = "", lignes: list[str] | None = None
+    ) -> None:
+        lignes = list(lignes or [])
+        self.controles.append({"nom": nom, "ok": ok, "detail": detail, "lignes": lignes})
+        if not self.json_mode:
+            print(f"  [{'OK  ' if ok else 'ECHEC'}] {nom}" + (f" -- {detail}" if detail else ""))
+            for msg in lignes:
+                print(f"          {msg}")
         if not ok:
             self.echecs.append(nom)
 
+    def abandon(self, message: str, conseils: list[str] | None = None) -> int:
+        """Sortie anticipee : rien n'est controlable. Le mode JSON doit quand meme
+        rendre un objet, sinon l'appelant machine recoit du vide et croit au vert."""
+        self.erreur = message
+        if self.json_mode:
+            return self.bilan()
+        print(f"  {message}")
+        for c in conseils or []:
+            print(f"  {c}")
+        return 1
+
+    def _charge_utile(self) -> dict:
+        return {
+            "outil": "validate",
+            "cible": self.cible,
+            "projet": self.projet,
+            "verdict": "PASS" if not (self.echecs or self.erreur) else "FAIL",
+            "controles_total": len(self.controles),
+            "controles_passes": len(self.controles) - len(self.echecs),
+            "controles": self.controles,
+            "echecs": self.echecs,
+            "erreur": self.erreur,
+        }
+
     def bilan(self) -> int:
-        print(f"\n{self.controles - len(self.echecs)}/{self.controles} controles passes")
+        if self.json_mode:
+            print(json.dumps(self._charge_utile(), indent=2, ensure_ascii=False))
+            return 0 if not (self.echecs or self.erreur) else 1
+        print(f"\n{len(self.controles) - len(self.echecs)}/{len(self.controles)} controles passes")
         if self.echecs:
             print("ECHECS : " + ", ".join(self.echecs))
             return 1
@@ -100,13 +149,12 @@ def controler_fiches(base: Path, noeuds: list[dict]) -> list[str]:
 # ------------------------------------------------------- referentiel canonique
 
 
-def valider_referentiel() -> int:
-    r = Rapport()
-    print("validate -- referentiel canonique de la forge\n")
+def valider_referentiel(json_mode: bool = False) -> int:
+    r = Rapport("referentiel", json_mode)
+    r.entete("validate -- referentiel canonique de la forge")
 
     if not SEO.exists():
-        print("  seo/ absent. Lancer d'abord : python scripts/scaffold.py")
-        return 1
+        return r.abandon("seo/ absent. Lancer d'abord : python scripts/scaffold.py")
 
     donnees = lire()
     manifeste = json.loads((SEO / "manifest.json").read_text(encoding="utf-8"))
@@ -194,9 +242,8 @@ def valider_referentiel() -> int:
         f"{len(invalides)} fiche(s) invalide(s)"
         if invalides
         else f"{NB_NOEUDS} fiches, {len(CHAMPS_FICHE)} champs types chacune",
+        invalides[:5],
     )
-    for msg in invalides[:5]:
-        print(f"          {msg}")
 
     # 8 -- la forge n'heberge aucune etude client
     intrus = [str(p.relative_to(RACINE)) for p in (RACINE / "missions",) if p.exists()]
@@ -235,15 +282,16 @@ def valider_referentiel() -> int:
 # ------------------------------------------------------------ mission externe
 
 
-def valider_mission(projet: Path) -> int:
-    r = Rapport()
+def valider_mission(projet: Path, json_mode: bool = False) -> int:
     base = projet.resolve() / "seo"
-    print(f"validate -- etude SEO de {projet.resolve()}\n")
+    r = Rapport("mission", json_mode, str(projet.resolve()))
+    r.entete(f"validate -- etude SEO de {projet.resolve()}")
 
     if not base.is_dir():
-        print(f"  {base} absent.")
-        print("  Creer l'etude : python scripts/new_mission.py --projet <chemin> ...")
-        return 1
+        return r.abandon(
+            f"{base} absent.",
+            ["Creer l'etude : python scripts/new_mission.py --projet <chemin> ..."],
+        )
 
     donnees = lire()
     analyse = base / "analyse"
@@ -276,9 +324,8 @@ def valider_mission(projet: Path) -> int:
         f"3. les {NB_NOEUDS} fiches ont un front-matter valide et coherent",
         not invalides,
         f"{len(invalides)} fiche(s) invalide(s)" if invalides else f"{NB_NOEUDS} fiches valides",
+        invalides[:5],
     )
-    for msg in invalides[:5]:
-        print(f"          {msg}")
 
     prov_f = base / ".forge-seo.json"
     if prov_f.exists():
@@ -326,9 +373,8 @@ def valider_mission(projet: Path) -> int:
             "6. snapshot conforme au schema",
             not ecarts,
             f"{snaps[-1].name} — {len(ecarts)} ecart(s)" if ecarts else snaps[-1].name,
+            ecarts[:5],
         )
-        for msg in ecarts[:5]:
-            print(f"          {msg}")
 
     return r.bilan()
 
@@ -336,10 +382,16 @@ def valider_mission(projet: Path) -> int:
 def main() -> int:
     p = argparse.ArgumentParser(description="Controles durs de forge-seo.")
     p.add_argument("--mission", help="chemin d'un projet audite, pour valider son etude")
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help="sortie machine sur stdout (verdict, controles, echecs) ; "
+        "le texte humain reste le mode par defaut",
+    )
     args = p.parse_args()
     if args.mission:
-        return valider_mission(Path(args.mission))
-    return valider_referentiel()
+        return valider_mission(Path(args.mission), args.json)
+    return valider_referentiel(args.json)
 
 
 if __name__ == "__main__":

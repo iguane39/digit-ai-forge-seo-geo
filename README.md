@@ -235,6 +235,11 @@ cérémoniel.
 5. compteurs d'avancement **conformes aux fiches** — pas seulement à leur somme
 6. snapshot conforme à `snapshot.schema.json`
 
+`--json` rend le même verdict sur stdout en objet machine — `verdict`, `controles[]`
+(nom, ok, détail), `echecs[]` — pour qu'un orchestrateur lise le résultat sans parser
+du texte. Le mode texte reste le défaut, et les deux sorties dérivent des mêmes données :
+un mode qui recalculerait son verdict à part finirait par diverger de l'autre.
+
 Le rapport HTML se recette en trois couches :
 
 ```bash
