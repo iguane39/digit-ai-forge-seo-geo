@@ -243,6 +243,17 @@ cérémoniel.
 5. compteurs d'avancement **conformes aux fiches** — pas seulement à leur somme
 6. snapshot conforme à `snapshot.schema.json`
 7. versions de schéma de l'étude alignées sur la forge
+8. `actions-*.csv` **rattachées à la grille** — tout id cité existe au manifeste, et
+   le taux de rattachement effectif est non nul sur un CSV non vide
+
+**Actions ↔ grille — deux règles, pas une.** Rien ne reliait le CSV d'actions au
+manifeste : une action citant le nœud 92 sur une grille qui s'arrête à 87 ne produisait
+aucune erreur, seulement un « Nœuds couverts : — » dans le rapport. Le contrôle 8 exige
+donc (a) que tout id cité existe, et (b) que le taux de rattachement effectif soit non
+nul — car (a) seule reste verte quand *aucun* id n'est cité (colonne absente, mal
+orthographiée ou vide partout), c'est-à-dire précisément quand le rapport est le plus
+faux. Le lecteur de CSV vit désormais dans `livrables.py`, le module qui **crée** ces
+fichiers : deux lecteurs auraient divergé.
 
 **Versions de schéma — une seule déclaration.** Trois artefacts générés portent un
 `schema_version` : `etat.json`, `seo/manifest.json` et le snapshot. Ils sont déclarés

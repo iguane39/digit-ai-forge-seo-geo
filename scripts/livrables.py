@@ -22,7 +22,9 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import io
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -42,6 +44,69 @@ COLONNES_ACTIONS = [
     "hypothese_structurante", "axe_execution", "regime_automatisation", "axe_cout",
     "cout_eur", "trimestre_cible", "dependance_de",
 ]
+
+
+# ------------------------------------------------------- lecture des actions
+#
+# Ce module CREE actions-*.csv : il en porte donc aussi le lecteur. Il vivait dans
+# rapport_html.py, seul consommateur a l'epoque ; validate.py en a besoin a son
+# tour (TF-0056) et deux lecteurs auraient diverge -- exactement ce que la forge
+# s'interdit ailleurs pour les generateurs de fiches.
+
+# En-tete minimal attendu : sert a valider le dialecte retenu.
+COLONNES_RECONNUES = {"id", "action", "libelle", "gain", "effort", "horizon", "score"}
+
+
+def ids_noeuds(brut) -> list[int]:
+    """Identifiants de noeuds cites par une cellule, quel que soit le separateur
+    employe a la main : « 43 19 74 », « 43,19,74 » ou « 43;19;74 »."""
+    return [int(x) for x in re.findall(r"\d+", str(brut or ""))]
+
+
+def lire_actions(chemin: Path, trace=None) -> list[dict]:
+    """Lit actions-*.csv sans presumer du separateur (TF-0045).
+
+    `csv.DictReader(f)` sans `delimiter` lit en virgule. Un CSV point-virgule --
+    separateur par defaut d'Excel en locale francaise -- est alors lu comme un champ
+    unique par ligne : toutes les colonnes tombent a None et le rapport imprime
+    « n/d » sur l'integralite du tableau, sans le moindre avertissement.
+
+    On sonde, puis on VERIFIE que l'en-tete obtenu contient bien des colonnes
+    connues. Si aucun dialecte ne rend un en-tete reconnaissable, on REFUSE : un
+    tableau d'actions integralement vide qui se presente comme complet est pire
+    qu'une erreur.
+
+    `trace` recoit le message de dialecte non standard. Il est optionnel : un
+    appelant qui rend du JSON sur stdout ne peut pas se permettre une ligne de
+    texte au milieu de son objet.
+    """
+    brut = chemin.read_text(encoding="utf-8-sig")
+    premiere = brut.split("\n", 1)[0]
+    candidats = [";", ",", "\t", "|"]
+    try:
+        sonde = csv.Sniffer().sniff(premiere, delimiters="".join(candidats)).delimiter
+        candidats = [sonde] + [c for c in candidats if c != sonde]
+    except csv.Error:
+        pass
+
+    for sep in candidats:
+        # L'en-tete se lit sur `fieldnames`, PAS sur la premiere ligne de donnees :
+        # un CSV fraichement genere n'a que son en-tete, et le sonder par ses lignes
+        # le declarait « sans colonne connue » -- donc REFUS sur le fichier que la
+        # forge venait elle-meme d'ecrire (constate par la fixture de TF-0056).
+        lecteur = csv.DictReader(io.StringIO(brut), delimiter=sep)
+        entete = {(c or "").strip().lower() for c in (lecteur.fieldnames or [])}
+        if entete & COLONNES_RECONNUES:
+            if sep != "," and trace:
+                trace(f"  actions : separateur « {sep} » detecte dans {chemin.name}")
+            return list(lecteur)
+    raise SystemExit(
+        f"REFUS : {chemin.name} n'expose aucune colonne connue "
+        f"({', '.join(sorted(COLONNES_RECONNUES))}) quel que soit le separateur essaye "
+        f"({' '.join(repr(c) for c in candidats)}).\n"
+        "Un tableau d'actions rempli de « n/d » qui se presente comme complet est pire "
+        "qu'un refus. Verifier l'en-tete du fichier."
+    )
 
 
 def lire_fiches(base: Path) -> list[dict]:

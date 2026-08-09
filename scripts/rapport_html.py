@@ -17,9 +17,7 @@ Python 3, bibliotheque standard uniquement.
 from __future__ import annotations
 
 import argparse
-import csv
 import datetime as dt
-import io
 import json
 import re
 import sys
@@ -47,6 +45,7 @@ from gabarit_html import (
 )
 from gabarits import MOTIF_MODELE, front_matter
 from grille import NB_NOEUDS, RACINE
+from livrables import ids_noeuds as _ids, lire_actions
 
 MANIFESTE = RACINE / "seo" / "manifest.json"
 
@@ -139,48 +138,6 @@ def sans_nul(valeur):
     return valeur
 
 
-# En-tete minimal attendu d'un actions-*.csv : sert a valider le dialecte retenu.
-COLONNES_ACTIONS = {"id", "action", "libelle", "gain", "effort", "horizon", "score"}
-
-
-def lire_actions(chemin: Path) -> list[dict]:
-    """Lit actions-*.csv sans presumer du separateur (TF-0045).
-
-    `csv.DictReader(f)` sans `delimiter` lit en virgule. Un CSV point-virgule --
-    separateur par defaut d'Excel en locale francaise -- est alors lu comme un champ
-    unique par ligne : toutes les colonnes tombent a None et le rapport imprime
-    « n/d » sur l'integralite du tableau, sans le moindre avertissement.
-
-    On sonde, puis on VERIFIE que l'en-tete obtenu contient bien des colonnes
-    connues. Si aucun dialecte ne rend un en-tete reconnaissable, on REFUSE : un
-    tableau d'actions integralement vide qui se presente comme complet est pire
-    qu'une erreur.
-    """
-    brut = chemin.read_text(encoding="utf-8-sig")
-    premiere = brut.split("\n", 1)[0]
-    candidats = [";", ",", "\t", "|"]
-    try:
-        sonde = csv.Sniffer().sniff(premiere, delimiters="".join(candidats)).delimiter
-        candidats = [sonde] + [c for c in candidats if c != sonde]
-    except csv.Error:
-        pass
-
-    for sep in candidats:
-        lignes = list(csv.DictReader(io.StringIO(brut), delimiter=sep))
-        entete = {(c or "").strip().lower() for c in (lignes[0].keys() if lignes else [])}
-        if entete & COLONNES_ACTIONS:
-            if sep != ",":
-                print(f"  actions : separateur « {sep} » detecte dans {chemin.name}")
-            return lignes
-    raise SystemExit(
-        f"REFUS : {chemin.name} n'expose aucune colonne connue "
-        f"({', '.join(sorted(COLONNES_ACTIONS))}) quel que soit le separateur essaye "
-        f"({' '.join(repr(c) for c in candidats)}).\n"
-        "Un tableau d'actions rempli de « n/d » qui se presente comme complet est pire "
-        "qu'un refus. Verifier l'en-tete du fichier."
-    )
-
-
 def collecter(projet: Path) -> dict:
     base = projet / "seo"
     if not base.is_dir():
@@ -232,7 +189,7 @@ def collecter(projet: Path) -> dict:
     actions = []
     csvs = sorted(livrables.glob("actions-*.csv")) if livrables.is_dir() else []
     if csvs:
-        actions = [sans_nul(a) for a in lire_actions(csvs[-1])]
+        actions = [sans_nul(a) for a in lire_actions(csvs[-1], trace=print)]
 
     # Chainage des runs : on filtre sur le domaine de l'etude et on trie sur la date
     # extraite du nom, pas sur l'ordre lexicographique du glob. Deux domaines dans un
@@ -365,10 +322,6 @@ def bloc_bandeau(d: dict, repart: str) -> str:
 
 
 # ------------------------------------------------------------------- actions
-
-
-def _ids(brut) -> list[int]:
-    return [int(x) for x in re.findall(r"\d+", str(brut or ""))]
 
 
 def _cout(a: dict) -> str:

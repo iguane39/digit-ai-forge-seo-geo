@@ -17,6 +17,7 @@ Python 3, bibliotheque standard uniquement.
 
 from __future__ import annotations
 
+import csv
 import json
 import shutil
 import sys
@@ -24,7 +25,11 @@ import tempfile
 from pathlib import Path
 
 from gabarits import VERSION_ETAT, version_snapshot
-from validate import controler_versions
+from grille import NB_NOEUDS
+from livrables import COLONNES_ACTIONS
+from validate import controler_actions, controler_versions
+
+IDS_GRILLE = set(range(1, NB_NOEUDS + 1))
 
 # --------------------------------------------------------------------- socle
 
@@ -43,6 +48,17 @@ def etude_minimale(base: Path) -> Path:
 def snapshot(base: Path, version: str, jour: str = "20260101") -> Path:
     f = base / "livrables" / f"snapshot-exemple.fr-{jour}.json"
     f.write_text(json.dumps({"schema_version": version}, indent=2) + "\n", encoding="utf-8")
+    return f
+
+
+def actions_csv(base: Path, lignes: list[dict], jour: str = "20260101") -> Path:
+    """CSV d'actions au gabarit reel : memes colonnes que celles generees."""
+    f = base / "livrables" / f"actions-exemple.fr-{jour}.csv"
+    with f.open("w", encoding="utf-8", newline="") as sortie:
+        w = csv.DictWriter(sortie, fieldnames=COLONNES_ACTIONS)
+        w.writeheader()
+        for ligne in lignes:
+            w.writerow({c: ligne.get(c, "") for c in COLONNES_ACTIONS})
     return f
 
 
@@ -104,11 +120,56 @@ def cas_versions(b: Bilan, racine: Path) -> None:
     )
 
 
+# ------------------------------------------------------------------- TF-0056
+
+
+def cas_actions(b: Bilan, racine: Path) -> None:
+    base = etude_minimale(racine / "actions-vert" / "seo")
+    actions_csv(base, [
+        {"id": "A1", "action": "Reecrire les titles", "noeuds_couverts": "43 19 74"},
+        {"id": "A2", "action": "Creer les pages locales", "noeuds_couverts": "62,5,73"},
+    ])
+    ecarts, resume = controler_actions(base, IDS_GRILLE)
+    b.attendu("actions rattachees a des noeuds existants", bool(ecarts), False, resume)
+
+    base = etude_minimale(racine / "actions-vert-entete" / "seo")
+    actions_csv(base, [])
+    ecarts, resume = controler_actions(base, IDS_GRILLE)
+    b.attendu("CSV a en-tete seul, aucune action", bool(ecarts), False, resume)
+
+    base = etude_minimale(racine / "actions-rouge-inconnu" / "seo")
+    actions_csv(base, [
+        {"id": "A1", "action": "Reecrire les titles", "noeuds_couverts": "43 19 74"},
+        {"id": "A2", "action": "Action fantome", "noeuds_couverts": "92 5"},
+    ])
+    ecarts, _ = controler_actions(base, IDS_GRILLE)
+    b.attendu(
+        "une action cite un noeud inexistant",
+        any("92" in e for e in ecarts),
+        True,
+        ecarts[0] if ecarts else "aucun ecart releve",
+    )
+
+    base = etude_minimale(racine / "actions-rouge-detache" / "seo")
+    actions_csv(base, [
+        {"id": "A1", "action": "Reecrire les titles", "noeuds_couverts": ""},
+        {"id": "A2", "action": "Creer les pages locales", "noeuds_couverts": ""},
+    ])
+    ecarts, _ = controler_actions(base, IDS_GRILLE)
+    b.attendu(
+        "taux de rattachement nul sur un CSV rempli",
+        any("rattachee" in e for e in ecarts),
+        True,
+        ecarts[0] if ecarts else "aucun ecart releve",
+    )
+
+
 # ----------------------------------------------------------------------- main
 
 
 CAS = [
     ("TF-0028 -- versions de schema", cas_versions),
+    ("TF-0056 -- actions rattachees a la grille", cas_actions),
 ]
 
 

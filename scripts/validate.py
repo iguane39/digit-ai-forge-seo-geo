@@ -28,7 +28,7 @@ from gabarits import (
     front_matter,
     version_snapshot,
 )
-from livrables import compteurs, lire_fiches
+from livrables import compteurs, ids_noeuds, lire_actions, lire_fiches
 from schema import valider
 from grille import GRILLE, NB_BRANCHES, NB_NOEUDS, RACINE, lire
 
@@ -187,6 +187,70 @@ def controler_versions(base: Path) -> tuple[list[str], str]:
                 f"{nom} : schema_version {declare!r}, la forge produit {attendu!r}"
             )
     return ecarts, " · ".join(resume)
+
+
+def controler_actions(base: Path, ids_grille: set[int]) -> tuple[list[str], str]:
+    """Coherence referentielle entre actions-*.csv et la grille.
+
+    TF-0056 : rien ne reliait le CSV d'actions au manifeste. Une action pouvait
+    citer un noeud inexistant -- 92 sur une grille qui s'arrete a 87, ou un
+    identifiant herite d'une grille anterieure -- et le rapport se contentait de
+    ne rien rattacher : « Nœuds couverts : — », branche « — », sans une erreur.
+    Deux regles, parce qu'une seule laisse passer l'autre panne :
+
+      a) tout identifiant cite existe dans le manifeste ;
+      b) le taux de rattachement effectif est non nul sur un CSV non vide.
+
+    (b) attrape le cas ou aucun identifiant n'est cite du tout -- colonne absente,
+    mal orthographiee, ou vide sur toutes les lignes. (a) seule serait alors verte
+    sur un rattachement integralement nul.
+    """
+    livrables = base / "livrables"
+    csvs = sorted(livrables.glob("actions-*.csv")) if livrables.is_dir() else []
+    if not csvs:
+        return [], "aucun fichier d'actions — rien a rattacher"
+
+    cible = csvs[-1]
+    try:
+        lignes = lire_actions(cible)
+    except SystemExit as e:
+        return [f"{cible.name} : illisible -- {str(e).splitlines()[0]}"], cible.name
+    except OSError as e:
+        return [f"{cible.name} : illisible -- {e}"], cible.name
+
+    lignes = [l for l in lignes if any((v or "").strip() for v in l.values())]
+    if not lignes:
+        return [], f"{cible.name} — en-tete seul, aucune action a rattacher"
+
+    ecarts: list[str] = []
+    rattachees = 0
+    couverts: set[int] = set()
+    for ligne in lignes:
+        ids = ids_noeuds(ligne.get("noeuds_couverts"))
+        connus = [i for i in ids if i in ids_grille]
+        inconnus = [i for i in ids if i not in ids_grille]
+        if inconnus:
+            ecarts.append(
+                f"{cible.name} : action {ligne.get('id') or '?'} cite "
+                f"{inconnus} — absent(s) du manifeste"
+            )
+        if connus:
+            rattachees += 1
+            couverts.update(connus)
+
+    taux = rattachees / len(lignes)
+    if not rattachees:
+        ecarts.append(
+            f"{cible.name} : aucune des {len(lignes)} action(s) n'est rattachee a un "
+            "noeud de la grille — colonne noeuds_couverts absente, mal orthographiee "
+            "ou vide"
+        )
+
+    resume = (
+        f"{cible.name} — {rattachees}/{len(lignes)} action(s) rattachee(s) "
+        f"({taux:.0%}), {len(couverts)} noeud(s) distinct(s) couvert(s)"
+    )
+    return ecarts, resume
 
 
 # ------------------------------------------------------- referentiel canonique
@@ -438,6 +502,15 @@ def valider_mission(projet: Path, json_mode: bool = False) -> int:
         not ecarts_v,
         resume_v or "aucun artefact versionne",
         ecarts_v[:5],
+    )
+
+    # 8 -- les actions citent des noeuds qui existent, et elles en citent
+    ecarts_a, resume_a = controler_actions(base, {n["id"] for n in donnees["noeuds"]})
+    r.controle(
+        "8. actions-*.csv rattachees a la grille",
+        not ecarts_a,
+        resume_a,
+        ecarts_a[:5],
     )
 
     return r.bilan()
