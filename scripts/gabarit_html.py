@@ -135,6 +135,179 @@ def tete(texte: str, plafond: int = 170) -> str:
     return t
 
 
+# Sous ce volume de contenu cache, un depliant coute plus qu'il ne rapporte.
+SEUIL_REPLI = 200
+
+# --------------------------------------------------------------- glossaire
+#
+# Le lecteur d'un rapport SEO n'est pas SEO. Chaque terme de metier est defini AU
+# PREMIER USAGE, dans la phrase, en langage courant -- pas dans un glossaire en
+# annexe que personne n'ouvre. La definition n'apparait qu'une fois par document.
+GLOSSAIRE = {
+    "cannibalisation": "deux de vos pages se battent pour la même recherche, "
+                       "et Google n'en retient souvent aucune",
+    "cannibalisent": "se battent pour la même recherche",
+    "doublon": "deux pages qui disent la même chose sous deux adresses différentes",
+    "arbitrage": "décider laquelle des deux pages garde la main",
+    "canonique": "l'étiquette qui désigne, parmi plusieurs pages jumelles, celle que "
+                 "Google doit retenir",
+    "orphelines": "des pages qu'aucun lien du site ne mène à découvrir",
+    "maillage": "les liens que vos pages se font entre elles",
+    "indexable": "que Google a le droit d'afficher dans ses résultats",
+    "gabarit": "le moule d'une famille de pages — toutes les fiches de gîte, par exemple",
+    "profondeur de clic": "le nombre de clics depuis l'accueil pour y arriver",
+    "SERP": "la page de résultats de Google",
+    "CTR": "la part des gens qui cliquent quand votre page leur est montrée",
+    "impressions": "le nombre de fois où votre page a été montrée dans les résultats",
+    "méta-description": "le texte gris affiché sous le titre dans les résultats de Google",
+}
+# Ni a l'interieur d'une balise, ni DEJA suivie de son libelle (« A1 · … »). Sans ce
+# second garde-fou, une reference deja nommee par le verdict genere se faisait
+# renommer une seconde fois et le libelle sortait en double.
+RE_ACTION = re.compile(r"(?<![\w#>])(A\d{1,2})\b(?!\s*·)(?![^<]*>)")
+
+
+class Vocabulaire:
+    """Definit chaque terme de metier UNE FOIS, a son premier usage dans le document.
+
+    L'etat est porte par le document et non par le bloc : redefinir
+    « cannibalisation » a chaque fiche serait aussi penible que ne jamais la definir.
+    """
+
+    def __init__(self) -> None:
+        self.vus: set[str] = set()
+
+    def glose(self, html: str) -> str:
+        for terme, sens in GLOSSAIRE.items():
+            if terme in self.vus:
+                continue
+            # Hors balise et hors attribut : `(?![^<]*>)` garantit qu'on est dans du
+            # texte, pas dans un title= ou un href=.
+            motif = re.compile(r"(?<![\w-])(" + re.escape(terme) + r")(?![\w-])(?![^<]*>)",
+                               re.I)
+            html, n = motif.subn(
+                lambda m, sens=sens: (
+                    f'<span class="glose" title="{esc(sens)}">{m.group(1)}</span>'
+                    f'<span class="glose-d"> — {esc(sens)}</span>'),
+                html, count=1)
+            if n:
+                self.vus.add(terme)
+        return html
+
+
+def refs_actions(html: str, libelles: dict) -> str:
+    """« traité par A5 » ne dit rien a personne. « A5 · Poser une balise canonique
+    auto-référente » dit ce qu'on fait. Les libelles viennent du CSV d'actions : on
+    ne les invente pas, on cesse de les cacher."""
+    if not libelles:
+        return html
+
+    def _nomme(m):
+        ident = m.group(1)
+        libelle = libelles.get(ident)
+        if not libelle:
+            return ident
+        court = tete(" ".join(libelle.split()), 80)
+        return (f'<span class="ref-a" title="{esc(libelle)}">{esc(ident)} · '
+                f"{esc(court)}</span>")
+
+    return RE_ACTION.sub(_nomme, html)
+
+
+def enumeration(texte: str):
+    """Detecte une enumeration `cle — valeur ; cle — valeur ; …` et la rend en table.
+
+    Regle L12 du socle : au-dela de trois elements, ce n'est plus de la prose, c'est
+    un tableau que l'auteur a refuse d'assumer. Le lecteur ne peut ni comparer, ni
+    trier, ni reperer la valeur aberrante. Retourne (html_table, ligne_de_lecture),
+    ou None si le texte n'est pas une enumeration.
+
+    Deux formes rencontrees en production, toutes deux acceptees :
+      « Informations — pages 7, etendue en mots 386-567 ; Inclus — pages 7, … »
+      « Faits attribuables : absent — aucune date ; Balisage (JSON-LD) : 0 sur 79 ; … »
+    Le separateur est le premier ` : ` ou ` — ` de chaque segment. Un segment qui n'en
+    porte aucun disqualifie l'ensemble : mieux vaut laisser en prose que decouper de
+    travers.
+
+    La ligne de lecture produite ici est FACTUELLE -- comptages, total, etendue. Elle
+    ne pretend pas dire ce que l'analyste en conclut : ca, c'est le travail de la
+    fiche, et ce qu'il en reste est declare comme limite.
+    """
+    t = " ".join((texte or "").split())
+    segments = [x.strip(" .") for x in t.split(";") if x.strip(" .")]
+    if len(segments) < 3:
+        return None
+
+    # Le separateur se CHOISIT sur l'ensemble, pas segment par segment. Sinon une cle
+    # qui contient elle-meme un tiret -- une fourchette de positions « 1 – 3 » -- se
+    # fait couper en deux et l'enumeration entiere devient illisible ou irreparable.
+    sep = next((c for c in (" — ", " : ", " – ")
+                if all(c in seg for seg in segments)), None)
+    if sep is None:
+        return None
+    couples = []
+    for seg in segments:
+        cle, _, reste = seg.partition(sep)
+        cle, reste = cle.strip(), reste.strip()
+        if len(cle) < 2 or len(reste) < 2 or len(cle) > 70:
+            return None
+        couples.append((cle, reste))
+
+    # Sous-decoupage par virgules : seulement s'il est REGULIER sur toutes les lignes,
+    # et sans casser les decimales -- « ctr 26,66 % » est une valeur, pas deux.
+    parts = [[c[0]] + [x.strip() for x in re.split(r",(?=\s*[^\d\s])", c[1]) if x.strip()]
+             for c in couples]
+    largeur = max(len(x) for x in parts)
+    if largeur < 2 or any(len(x) != largeur for x in parts):
+        parts = [[c[0], c[1]] for c in couples]
+        largeur = 2
+
+    # Un intitule de colonne n'est retenu que s'il prefixe TOUTES les lignes. Sinon
+    # il decrirait une partie du tableau et mentirait sur le reste -- « Absent » en
+    # tete d'une colonne dont une ligne sur cinq vaut « 0 sur 79 pages ».
+    entetes = ["Élément"]
+    for i in range(1, largeur):
+        prefixes = [re.match(r"^([^\d]{2,})\s", l[i]) for l in parts]
+        communs = {m.group(1).strip().lower() for m in prefixes if m}
+        commun = (next(iter(communs)) if len(communs) == 1
+                  and all(prefixes) else None)
+        entetes.append(commun.capitalize() if commun else "Constat")
+    if len(entetes) != len(set(entetes)):
+        entetes = ["Élément"] + [f"Constat {i}" for i in range(1, largeur)]
+
+    def _val(cellule, entete):
+        v = re.sub(r"^" + re.escape(entete) + r"\s*", "", cellule, flags=re.I).strip()
+        return (v or cellule).lstrip("—– ").strip() or cellule
+
+    th = "".join(f'<th scope="col">{esc(h)}</th>' for h in entetes)
+    tr = "".join(
+        "<tr>" + "".join(
+            f"<td>{md(l[0] if i == 0 else _val(l[i], entetes[i]))}</td>"
+            for i in range(largeur))
+        + "</tr>"
+        for l in parts
+    )
+    table = ('<table class="mini" data-filterable="off" '
+             'data-filterable-reason="relevé d\'une fiche, lu en place">'
+             f"<thead><tr>{th}</tr></thead><tbody>{tr}</tbody></table>")
+
+    bits = [f"{len(parts)} éléments relevés"]
+    if largeur >= 2:
+        n1 = [re.findall(r"\d+", l[1]) for l in parts]
+        if all(len(x) == 1 for x in n1):
+            bits.append(f"{sum(int(x[0]) for x in n1)} {entetes[1].lower()} au total")
+    # L'etendue ne s'annonce que si CHAQUE ligne porte un nombre dans la derniere
+    # colonne : sinon on donne la fourchette d'un sous-ensemble en la presentant
+    # comme celle du tableau.
+    par_ligne = [re.findall(r"\d+(?:[.,]\d+)?", l[-1]) for l in parts]
+    if all(par_ligne) and entetes[-1] != "Constat":
+        nombres = [float(x.replace(",", ".")) for xs in par_ligne for x in xs]
+        if min(nombres) != max(nombres):
+            bits.append(f"{entetes[-1].lower()} de {min(nombres):g} à {max(nombres):g}")
+    lecture = "Ce que montre ce relevé — " + ", ".join(bits) + "."
+    return table, lecture
+
+
 def champs(paires: list[tuple[str, str]]) -> str:
     """Champs etiquetes, une ligne PLEINE LARGEUR par champ.
 
@@ -177,6 +350,21 @@ def strate(n1: str, n2_titre: str, n2_corps: list[tuple[str, str]],
     if not lignes:
         return f'<div class="st"><div class="n1">{n1}</div></div>'
     suffixe = f'<span class="n2-s">{esc(n2_suffixe)}</span>' if n2_suffixe else ""
+    # Un depliant coute un clic et une decision. Sous SEUIL_REPLI caracteres caches,
+    # le contenu tient a l'ecran : le replier fabrique un obstacle, et le lecteur qui
+    # l'ouvre se sent trompe -- « a qui sert ce bouton ? un tiers d'informations
+    # supplementaires, aucun interet ». En dessous, on affiche en pied de bloc, en
+    # style discret. Regle L9(c) du socle.
+    utile = len(re.sub(r"<[^>]+>", "", lignes))
+    if utile < SEUIL_REPLI:
+        return (
+            '<div class="st">'
+            f'<div class="n1">{n1}</div>'
+            f'<div class="meta-pied">{lignes}'
+            + (f'<div class="champ meta-id">{esc(n2_suffixe)}</div>'
+               if n2_suffixe else "")
+            + "</div></div>"
+        )
     return (
         '<div class="st">'
         f'<div class="n1">{n1}</div>'
@@ -225,9 +413,18 @@ def md_bloc(valeur) -> str:
         # chaque ligne comme un paragraphe disloquait les phrases : « ...sur
         # /contact/gites : » puis « meme titre, et... » devenaient deux blocs. Seule
         # une ligne VIDE separe deux paragraphes.
-        if tampon_para:
-            out.append("<p>" + md(" ".join(tampon_para)) + "</p>")
-            tampon_para.clear()
+        if not tampon_para:
+            return
+        texte = " ".join(tampon_para)
+        tampon_para.clear()
+        # Une enumeration de donnees n'est pas un paragraphe : c'est un tableau que
+        # l'auteur a refuse d'assumer. On l'assume a sa place (regle L12).
+        enum = enumeration(texte)
+        if enum:
+            table, lecture = enum
+            out.append(f'<p class="lecture">{md(lecture)}</p>{table}')
+            return
+        out.append("<p>" + md(texte) + "</p>")
 
     def vider_liste():
         if tampon_liste:
@@ -704,6 +901,28 @@ details.baremes[open]>summary::before{content:"−"}
 .bareme.large{grid-column:1/-1}
 .bareme.large .bareme-l{list-style:none;padding-left:0}
 .bareme-l b{font-family:var(--mono);color:var(--ink)}
+
+/* --- verdict en langage courant, en tete de fiche --- */
+.clair{background:var(--blue-fill);border-left:3px solid var(--accent);
+  border-radius:var(--r-sm);padding:9px 13px;margin:0 0 9px}
+.clair-l{margin:0 0 .4em;font-size:.88rem;color:var(--ink)}
+.clair-l:last-child{margin:0}
+.clair-l>b{font-family:var(--head);font-size:.68rem;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--accent)}
+
+/* --- jargon defini au premier usage, et references d'action nommees --- */
+.glose{border-bottom:1px dotted var(--accent)}
+.glose-d{color:var(--muted);font-style:italic}
+.ref-a{font-weight:500}
+
+/* --- ligne de lecture d'un releve mis en table (L12) --- */
+.lecture{font-size:.8rem;color:var(--muted);margin:.5em 0 .3em;font-style:italic}
+
+/* --- pied de bloc : ce qui ne merite pas un depliant (L9c) --- */
+.meta-pied{margin-top:7px;padding-top:6px;border-top:1px dashed var(--line)}
+.meta-pied .champ{font-size:.74rem;color:var(--muted);margin:0 0 .25em}
+.meta-pied .champ>b{font-size:.64rem}
+.meta-id{font-family:var(--mono);color:var(--faint)}
 
 .jeton{display:inline-block;max-width:100%;font-family:var(--mono);font-size:.9em;
   border-bottom:1px dotted var(--faint);overflow-wrap:anywhere}

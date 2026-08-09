@@ -36,12 +36,14 @@ from gabarit_html import (
     legende_valeur,
     md,
     md_bloc,
+    refs_actions,
     page,
     recherche_globale,
     sommaire,
     strate,
     tableau,
     tete,
+    Vocabulaire,
 )
 from gabarits import MOTIF_MODELE, front_matter
 from grille import NB_NOEUDS, RACINE
@@ -787,11 +789,86 @@ def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
 # ---------------------------------------------------------------- existant
 
 
-def constat_li(n: dict, classe: str, actions_par_noeud: dict) -> str:
-    """DEFAUT 4 : ce chapitre etait verbeux et sans suite -- des constats empiles,
-    sans impact chiffre ni action rattachee. Chaque entree porte desormais sa CHAINE
-    COMPLETE : ce qu'on observe, ce que ca coute, ce qu'on fait, ce qu'on en attend.
-    Le lecteur n'a plus a chercher dans le chapitre 3 quelle action repond a quoi.
+# Le verdict de la grille est un code ; le lecteur a besoin d'une phrase. La regle
+# d'or vient du lecteur lui-meme : la phrase du rapport doit etre celle qu'IL
+# reformulerait, pas celle de l'auditeur.
+VERDICT_EN_CLAIR = {
+    "conforme": "Sur ce point, le site est en règle.",
+    "partiel": "Sur ce point, le site n'est qu'à moitié en règle.",
+    "non-conforme": "Sur ce point, le site n'est pas en règle.",
+    "non-mesure": "Ce point n'a pas pu être mesuré.",
+    "sans-objet": "Ce point ne concerne pas ce site.",
+}
+TENU = {
+    "conforme": "Il est tenu.",
+    "non-conforme": "Il n'est pas tenu.",
+    "partiel": "Il n'est tenu qu'en partie.",
+    "non-mesure": "Il n'a pas pu être vérifié.",
+}
+
+
+def verdict_en_clair(n: dict, liees: list[dict]) -> str:
+    """Ouvre la fiche par ce que le lecteur veut savoir, dans SA langue.
+
+    Trois phrases, toutes assemblees depuis des donnees STRUCTUREES -- verdict,
+    critere de verdict, question d'audit, actions rattachees. Rien n'est invente :
+    ce qui n'est pas dans les donnees n'est pas ecrit.
+
+      1. ce qu'on cherchait          <- question_audit
+      2. ce que ca donne, et l'ecart <- verdict + critere_verdict
+      3. ce qu'on en fait            <- actions rattachees, AVEC leur libelle
+
+    Le releve telegraphique de la fiche passe APRES, en preuve. Un lecteur qui
+    s'arrete a ces trois phrases sait ce qui va, ce qui ne va pas, pourquoi, et quoi
+    faire -- c'est le test d'acceptation du chapitre.
+    """
+    v = (n.get("verdict") or "").strip()
+    question = " ".join((n.get("question_audit") or "").split()).strip(" ?")
+    critere = " ".join((n.get("critere_verdict") or "").split()).strip(" .")
+    bits = []
+
+    if question:
+        bits.append(f"<b>Ce qu'on a cherché</b> — {md(question[:1].lower() + question[1:])} ?")
+
+    phrase = VERDICT_EN_CLAIR.get(v, "Ce point n'a pas de verdict tranché.")
+    if critere:
+        bits.append(f"<b>Ce qu'on a trouvé</b> — {esc(phrase)} Le critère demandait "
+                    f"{md(critere[:1].lower() + critere[1:])}. "
+                    f"{esc(TENU.get(v, ''))}")
+    else:
+        bits.append(f"<b>Ce qu'on a trouvé</b> — {esc(phrase)}")
+
+    if liees:
+        noms = ", ".join(
+            f'{a.get("id")} · '
+            + tete(" ".join((a.get("action") or a.get("libelle") or "").split()), 80)
+            for a in liees[:3]
+        )
+        reste = (f", et {len(liees) - 3} autre{'s' if len(liees) > 4 else ''}"
+                 if len(liees) > 3 else "")
+        bits.append(
+            f"<b>Ce qu'on en fait</b> — {len(liees)} action"
+            f"{'s' if len(liees) > 1 else ''} du plan y répond"
+            f"{'ent' if len(liees) > 1 else ''} : {esc(noms)}{esc(reste)}.")
+    elif v in ("non-conforme", "partiel"):
+        bits.append("<b>Ce qu'on en fait</b> — rien pour l'instant : aucune action du "
+                    "plan ne couvre ce point.")
+
+    return "".join(f'<p class="clair-l">{b}</p>' for b in bits)
+
+
+def constat_li(n: dict, classe: str, actions_par_noeud: dict, voc=None) -> str:
+    """La fiche ouvre par le VERDICT EN LANGAGE COURANT, puis donne le releve.
+
+    Constat du 09/08 : « 10 titres sont portés par 45 pages » ne veut rien dire pour
+    un dirigeant. Le releve de l'auditeur reste -- c'est la preuve, et le renderer
+    ne reecrit pas le fond d'une prose instruite a la main -- mais il ne parle plus
+    en premier. Ce qui parle en premier est genere depuis les donnees structurees,
+    dans la langue du lecteur.
+
+    Le renderer applique par ailleurs, sur toute la prose : mise en table des
+    enumerations (L12), definition du jargon au premier usage, et nommage des
+    references d'action (« A5 » -> « A5 · Poser une balise canonique »).
     """
     tier = (n.get("niveau_preuve") or "").upper()
     if n.get("verdict") == "non-mesure" or n.get("etat") == "hors-perimetre":
@@ -836,10 +913,15 @@ def constat_li(n: dict, classe: str, actions_par_noeud: dict) -> str:
             "aucune action du plan ne couvre ce nœud — constat porté sans remède chiffré")
         gain_html = ligne("Gain attendu", "", "sans action rattachée, aucun gain à annoncer")
 
+    # La glose ne s'applique qu'a la PROSE. Appliquee au bloc entier, elle allait
+    # jusqu'a definir « gabarit » dans le texte pour lecteur d'ecran d'une jauge --
+    # un span clippe en nowrap, ou une definition de 60 caracteres deborde de 270 px
+    # hors du viewport. Une regle de langue n'a rien a faire dans un widget.
+    glose = voc.glose if voc else (lambda x: x)
     chaine = (
         '<div class="chaine">'
-        + ligne("Constat", md_bloc(constat))
-        + ligne("Impact", md_bloc(impact),
+        + ligne("Le relevé", glose(md_bloc(constat)))
+        + ligne("Ce que ça change", glose(md_bloc(impact)),
                 "mécanisme non instruit — l'effet de ce constat n'est pas établi")
         + act_html + gain_html
         + "</div>"
@@ -851,19 +933,18 @@ def constat_li(n: dict, classe: str, actions_par_noeud: dict) -> str:
         ("Preuves", md_bloc(n.get("preuves"))),
         ("Motif", md((n.get("motif_hors_perimetre") or "").strip('"'))),
     ]
-    # Le depliant garde sa raison d'etre -- l'opposabilite se verifie a la demande,
-    # elle n'encombre pas la lecture courante -- mais son libelle dit desormais A QUOI
-    # IL SERT, pas ce qu'il contient. « question d'audit, critère et preuves » est une
-    # table des matieres ; « vérifier ce constat » est un usage. Le numero de noeud
-    # remonte dans le summary : il economise la ligne de trace qui suivait.
+    # Le depliant reste UTILE pour un contenu long -- l'opposabilite se verifie a la
+    # demande, elle n'encombre pas la lecture courante. `strate()` le remplace de
+    # lui-meme par un pied de bloc discret quand le contenu tient a l'ecran : un clic
+    # pour trois lignes, c'est un obstacle, pas un service (regle L9(c)).
     return (
         f'<li class="{classe}">'
         f'<p class="t">{badge_preuve(tier)} {esc(n["branche"])} / {esc(n["noeud"])}</p>'
+        f'<div class="clair">{glose(verdict_en_clair(n, liees))}</div>'
         + chaine
         + strate("", "vérifier ce constat — question d'audit, critère, preuves",
                  n2, f'· nœud {n["id"]}')
-        + "</li>"
-    )
+        + "</li>")
 
 
 def bloc_existant(d: dict, actions: list[dict]) -> str:
@@ -873,6 +954,10 @@ def bloc_existant(d: dict, actions: list[dict]) -> str:
     for a in actions:
         for n in a["_noeuds"]:
             par_noeud.setdefault(n["id"], []).append(a)
+
+    # Les libelles d'action, pour que « traité par A5 » cesse d'etre une enigme.
+    libelles = libelles_actions(actions)
+    voc = Vocabulaire()
 
     faits = [n for n in d["noeuds"] if n.get("etat") == "fait"]
     if not faits:
@@ -896,11 +981,11 @@ def bloc_existant(d: dict, actions: list[dict]) -> str:
         out.append(f"<h3>Points faibles, du plus attaqué par le plan au moins "
                    f"attaqué ({len(faibles)})</h3>")
         out.append('<ul class="constats">'
-                   + "".join(constat_li(n, "faible", par_noeud) for n in faibles) + "</ul>")
+                   + "".join(constat_li(n, "faible", par_noeud, voc) for n in faibles) + "</ul>")
     if forts:
         out.append(f"<h3>Points forts ({len(forts)})</h3>")
         out.append('<ul class="constats">'
-                   + "".join(constat_li(n, "fort", par_noeud) for n in forts) + "</ul>")
+                   + "".join(constat_li(n, "fort", par_noeud, voc) for n in forts) + "</ul>")
     if not out:
         out.append(absence(
             "Aucun verdict tranché",
@@ -908,6 +993,8 @@ def bloc_existant(d: dict, actions: list[dict]) -> str:
             "impossible de distinguer ce qui va de ce qui ne va pas.",
             "renseigner le champ verdict des fiches concernées",
         ))
+    # Le nommage des references est applique une seule fois, a l'assemblage des
+    # chapitres (`construire`). Le faire ici AUSSI produisait le libelle en double.
     return "".join(out)
 
 
@@ -1253,9 +1340,18 @@ def bloc_diff(d: dict) -> str:
 # ------------------------------------------------------------------ assemblage
 
 
+def libelles_actions(actions: list[dict]) -> dict:
+    """Les libelles, indexes par identifiant : de quoi nommer toute reference."""
+    return {
+        str(a.get("id")): " ".join((a.get("action") or a.get("libelle") or "").split())
+        for a in actions if a.get("id")
+    }
+
+
 def construire(d: dict) -> str:
     repart, compte = repartition(d["noeuds"])
     actions = enrichir_actions(d)
+    libelles = libelles_actions(actions)
     domaine = d["etat"].get("domaine") or "site"
 
     npages = len(d["snapshot"].get("pages") or [])
@@ -1273,7 +1369,7 @@ def construire(d: dict) -> str:
          "l'état du site, le blocage dont tout dépend, et les trois actions qui comptent — "
          "de quoi décider sans lire la suite",
          "ce qui a été mesuré, ce qui bloque, et ce qu'il faut décider",
-         bloc_synthese(d, actions, compte), "", "", ""),
+         refs_actions(bloc_synthese(d, actions, compte), libelles), "", "", ""),
         ("existant", "L'existant",
          "pour chaque constat : ce qui est observé, ce que ça coûte, quelle action y "
          "répond et quel gain en attendre — la chaîne entière sur une seule fiche",
@@ -1296,7 +1392,7 @@ def construire(d: dict) -> str:
          "où le site peut aller si le plan est exécuté, sous quelles hypothèses, et ce "
          "qui casse la projection si l'une d'elles est fausse",
          "la cible chiffrée, ses jalons et les hypothèses qui la portent",
-         bloc_trajectoire(d), "", "", ""),
+         refs_actions(bloc_trajectoire(d), libelles), "", "", ""),
         ("requetes", "Requêtes et résultats",
          "ce que chaque nœud cherchait, ce qui a été mesuré, et le critère exact qui a "
          "produit le verdict — c'est ce qui rend le constat opposable",
@@ -1353,6 +1449,12 @@ def construire(d: dict) -> str:
     chapitres, entrees = [], []
     for num, (ident, titre, apprend, annonce, corps, compt, exemple, annexe) in \
             enumerate(plan, start=1):
+        # Toute reference d'action porte son libelle, dans TOUS les chapitres de
+        # prose. Le chapitre 3 est exclu : sa premiere colonne EST l'identifiant et
+        # la suivante le libelle -- l'y injecter une seconde fois n'aiderait
+        # personne. La regex ignore de toute facon ce qui est deja suivi de « · ».
+        if ident != "actions":
+            corps = refs_actions(corps, libelles)
         chapitres.append(chapitre(num, ident, titre, corps, apprend, exemple, annexe))
         entrees.append((num, ident, titre, annonce, compt))
 
@@ -1515,7 +1617,7 @@ def controles(chemin: Path, html: str, d: dict) -> int:
     if not ok:
         echecs.append("tokens")
 
-    # Lisibilite L1-L11 : delegue au socle digit-ai-page-html, qui en est
+    # Lisibilite L1-L12 : delegue au socle digit-ai-page-html, qui en est
     # proprietaire. On ne redefinit pas la regle ici -- on l'applique, et on echoue
     # bruyamment si le socle est introuvable plutot que de rendre un vert par defaut.
     socle = Path.home() / ".claude" / "skills" / "digit-ai-page-html" / "scripts"
@@ -1527,7 +1629,7 @@ def controles(chemin: Path, html: str, d: dict) -> int:
         finally:
             sys.path.remove(str(socle))
         ok = not l_fails
-        print(f"  [{'OK  ' if ok else 'ECHEC'}] L1-L11 lisibilite (socle) — "
+        print(f"  [{'OK  ' if ok else 'ECHEC'}] L1-L12 lisibilite (socle) — "
               f"{len(l_fails)} echec(s)")
         for x in l_fails[:5]:
             print(f"        {x}")
@@ -1556,7 +1658,33 @@ def controles(chemin: Path, html: str, d: dict) -> int:
     if not ok:
         echecs.append("provenance")
 
-    print(f"\n{10 - len(echecs)}/10 controles passes")
+    # Une reference d'action nue ne dit rien : « traité par A5 » suppose que le
+    # lecteur ait memorise le tableau du chapitre 3. Le libelle est dans le CSV ;
+    # le cacher est un choix, pas une contrainte. Controle de DOMAINE et non du
+    # socle : le socle ne sait pas ce qu'est « A5 ».
+    # Perimetre : la PROSE. Dans une table dont une colonne porte l'identifiant et
+    # la suivante le libelle, la reference n'est pas nue -- le libelle est a cote.
+    # C'est la phrase « traité par A5 » qui suppose que le lecteur ait memorise le
+    # chapitre 3. On ne juge donc que les noeuds de texte qui sont des phrases.
+    ids = {str(a.get("id")) for a in d["actions"] if a.get("id")}
+    sans_code = re.sub(r"<(script|style)\b.*?</\1>", " ", html, flags=re.S | re.I)
+    nues = set()
+    for morceau in re.split(r"<[^>]+>", sans_code):
+        phrase = morceau.strip()
+        if len(phrase) < 40:
+            continue
+        for m in re.finditer(r"(?<![\w#])(A\d{1,2})\b(?!\s*·)", phrase):
+            if m.group(1) in ids:
+                nues.add(m.group(1))
+    nues = sorted(nues)
+    ok = not nues
+    print(f"  [{'OK  ' if ok else 'ECHEC'}] references d'action nommees — "
+          f"{len(nues)} reference(s) nue(s) dans le texte visible"
+          + (f" : {', '.join(nues[:6])}" if nues else ""))
+    if not ok:
+        echecs.append("refs")
+
+    print(f"\n{11 - len(echecs)}/11 controles passes")
     return 1 if echecs else 0
 
 

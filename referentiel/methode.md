@@ -94,6 +94,43 @@ Un nœud hors portée du modèle d'acquisition, comme un renvoi de doublon, est
 **pré-marqué** à la création de l'étude et n'entre **pas** dans la dette
 d'instrumentation : il n'y a rien à obtenir pour le lever.
 
+## Règle d'écriture des fiches — la langue du lecteur
+
+Le lecteur d'un rapport SEO n'est pas SEO. Il ne reformule pas ce qu'il ne comprend pas :
+il le saute. Verdict rendu le 09/08/2026 par une lecture naïve du livrable réel :
+« *10 titres sont portés par 45 pages* ne veut rien dire », « on ne sait ni à quoi ça
+correspond, ni ce qui est bien ou pas bien, ni pourquoi ».
+
+**La règle d'or — la phrase du rapport est celle que le lecteur reformulerait, pas celle
+que l'auditeur a mesurée.** L'exemple canonique vient du lecteur lui-même :
+
+| Écriture d'auditeur | Écriture de rapport |
+|---|---|
+| 10 titres sont portés par 45 pages | **45 de vos 79 pages se partagent seulement 10 titres : Google ne sait pas laquelle montrer, et n'en montre souvent aucune.** |
+
+Quatre exigences, à tenir en instruisant un nœud :
+
+1. **Le constat se lit seul.** Une valeur brute (« 45 pages ») est mise en rapport avec son
+   tout (« sur 79 »), et suivie de sa **conséquence concrète** pour le site. Un chiffre sans
+   dénominateur et sans conséquence n'informe pas.
+2. **Le jargon se définit au premier usage, dans la phrase** — « cannibalisation : deux de
+   vos pages se battent pour la même recherche ». Le rapport applique déjà un glossaire
+   automatique aux termes courants ; tout terme hors glossaire est à la charge de la fiche.
+3. **Toute référence d'action porte son libellé.** « traité par A5 » ne dit rien : le rapport
+   le remplace par « A5 · Poser une balise canonique auto-référente », mais seulement si
+   l'action existe au CSV. Une référence à une action inexistante reste muette.
+4. **Une énumération de plus de trois éléments s'écrit en tableau ou en liste**, jamais en
+   une phrase à points-virgules — et elle est **surmontée d'une ligne qui dit ce qu'il faut
+   y voir**. Le rapport met automatiquement ces énumérations en table et produit une ligne
+   de lecture **factuelle** (comptages, total, étendue) ; la ligne d'**interprétation**, elle,
+   ne se déduit pas des données : c'est le travail de la fiche.
+
+Ce que le générateur assemble lui-même — verdict d'ouverture en langage courant, mise en
+table, glossaire, libellés d'action — est tenu par `rapport_html.py` et contrôlé par
+`check_html.py --regles L` (règles L1 à L12). **Ce qui relève de la prose instruite à la
+main n'est pas réécrit par le générateur** : il la présente mieux, il ne la reformule pas.
+Un constat écrit en langue d'auditeur le reste jusqu'à sa ré-instruction.
+
 ## Livrables
 
 | Fichier | Contenu | Produit par |
