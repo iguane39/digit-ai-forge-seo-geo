@@ -238,11 +238,11 @@ cérémoniel.
 Le rapport HTML se recette en trois couches :
 
 ```bash
-python scripts/rapport_html.py --projet . --verifier    # 9 contrôles sur le fichier
+python scripts/rapport_html.py --projet . --verifier    # 10 contrôles sur le fichier
 python scripts/oracle_interaction.py <page.html>        # 9 contrôles d'EXÉCUTION
 ```
 
-Le 9e contrôle est la **lisibilité L1-L10**, déléguée au socle `digit-ai-page-html`
+Le 9e contrôle est la **lisibilité L1-L11**, déléguée au socle `digit-ai-page-html`
 (`check_html.py --regles L`) : texte tronqué, largeur de lecture, score sans barème lié,
 liste longue non filtrable, surlignage qui casse les mots, sommaire muet ou à ancre morte,
 chapitre sans chapeau, lien interne sans destination, détail vide, table de données sans

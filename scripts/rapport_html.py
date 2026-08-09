@@ -33,6 +33,7 @@ from gabarit_html import (
     chapitre,
     esc,
     legende_preuves,
+    legende_valeur,
     md,
     md_bloc,
     page,
@@ -114,6 +115,28 @@ def corps_fiche(chemin: Path) -> dict:
     return out
 
 
+# Litteraux d'absence qui traversent une lecture non typee. `front_matter()` lit du
+# texte : un champ `motif_hors_perimetre: null` en ressort comme la CHAINE "null",
+# non vide donc vraie, donc rendue -- « Motif : null » s'affichait 22 fois sur les
+# fiches de constat. Un test `if valeur:` ne les attrape pas ; il faut les nommer.
+# Regle L11 du socle.
+NULS = {"null", "none", "nil", "undefined", "nan", "~", "n/a", "na",
+        "[]", "{}", "''", '""'}
+
+
+def sans_nul(valeur):
+    """Ramene un litteral d'absence a la chaine vide. Recursif sur listes et dicts."""
+    if valeur is None:
+        return ""
+    if isinstance(valeur, str):
+        return "" if valeur.strip().strip('"').strip("'").lower() in NULS else valeur
+    if isinstance(valeur, list):
+        return [sans_nul(x) for x in valeur]
+    if isinstance(valeur, dict):
+        return {k: sans_nul(v) for k, v in valeur.items()}
+    return valeur
+
+
 # En-tete minimal attendu d'un actions-*.csv : sert a valider le dialecte retenu.
 COLONNES_ACTIONS = {"id", "action", "libelle", "gain", "effort", "horizon", "score"}
 
@@ -174,7 +197,7 @@ def collecter(projet: Path) -> dict:
         if not fiche.exists():
             absents.append(n["chemin"])
             continue
-        fm = front_matter(fiche)
+        fm = {k: sans_nul(v) for k, v in front_matter(fiche).items()}
         # `front_matter()` rend des CHAINES : sans ce forcage, `id` ecrase l'entier du
         # manifeste par "12". Les identifiants de `noeuds_couverts` etant lus en int,
         # AUCUNE action n'etait rattachee a son noeud -- silencieusement. Consequences
@@ -207,7 +230,7 @@ def collecter(projet: Path) -> dict:
     actions = []
     csvs = sorted(livrables.glob("actions-*.csv")) if livrables.is_dir() else []
     if csvs:
-        actions = lire_actions(csvs[-1])
+        actions = [sans_nul(a) for a in lire_actions(csvs[-1])]
 
     # Chainage des runs : on filtre sur le domaine de l'etude et on trie sur la date
     # extraite du nom, pas sur l'ordre lexicographique du glob. Deux domaines dans un
@@ -227,9 +250,9 @@ def collecter(projet: Path) -> dict:
 
     snapshot, snap_precedent = {}, None
     if snaps:
-        snapshot = json.loads(snaps[-1].read_text(encoding="utf-8"))
+        snapshot = sans_nul(json.loads(snaps[-1].read_text(encoding="utf-8")))
         if len(snaps) > 1:
-            snap_precedent = json.loads(snaps[-2].read_text(encoding="utf-8"))
+            snap_precedent = sans_nul(json.loads(snaps[-2].read_text(encoding="utf-8")))
 
     # etat.json porte le chainage : sans mise a jour il reste a null indefiniment et
     # ment sur l'historique reel. Ce script est le seul a connaitre le contenu de
@@ -303,18 +326,35 @@ def repartition(noeuds: list[dict]) -> tuple[str, dict]:
 
 def bloc_bandeau(d: dict, repart: str) -> str:
     e, prov, cad = d["etat"], d["prov"], d["cadrage"]
+    # Chaque entree porte son AIDE. Deux d'entre elles sont opaques pour un lecteur
+    # qui n'est pas de la forge -- une empreinte hexadecimale et un nom d'etape de
+    # pipeline -- et s'affichaient nues (regle L3(d) du socle).
     meta = [
-        ("Domaine", e.get("domaine") or "—"),
-        ("Client", e.get("client") or "—"),
-        ("Date du rapport", dt.date.today().isoformat()),
+        ("Domaine", e.get("domaine") or "—", ""),
+        ("Client", e.get("client") or "—", ""),
+        ("Date du rapport", dt.date.today().isoformat(), ""),
         ("Modèle d'acquisition", e.get("modele_acquisition")
-         or champ_cadrage(cad, "Modele d'acquisition") or "non déclaré"),
-        ("Marché", champ_cadrage(cad, "Pays / langue") or "non déclaré"),
-        ("Audience", champ_cadrage(cad, "Audience du livrable") or "non déclarée"),
-        ("Version de grille", prov.get("version_grille") or "—"),
-        ("Étape du pipeline", e.get("etape_courante") or "—"),
+         or champ_cadrage(cad, "Modele d'acquisition") or "non déclaré",
+         "Comment ce site acquiert ses clients : c'est lui qui décide des questions "
+         "d'audit qui s'appliquent et de celles qui sont hors portée."),
+        ("Marché", champ_cadrage(cad, "Pays / langue") or "non déclaré", ""),
+        ("Audience", champ_cadrage(cad, "Audience du livrable") or "non déclarée", ""),
+        ("Version de grille", prov.get("version_grille") or "—",
+         "Empreinte de la grille d'audit utilisée — les 87 questions et leurs critères, "
+         "figés. Deux rapports portant la même empreinte sont comparables question par "
+         "question ; deux empreintes différentes signalent que la grille a évolué entre "
+         "les deux runs."),
+        ("Étape du pipeline", e.get("etape_courante") or "—",
+         "Où en est l'étude dans la méthode de forge-seo : cadrage, collecte, constat, "
+         "interprétation, stratégie, actions, restitution. Une étude restituée à une "
+         "étape intermédiaire le dit ici."),
     ]
-    dl = "".join(f"<div><dt>{esc(k)}</dt><dd>{esc(v)}</dd></div>" for k, v in meta)
+    dl = "".join(
+        f"<div><dt>{esc(k)}</dt>"
+        + (f'<dd title="{esc(aide)}">{esc(v)}</dd>' if aide else f"<dd>{esc(v)}</dd>")
+        + "</div>"
+        for k, v, aide in meta
+    )
     return (
         '<header class="band"><p class="eyebrow">Digit-AI — Audit &amp; stratégie SEO</p>'
         f'<h1>Étude SEO — {esc(e.get("domaine") or "site")}</h1>'
@@ -381,7 +421,7 @@ def bloc_actions(actions: list[dict]) -> str:
         {"t": "Gain", "w": 7, "tri": "num"},
         {"t": "Effort", "w": 7, "tri": "num"},
         {"t": "Confiance", "w": 7, "tri": "num"},
-        {"t": "Score", "w": 6, "tri": "num"},
+        {"t": "Score", "w": 6, "tri": "num", "aide": "bareme-score"},
         {"t": "Coût", "w": 9, "tri": "txt"},
     ]
 
@@ -406,7 +446,8 @@ def bloc_actions(actions: list[dict]) -> str:
             ("Impact attendu", impact),
             ("Critère d'acceptation", md(a.get("critere_acceptation"))),
             ("Nœuds couverts", esc(noeuds)),
-            ("Régime", esc(a.get("regime_automatisation"))),
+            ("Régime d'automatisation", legende_valeur("regime",
+                                                     a.get("regime_automatisation"))),
         ]
         lignes.append([
             (f'<span class="num">{esc(a.get("id"))}</span>', str(_ids(a.get("id")) or [0])[1:-1]),
@@ -428,7 +469,13 @@ def bloc_actions(actions: list[dict]) -> str:
         "tableau — les vues du chapitre 4, « Gains et priorités », le pilotent.</p>"
         '<p>Gain, effort et confiance sont des notes sur 5 : leur signification cran par '
         'cran est publiée au <a href="#baremes-scores" title="Aller aux barèmes des '
-        'scores, chapitre 1 Synthèse">bloc « Barèmes » du chapitre 1, Synthèse</a>.</p>'
+        'scores, chapitre 1 Synthèse">bloc « Vocabulaire et barèmes » du chapitre 1, '
+        "Synthèse</a>. La colonne <b>Score</b> n'est pas une note de plus : elle est "
+        "<b>calculée</b> — <b>(gain × confiance) ÷ effort</b>, de 0,2 à 25 — et c'est "
+        "elle qui ordonne ce tableau par défaut. Le trait de coupe usuel est à 6. Le "
+        "détail du calcul, et la raison pour laquelle la confiance est au numérateur, "
+        'sont au <a href="#bareme-score" title="Aller au barème du score de priorité">'
+        "barème du score</a>.</p>"
         + tableau(
             "t-actions", colonnes, lignes, "Actions à mettre en œuvre",
             groupes=[("Horizon", 3), ("Filière", 4), ("Branche", 2)],
@@ -715,7 +762,7 @@ def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
     return (
         f'<div class="verdict">{"".join(verdict)}</div>'
         f'<div class="cards">{"".join(cartes)}</div>{top}{legende_preuves()}'
-        + baremes(["maturite", "gain", "effort", "confiance"])
+        + baremes(["noeud", "score", "maturite", "gain", "effort", "confiance", "regime"])
     )
 
 
@@ -968,10 +1015,24 @@ def bloc_trajectoire(d: dict) -> str:
         f'{esc(h.get("indicateur"))}</h3><p class="kpi">'
         f'{esc(h.get("borne_basse"))} – {esc(h.get("borne_haute"))} '
         f'{esc(h.get("unite", ""))} {badge_preuve("T4", compact=True)}'
-        f'<small>{esc(h.get("calcul"))}</small></p></div>'
+        f'<small>{md(h.get("calcul"))}</small></p></div>'
         for h in cible.get("horizons", [])
     ]
-    out = f'<div class="cards">{"".join(cartes)}</div>' if cartes else ""
+    # Une borne T4 n'est pas une prevision : c'est le resultat d'un calcul dont les
+    # ENTREES sont, elles, soit mesurees soit conventionnelles. Le lecteur naif l'a
+    # dit autrement : « d'ou viennent 2,6 % et 3,2 % ? ». La reponse doit etre dans
+    # le calcul lui-meme -- le controle 10 la rend obligatoire -- et le rappel de
+    # lecture doit renvoyer, par son nom, a ce qui casse la projection.
+    garde = (
+        '<p class="ch-st">Aucune de ces bornes n\'est une prévision. Chacune est le '
+        "résultat d'un calcul affiché en toutes lettres sous le chiffre : ce calcul dit "
+        "quelles entrées sont <b>mesurées</b> (elles portent leur niveau de preuve) et "
+        "quelles entrées sont des <b>conventions de travail</b> retenues faute de mesure. "
+        "Ce qui casse la projection si une convention est fausse est énuméré au bloc "
+        '<a href="#sensibilite" title="Aller à la note de sensibilité de ce chapitre">'
+        "Note de sensibilité</a>, en bas de ce chapitre.</p>"
+    )
+    out = (garde + f'<div class="cards">{"".join(cartes)}</div>') if cartes else ""
 
     jalons = cible.get("jalons_observables") or []
     if jalons:
@@ -995,10 +1056,10 @@ def bloc_trajectoire(d: dict) -> str:
         li = "".join(
             "<li>"
             + f'<b>{"⚠ variable la plus fragile — " if s.get("plus_fragile") else ""}'
-            + f'{esc(s.get("hypothese"))}</b> — {esc(s.get("effet_si_fausse"))}</li>'
+            + f'{md(s.get("hypothese"))}</b> — {md(s.get("effet_si_fausse"))}</li>'
             for s in sens
         )
-        out += f"<h3>Note de sensibilité</h3><ul>{li}</ul>"
+        out += f'<h3 id="sensibilite">Note de sensibilité</h3><ul>{li}</ul>'
     else:
         out += absence(
             "Note de sensibilité absente",
@@ -1106,7 +1167,7 @@ def bloc_methode(d: dict) -> str:
         {"t": "Source", "w": 26, "tri": "txt"},
         {"t": "Disponible", "w": 14, "tri": "txt"},
         {"t": "Période", "w": 26, "tri": "txt"},
-        {"t": "Note", "w": 34, "tri": "txt"},
+        {"t": "Remarque", "w": 34, "tri": "txt"},
     ]
     lignes = []
     for cle, libelle in (
@@ -1409,7 +1470,7 @@ def controles(chemin: Path, html: str, d: dict) -> int:
     if not ok:
         echecs.append("tokens")
 
-    # Lisibilite L1-L10 : delegue au socle digit-ai-page-html, qui en est
+    # Lisibilite L1-L11 : delegue au socle digit-ai-page-html, qui en est
     # proprietaire. On ne redefinit pas la regle ici -- on l'applique, et on echoue
     # bruyamment si le socle est introuvable plutot que de rendre un vert par defaut.
     socle = Path.home() / ".claude" / "skills" / "digit-ai-page-html" / "scripts"
@@ -1421,7 +1482,7 @@ def controles(chemin: Path, html: str, d: dict) -> int:
         finally:
             sys.path.remove(str(socle))
         ok = not l_fails
-        print(f"  [{'OK  ' if ok else 'ECHEC'}] L1-L10 lisibilite (socle) — "
+        print(f"  [{'OK  ' if ok else 'ECHEC'}] L1-L11 lisibilite (socle) — "
               f"{len(l_fails)} echec(s)")
         for x in l_fails[:5]:
             print(f"        {x}")
@@ -1431,7 +1492,26 @@ def controles(chemin: Path, html: str, d: dict) -> int:
         print("  [ECHEC] L1-L10 lisibilite — socle digit-ai-page-html introuvable")
         echecs.append("lisibilite")
 
-    print(f"\n{9 - len(echecs)}/9 controles passes")
+    # Une borne T4 se lit avec ses entrees. Le lecteur naif du 09/08 : « d'ou viennent
+    # 2,6 % et 3,2 % ? » -- le calcul citait sa BASE mesuree [T2] et posait deux seuils
+    # sans dire s'ils venaient d'une source ou d'une convention. Un chiffre projete dont
+    # les hypotheses n'ont pas de provenance declaree est une prevision deguisee.
+    horizons = ((d["snapshot"].get("cible") or {}).get("horizons") or [])
+    marqueurs = ("[t1", "[t2", "[t3", "convention", "hypoth", "suppos", "observ")
+    muets = [
+        f'{h.get("echeance_mois")} mois / {h.get("indicateur")}'
+        for h in horizons
+        if not any(m in (h.get("calcul") or "").lower() for m in marqueurs)
+    ]
+    ok = not muets
+    print(f"  [{'OK  ' if ok else 'ECHEC'}] provenance des hypotheses de projection — "
+          f"{len(horizons)} horizon(s), {len(muets)} sans marqueur de provenance")
+    for x in muets:
+        print(f"        {x} : le calcul ne dit ni sa source ni sa convention")
+    if not ok:
+        echecs.append("provenance")
+
+    print(f"\n{10 - len(echecs)}/10 controles passes")
     return 1 if echecs else 0
 
 

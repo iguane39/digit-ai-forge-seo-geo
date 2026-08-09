@@ -92,7 +92,15 @@ def legende_preuves() -> str:
     return (
         '<aside class="legende" aria-label="Légende des niveaux de preuve">'
         "<h3>Comment lire ce rapport</h3>"
-        "<p>Chaque affirmation chiffrée porte son niveau de preuve. "
+        # Le mot « nœud » revient partout des la premiere page (« nœud 74 ») et
+        # n'etait defini nulle part : le lecteur butait dessus sans recours.
+        "<p><b>Un « nœud »</b> est l'unité d'analyse de ce rapport : une question "
+        "d'audit précise, posée à ce site, avec son critère de verdict et sa méthode de "
+        "mesure. Les nœuds sont numérotés une fois pour toutes — « nœud 74 » désigne "
+        "toujours la même question. Chaque constat, chaque verdict et chaque action y "
+        'renvoie. La liste complète est au chapitre <a href="#couverture" title="Aller '
+        'au chapitre Couverture de la grille">Couverture de la grille</a>.</p>'
+        "<p>Chaque affirmation chiffrée porte son <b>niveau de preuve</b>. "
         "Un chiffre sans marque est une erreur de production, pas une donnée.</p>"
         f'<ul class="pv-legend">{lignes}</ul></aside>'
     )
@@ -337,10 +345,14 @@ def tableau(
     if not lignes:
         return ""
 
+    # `aide` : identifiant d'un bloc qui EXPLIQUE la colonne. Obligatoire des que la
+    # colonne porte une valeur calculee -- c'est elle qui ordonne le tableau, et sans
+    # sa formule le lecteur doit la croire sur parole (regle L3(c) du socle).
     th = "".join(
         '<th scope="col"'
         + (f' style="width:{c["w"]}%"' if c.get("w") else "")
         + (f' data-tri="{c["tri"]}"' if c.get("tri") else "")
+        + (f' aria-describedby="{esc(c["aide"])}"' if c.get("aide") else "")
         + f'>{esc(c["t"])}</th>'
         for c in colonnes
     )
@@ -419,6 +431,47 @@ BAREMES = {
         ("4", "mécanisme constaté sur ce site, ampleur encadrée par une mesure"),
         ("5", "effet déjà observé sur ce site lors d'un run précédent"),
     ]),
+    # Le lecteur naif : « je dois vous croire sur parole pour la seule colonne qui
+    # classe vos actions ». La formule est au referentiel (referentiel/scoring.md) ;
+    # elle n'etait nulle part dans le livrable. Un score sans formule est un barème
+    # absent (regle L3(c)).
+    "score": ("Score de priorité — comment il est calculé", [
+        ("Formule", "score = (gain × confiance) ÷ effort, chacun noté de 1 à 5"),
+        ("Amplitude", "de 0,2 (gain 1, confiance 1, effort 5) à 25 (gain 5, "
+                      "confiance 5, effort 1)"),
+        ("Pourquoi la confiance au numérateur", "une action à fort gain supposé mais "
+         "non étayé doit reculer derrière une action à gain moyen et prouvé — c'est ce "
+         "qui empêche le plan de se remplir de paris"),
+        ("≥ 6", "à engager sur les deux premiers trimestres"),
+        ("2 à 6", "backlog qualifié — à engager quand la capacité se libère, ou après "
+                  "avoir levé l'incertitude qui plafonne la confiance"),
+        ("< 2", "ne pas engager, sauf si l'action est la dépendance d'une action "
+                "au-dessus du trait"),
+    ]),
+    # Enum du schema de snapshot : affiche nu, `ia-assistee-validation-humaine` ne se
+    # lit pas. Regle L3(d).
+    "regime": ("Régimes d'automatisation — comment l'action s'exécute", [
+        ("bout-en-bout", "automatisable de bout en bout : le dispositif posé, l'action "
+                         "se répète sans intervention humaine"),
+        ("ia-assistee-validation-humaine", "l'IA produit, un humain valide avant "
+                                           "publication — le gain porte sur le temps de "
+                                           "production, jamais sur la décision"),
+        ("manuel-strict", "aucune part automatisable : arbitrage, négociation, ou "
+                          "production qui engage la marque"),
+    ]),
+    # Vocabulaire de base du rapport, employe des la synthese (« nœud 74 ») et jamais
+    # defini : le lecteur naif butait dessus.
+    "noeud": ("Nœud — l'unité d'analyse de ce rapport", [
+        ("Définition", "une question d'audit précise, posée à ce site, avec son critère "
+                       "de verdict et sa méthode de mesure"),
+        ("Numérotation", "les nœuds sont numérotés une fois pour toutes dans la grille "
+                         "de forge-seo ; « nœud 74 » désigne toujours la même question"),
+        ("Pourquoi ça compte", "chaque constat, chaque verdict et chaque action renvoie "
+                               "au nœud qui l'a produit — c'est ce qui rend le rapport "
+                               "opposable plutôt que déclaratif"),
+        ("Où les voir tous", "chapitre « Couverture de la grille » : la liste complète, "
+                             "avec le sort de chacun"),
+    ]),
 }
 
 
@@ -437,12 +490,30 @@ def baremes(cles: list[str], ident: str = "baremes-scores") -> str:
     plus de facon deterministe, et le controle L3 le dirait.
     """
     return (
-        f'<details class="baremes" id="{esc(ident)}">'
-        "<summary>Barèmes — ce que valent les crans de chaque score</summary>"
+        f'<details class="baremes" id="{esc(ident)}" open>'
+        "<summary>Vocabulaire et barèmes — ce que désigne un nœud, comment se calcule "
+        "un score, ce que valent les crans</summary>"
         '<div class="baremes-c">'
         + "".join(bareme(c) for c in cles if c in BAREMES)
         + "</div></details>"
     )
+
+
+def legende_valeur(cle: str, valeur) -> str:
+    """Rend une valeur d'enum AVEC sa legende liee (regle L3(d)).
+
+    Un jeton comme `ia-assistee-validation-humaine` est ecrit pour une machine.
+    Affiche nu, il demande au lecteur de deviner -- et il ne devine pas.
+    """
+    v = str(valeur or "").strip()
+    if not v:
+        return ""
+    sens = dict(BAREMES.get(cle, ("", []))[1]).get(v, "")
+    if not sens:
+        return esc(v)
+    return (f'<span class="jeton" title="{esc(sens)}" '
+            f'aria-describedby="bareme-{esc(cle)}">{esc(v)}</span>'
+            f'<span class="jeton-d">{esc(sens)}</span>')
 
 
 def barre(valeur, maxi: int = 5, libelle: str = "", cle: str = "") -> str:
@@ -592,8 +663,17 @@ details.baremes[open]>summary::before{content:"−"}
   background:var(--surface);font-size:.8rem;break-inside:avoid}
 .bareme>b{font-family:var(--head);display:block;margin-bottom:5px}
 .bareme-l{margin:0;padding-left:1.1em;color:var(--muted)}
-.bareme-l li{max-width:none;margin-bottom:2px}
+.bareme-l li{max-width:none;margin-bottom:3px}
+.bareme.large{grid-column:1/-1}
+.bareme.large .bareme-l{list-style:none;padding-left:0}
 .bareme-l b{font-family:var(--mono);color:var(--ink)}
+
+.jeton{font-family:var(--mono);font-size:.9em;border-bottom:1px dotted var(--faint);
+  overflow-wrap:anywhere}
+/* La definition prend sa PROPRE ligne : le jeton se replie sur plusieurs lignes et
+   sa boite couvrait alors celle de la definition posee a sa suite. Sur une ligne
+   dediee, elle se lit mieux ET les boites cessent de se recouvrir (V4). */
+.jeton-d{display:block;color:var(--muted);font-size:.95em}
 
 /* --- markdown rendu des fiches (TF-0046) --- */
 .md-l{margin:4px 0;padding-left:1.1em}
