@@ -15,7 +15,6 @@ Python 3, bibliotheque standard uniquement.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import re
 import sys
@@ -30,7 +29,15 @@ from gabarits import (
 )
 from livrables import compteurs, ids_noeuds, lire_actions, lire_fiches
 from schema import valider
-from grille import GRILLE, NB_BRANCHES, NB_NOEUDS, RACINE, lire
+from grille import (
+    NB_BRANCHES,
+    NB_NOEUDS,
+    RACINE,
+    chaine_correspondance,
+    lire,
+    registre_evolutions,
+    version_grille,
+)
 
 SEO = RACINE / "seo"
 
@@ -395,6 +402,21 @@ def valider_referentiel(json_mode: bool = False) -> int:
            else f" -- scaffold.py produit {VERSION_MANIFESTE}"),
     )
 
+    # 12 -- une grille qui evolue sans sa table de correspondance reassigne les
+    # constats des etudes deja ouvertes. Le registre doit suivre la grille : ce
+    # controle rend impossible de modifier l'une sans declarer l'autre.
+    reg = registre_evolutions()
+    courante, reelle = reg.get("version_courante"), version_grille()
+    r.controle(
+        "12. registre d'evolutions a jour de la grille",
+        courante == reelle,
+        f"registre {courante} · grille {reelle} · "
+        f"{len(reg.get('evolutions', []))} evolution(s) declaree(s)"
+        + ("" if courante == reelle else
+           " -- la grille a change sans table de correspondance : ajouter l'evolution "
+           "dans referentiel/correspondances-grille.json et y porter version_courante"),
+    )
+
     return r.bilan()
 
 
@@ -449,13 +471,36 @@ def valider_mission(projet: Path, json_mode: bool = False) -> int:
     prov_f = base / ".forge-seo.json"
     if prov_f.exists():
         prov = json.loads(prov_f.read_text(encoding="utf-8"))
-        actuelle = hashlib.sha256(GRILLE.read_bytes()).hexdigest()[:12]
-        a_jour = prov.get("version_grille") == actuelle
+        actuelle = version_grille()
+        declaree = prov.get("version_grille")
+        # TF-0048 : une grille qui a evolue ne condamne plus l'etude -- a condition
+        # qu'une table de correspondance dise comment ses identifiants se
+        # transposent. Sans table, on refuse : laisser passer, c'est laisser les
+        # constats designer d'autres noeuds que ceux mesures, sans un mot.
+        chaine = chaine_correspondance(declaree or "", actuelle)
+        lignes = []
+        if chaine is None:
+            detail = (
+                f"etude {declaree} vs forge {actuelle} -- la grille a evolue et AUCUNE "
+                "table de correspondance ne relie les deux"
+            )
+            lignes = [
+                "Ajouter l'evolution dans referentiel/correspondances-grille.json "
+                "(de, vers, correspondances ancien_id -> nouvel_id).",
+            ]
+        elif chaine:
+            detail = (
+                f"etude {declaree} vs forge {actuelle} -- {len(chaine)} table(s) de "
+                "correspondance applicable(s), migration non appliquee : "
+                + " puis ".join(e.get("motif", "?") for e in chaine)
+            )
+        else:
+            detail = f"etude {declaree} vs forge {actuelle}"
         r.controle(
-            "4. version de grille alignee sur la forge",
-            a_jour,
-            f"etude {prov.get('version_grille')} vs forge {actuelle}"
-            + ("" if a_jour else " -- la grille a evolue depuis la creation"),
+            "4. version de grille alignee sur la forge, ou transposable",
+            chaine is not None,
+            detail,
+            lignes,
         )
     else:
         r.controle("4. provenance tracee", False, ".forge-seo.json absent")

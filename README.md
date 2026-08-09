@@ -89,7 +89,8 @@ forge-seo/
 │   ├── sources-donnees.md       matrice source → nœuds, dégradations
 │   ├── strategie-future.md      méthode du volet 12-24 mois
 │   ├── cadrage.template.md      formulaire d'entrée détaillé
-│   └── snapshot.schema.json     contrat de l'état persistant, appliqué
+│   ├── snapshot.schema.json     contrat de l'état persistant, appliqué
+│   └── correspondances-grille.json  évolutions de la grille, ancien id → nouvel id
 ├── seo/                 arborescence canonique générée depuis referentiel/ — lecture seule
 ├── scripts/             grille · gabarits · scaffold · new_mission · validate
 │                        · schema · crawler · livrables · gabarit_html · rapport_html
@@ -116,7 +117,7 @@ grille, et rien ne le signalerait.
 
 ```bash
 python scripts/scaffold.py                      # régénère seo/ depuis referentiel/
-python scripts/validate.py                      # 11 contrôles, non-zéro si échec
+python scripts/validate.py                      # 12 contrôles, non-zéro si échec
 python scripts/validate.py --json               # même verdict, en objet machine
 python scripts/autotest.py                      # fixtures vertes ET rouges des contrôles
 python scripts/new_mission.py --liste           # registre local des études créées
@@ -233,18 +234,31 @@ cérémoniel.
 9. le schéma de snapshot suit le compte de la grille
 10. aucun dossier sans fichier ni `.gitkeep`
 11. versions de schéma déclarées à la source unique
+12. registre d'évolutions à jour de la grille
 
 `validate.py --mission <projet>` — étude d'un projet :
 
 1. 104 dossiers sous `seo/analyse/`
 2. structure complète (cadrage, état, données, livrables, provenance)
 3. les 87 fiches ont un front-matter valide et cohérent
-4. version de grille alignée sur la forge
+4. version de grille alignée sur la forge, **ou transposable** par table de correspondance
 5. compteurs d'avancement **conformes aux fiches** — pas seulement à leur somme
 6. snapshot conforme à `snapshot.schema.json`
 7. versions de schéma de l'étude alignées sur la forge
 8. `actions-*.csv` **rattachées à la grille** — tout id cité existe au manifeste, et
    le taux de rattachement effectif est non nul sur un CSV non vide
+
+**Une évolution de grille exige sa table de correspondance.** Le passage de 82 à 87
+nœuds a déplacé 14 identifiants : une étude ouverte avant continuait de citer les
+anciens numéros, chaque constat désignant dès lors un autre nœud que celui mesuré, sans
+un mot. `referentiel/correspondances-grille.json` rend l'évolution déclarative — `de`,
+`vers`, `correspondances` (ancien id → nouvel id), identifiants retirés et nouveaux — et
+deux contrôles la rendent opposable : le 12 du référentiel échoue tant que
+`version_courante` ne suit pas l'empreinte de la grille (on ne peut donc pas faire
+évoluer l'une sans déclarer l'autre), et le 4 d'une étude refuse une version de grille
+divergente **sans table applicable**. Les évolutions se chaînent : une étude qui a sauté
+plusieurs versions reste récupérable tant qu'une suite d'entrées relie sa version à la
+version courante. Un identifiant retiré ne se réaffecte jamais.
 
 **Actions ↔ grille — deux règles, pas une.** Rien ne reliait le CSV d'actions au
 manifeste : une action citant le nœud 92 sur une grille qui s'arrête à 87 ne produisait

@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import hashlib
 import json
 import sys
 from pathlib import Path
@@ -51,13 +50,9 @@ from gabarits import (
     registre_charger,
     registre_ecrire,
 )
-from grille import GRILLE, MODELES, RACINE, lire
+from grille import MODELES, RACINE, lire, version_grille
 
 REGISTRE = RACINE / "missions.json"
-
-
-def version_grille() -> str:
-    return hashlib.sha256(GRILLE.read_bytes()).hexdigest()[:12]
 
 
 # ------------------------------------------------------------------- registre

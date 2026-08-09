@@ -1,0 +1,13 @@
+{
+  "objet": "Registre des évolutions de la grille et des correspondances d'identifiants.",
+  "pourquoi": "Une évolution de grille sans table de correspondance réassigne silencieusement les constats : le passage de 82 à 87 nœuds a déplacé 14 identifiants, et une étude ouverte avant ce passage a continué de citer les anciens numéros — chaque constat pointant dès lors un autre nœud que celui mesuré. Rien ne le signalait. Depuis TF-0048, toute évolution de grille exige son entrée ici, et validate.py refuse une étude dont la version de grille diffère de celle de la forge sans table applicable.",
+  "contrat": [
+    "version_courante est l'empreinte de referentiel/grille-noeuds.md telle que validate.py la calcule. Le contrôle 12 du référentiel échoue tant qu'elle ne suit pas la grille : on ne peut donc pas faire évoluer la grille sans passer ici.",
+    "Chaque évolution porte de, vers, date, motif, correspondances (ancien_id -> nouvel_id, uniquement les identifiants qui BOUGENT), identifiants_retires et identifiants_nouveaux.",
+    "Un identifiant retiré ne se réaffecte JAMAIS à un autre nœud : il sort, il ne se recycle pas.",
+    "Les évolutions se chaînent. Une étude qui a sauté plusieurs versions est récupérable tant qu'une suite d'entrées relie sa version à la version courante."
+  ],
+  "version_courante": "3d0af44aae9a",
+  "evolutions": [],
+  "limite_connue": "Les évolutions antérieures à ce registre — dont le passage de 82 à 87 nœuds — n'y figurent pas : leurs empreintes de grille ne sont pas reconstituables de façon fiable (les fichiers sont stockés en LF et lus en CRLF sur poste Windows, l'empreinte diffère donc de celle qu'une étude de l'époque a figée). Le mécanisme commence ici ; il n'invente pas un passé qu'il ne peut pas prouver."
+}

@@ -27,6 +27,8 @@ Python 3, bibliotheque standard uniquement.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import unicodedata
 from pathlib import Path
@@ -36,6 +38,8 @@ from pathlib import Path
 RACINE = Path(__file__).resolve().parent.parent
 
 GRILLE = RACINE / "referentiel" / "grille-noeuds.md"
+
+CORRESPONDANCES = RACINE / "referentiel" / "correspondances-grille.json"
 
 NB_BRANCHES = 17
 NB_NOEUDS = 87
@@ -63,6 +67,56 @@ RE_CODE = re.compile(r"`([A-Z]{2})`")
 
 class ErreurGrille(RuntimeError):
     """La grille ne se lit pas comme attendu. On echoue fort, jamais en silence."""
+
+
+# ------------------------------------------------ versions et evolutions
+#
+# TF-0048 : la grille evolue, les etudes non. Une evolution qui deplace des
+# identifiants sans table de correspondance reassigne SILENCIEUSEMENT les
+# constats -- le passage de 82 a 87 noeuds en a deplace 14. Le registre rend
+# l'evolution declarative, et validate.py la rend opposable.
+
+
+def version_grille(chemin: Path | None = None) -> str:
+    """Empreinte courte de la grille.
+
+    Une etude la fige a sa creation dans `.forge-seo.json` : c'est ce qui permet
+    de dire si elle a ete produite sur la grille d'aujourd'hui.
+    """
+    return hashlib.sha256((chemin or GRILLE).read_bytes()).hexdigest()[:12]
+
+
+def registre_evolutions() -> dict:
+    if not CORRESPONDANCES.exists():
+        raise ErreurGrille(f"registre d'evolutions introuvable : {CORRESPONDANCES}")
+    return json.loads(CORRESPONDANCES.read_text(encoding="utf-8"))
+
+
+def chaine_correspondance(de: str, vers: str, registre: dict | None = None) -> list[dict] | None:
+    """Suite d'evolutions menant de la version `de` a la version `vers`.
+
+    Une etude a pu sauter plusieurs versions : on chaine. `None` signifie
+    qu'aucune suite ne relie les deux -- c'est le cas ou les constats ne sont pas
+    transposables automatiquement, et ou validate doit refuser plutot que de
+    laisser une etude citer des identifiants qui designent autre chose.
+    """
+    registre = registre_evolutions() if registre is None else registre
+    if de == vers:
+        return []
+    arcs = registre.get("evolutions", [])
+    file: list[tuple[str, list[dict]]] = [(de, [])]
+    vus = {de}
+    while file:
+        courant, parcours = file.pop(0)
+        for e in arcs:
+            if e.get("de") != courant or e.get("vers") in vus:
+                continue
+            suite = parcours + [e]
+            if e.get("vers") == vers:
+                return suite
+            vus.add(e["vers"])
+            file.append((e["vers"], suite))
+    return None
 
 
 # ------------------------------------------------------------------ utilitaires

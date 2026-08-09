@@ -25,7 +25,7 @@ import tempfile
 from pathlib import Path
 
 from gabarits import VERSION_ETAT, version_snapshot
-from grille import NB_NOEUDS
+from grille import NB_NOEUDS, chaine_correspondance
 from livrables import COLONNES_ACTIONS
 from validate import controler_actions, controler_versions
 
@@ -164,12 +164,85 @@ def cas_actions(b: Bilan, racine: Path) -> None:
     )
 
 
+# ------------------------------------------------------------------- TF-0048
+
+
+REGISTRE_FIXTURE = {
+    "version_courante": "cccccccccccc",
+    "evolutions": [
+        {
+            "de": "aaaaaaaaaaaa",
+            "vers": "bbbbbbbbbbbb",
+            "date": "2026-01-01",
+            "motif": "82 -> 87 noeuds",
+            "correspondances": {"70": 75, "71": 76},
+            "identifiants_retires": [],
+            "identifiants_nouveaux": [83, 84, 85, 86, 87],
+        },
+        {
+            "de": "bbbbbbbbbbbb",
+            "vers": "cccccccccccc",
+            "date": "2026-02-01",
+            "motif": "branche Local",
+            "correspondances": {},
+            "identifiants_retires": [],
+            "identifiants_nouveaux": [],
+        },
+    ],
+}
+
+
+def cas_correspondances(b: Bilan, racine: Path) -> None:
+    chaine = chaine_correspondance("cccccccccccc", "cccccccccccc", REGISTRE_FIXTURE)
+    b.attendu(
+        "etude sur la grille courante",
+        chaine is None,
+        False,
+        "aucune transposition necessaire",
+    )
+
+    chaine = chaine_correspondance("bbbbbbbbbbbb", "cccccccccccc", REGISTRE_FIXTURE)
+    b.attendu(
+        "une evolution relie l'etude a la forge",
+        chaine is None,
+        False,
+        f"{len(chaine)} table(s)" if chaine is not None else "aucune",
+    )
+
+    chaine = chaine_correspondance("aaaaaaaaaaaa", "cccccccccccc", REGISTRE_FIXTURE)
+    b.attendu(
+        "deux evolutions chainees relient l'etude a la forge",
+        chaine is None,
+        False,
+        f"{len(chaine)} table(s) : "
+        + " puis ".join(e["motif"] for e in chaine) if chaine is not None else "aucune",
+    )
+
+    chaine = chaine_correspondance("999999999999", "cccccccccccc", REGISTRE_FIXTURE)
+    b.attendu(
+        "grille evoluee sans table applicable",
+        chaine is None,
+        True,
+        "aucune suite d'evolutions ne relie 999999999999 a cccccccccccc",
+    )
+
+    orphelin = {"version_courante": "cccccccccccc", "evolutions": []}
+    chaine = chaine_correspondance("aaaaaaaaaaaa", "cccccccccccc", orphelin)
+    b.attendu(
+        "registre vide face a une etude anterieure",
+        chaine is None,
+        True,
+        "registre sans evolution declaree",
+    )
+
+
 # ----------------------------------------------------------------------- main
 
 
 CAS = [
     ("TF-0028 -- versions de schema", cas_versions),
     ("TF-0056 -- actions rattachees a la grille", cas_actions),
+    ("TF-0048 -- tables de correspondance de grille", cas_correspondances),
 ]
 
 
