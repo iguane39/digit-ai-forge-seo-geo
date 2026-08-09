@@ -119,8 +119,12 @@ def gabarit(chemin: str) -> str:
     return "page"
 
 
-def recuperer(url: str) -> tuple[int, str, bytes, list[str]]:
-    """Retourne (code, url_finale, corps, chaine_de_redirection)."""
+def recuperer(url: str, xml: bool = False) -> tuple[int, str, bytes, list[str]]:
+    """Retourne (code, url_finale, corps, chaine_de_redirection).
+
+    `xml=True` pour robots.txt et les sitemaps : le filtre sur le Content-Type HTML
+    les jetterait sinon, et le sitemap serait declare illisible alors qu'il repond 200.
+    """
     chaine: list[str] = []
 
     class Suivi(urllib.request.HTTPRedirectHandler):
@@ -130,15 +134,20 @@ def recuperer(url: str) -> tuple[int, str, bytes, list[str]]:
 
     ouvreur = urllib.request.build_opener(Suivi)
     req = urllib.request.Request(url, headers={
-        "User-Agent": AGENT, "Accept": "text/html,application/xhtml+xml",
+        "User-Agent": AGENT,
+        "Accept": ("application/xml,text/xml,text/plain,*/*" if xml
+                   else "text/html,application/xhtml+xml"),
         "Accept-Encoding": "gzip",
     })
     try:
         with ouvreur.open(req, timeout=TIMEOUT) as r:
             brut = r.read()
-            if r.headers.get("Content-Encoding") == "gzip":
-                brut = gzip.decompress(brut)
-            if "html" not in (r.headers.get("Content-Type") or ""):
+            if r.headers.get("Content-Encoding") == "gzip" or url.endswith(".gz"):
+                try:
+                    brut = gzip.decompress(brut)
+                except OSError:
+                    pass
+            if not xml and "html" not in (r.headers.get("Content-Type") or ""):
                 return r.status, r.url, b"", chaine
             return r.status, r.url, brut, chaine
     except urllib.error.HTTPError as e:
@@ -147,31 +156,106 @@ def recuperer(url: str) -> tuple[int, str, bytes, list[str]]:
         return 0, url, str(e).encode(), chaine
 
 
+RE_LOC = re.compile(r"<loc>\s*([^<\s]+)\s*</loc>", re.I)
+RE_SITEMAP_INDEX = re.compile(r"<sitemapindex", re.I)
+
+
+def lire_sitemaps(depart: str, robots_txt: str, plafond_index: int = 25) -> dict:
+    """Lit le ou les sitemap.xml et retourne l'inventaire DECLARE du site (TF-0043).
+
+    L'ancien crawler ne lisait `robots.txt` que pour ses permissions et ignorait sa
+    directive `Sitemap:`. L'ensemble des URL connues n'etait alimente que par les
+    liens suivis : `urls_decouvertes` ne mesurait pas le site mais ce qu'on atteint
+    en navigant. Sur Produit-02.fr, 79 annoncees contre 286 declarees.
+
+    Les index de sitemaps sont suivis d'un niveau, avec plafond. gzip supporte.
+    """
+    candidats, vus, urls = [], set(), []
+    for ligne in (robots_txt or "").splitlines():
+        if ligne.strip().lower().startswith("sitemap:"):
+            candidats.append(ligne.split(":", 1)[1].strip())
+    if not candidats:
+        candidats = [urllib.parse.urljoin(depart, "/sitemap.xml")]
+
+    fichiers_lus, erreurs = [], []
+    file_sm = deque(candidats)
+    while file_sm and len(fichiers_lus) < plafond_index:
+        url = file_sm.popleft()
+        if url in vus:
+            continue
+        vus.add(url)
+        code, _, corps, _ = recuperer(url, xml=True)
+        if code != 200 or not corps:
+            erreurs.append(f"{url} → HTTP {code}")
+            continue
+        texte = corps.decode("utf-8", "replace")
+        fichiers_lus.append(url)
+        locs = [urllib.parse.unquote(x) for x in RE_LOC.findall(texte)]
+        if RE_SITEMAP_INDEX.search(texte):
+            for x in locs:
+                file_sm.append(x)
+        else:
+            urls.extend(locs)
+
+    hote = urllib.parse.urlsplit(depart).netloc
+    propres, hors = [], 0
+    for u in urls:
+        n = normaliser(u)
+        if urllib.parse.urlsplit(n).netloc != hote:
+            hors += 1
+            continue
+        propres.append(n)
+    return {
+        "fichiers": fichiers_lus,
+        "erreurs": erreurs,
+        "urls": sorted(set(propres)),
+        "urls_hors_hote": hors,
+    }
+
+
 def crawler(racine: str, plafond: int, delai: float) -> dict:
     depart = normaliser(racine)
     hote = urllib.parse.urlsplit(depart).netloc
 
     rp = urllib.robotparser.RobotFileParser()
     rp.set_url(urllib.parse.urljoin(depart, "/robots.txt"))
+    robots_txt = ""
     try:
         rp.read()
         robots_lu = True
     except Exception:
         robots_lu = False
+    _, _, brut_robots, _ = recuperer(urllib.parse.urljoin(depart, "/robots.txt"), xml=True)
+    robots_txt = brut_robots.decode("utf-8", "replace") if brut_robots else ""
+
+    sitemap = lire_sitemaps(depart, robots_txt)
 
     vues: dict[str, dict] = {}
     entrants: dict[str, int] = {}     # liens contextuels : flux d'autorite
     entrants_tous: dict[str, int] = {}  # tous liens : detection d'orphelines
+    # L'inventaire DECLARE amorce la file : le crawl part du sitemap ET de l'accueil,
+    # pas du seul graphe de liens. Les URL du sitemap sont a profondeur inconnue tant
+    # qu'aucun lien n'y mene -- on les met en fin de file, apres le parcours en
+    # largeur, pour que la profondeur de clic reste juste pour les pages liees.
     file = deque([(depart, 0)])
     connus = {depart}
+    for u in sitemap["urls"]:
+        if u not in connus:
+            connus.add(u)
     bloquees = 0
 
-    while file and len(vues) < plafond:
-        url, prof = file.popleft()
-        if robots_lu and not rp.can_fetch(AGENT, url):
-            bloquees += 1
-            continue
+    def vider_file():
+        nonlocal bloquees
+        while file and len(vues) < plafond:
+            url, prof = file.popleft()
+            if url in vues:
+                continue
+            if robots_lu and not rp.can_fetch(AGENT, url):
+                bloquees += 1
+                continue
+            visiter(url, prof)
 
+    def visiter(url, prof):
         code, finale, corps, chaine = recuperer(url)
         time.sleep(delai)
 
@@ -193,7 +277,12 @@ def crawler(racine: str, plafond: int, delai: float) -> dict:
         vues[url] = {
             "url": chemin,
             "type_gabarit": gabarit(chemin),
+            # None = page DECLAREE au sitemap qu'aucun lien interne n'atteint. Le
+            # schema l'autorise, et c'est la seule valeur honnete : elle n'a pas de
+            # profondeur de clic puisqu'aucun clic n'y mene.
             "profondeur_clic": prof,
+            "declaree_sitemap": url in declarees,
+            "decouverte": "lien" if prof is not None else "sitemap",
             "code_http": code,
             "title": (p.title or "").strip() or None,
             "h1": (p.h1 or "").strip() or None,
@@ -214,9 +303,20 @@ def crawler(racine: str, plafond: int, delai: float) -> dict:
             entrants_tous[cible] = entrants_tous.get(cible, 0) + 1
             if contextuel:
                 entrants[cible] = entrants.get(cible, 0) + 1
-            if cible not in connus and len(connus) < plafond * 3:
+            if cible not in vues and len(connus) < plafond * 5:
                 connus.add(cible)
-                file.append((cible, prof + 1))
+                file.append((cible, None if prof is None else prof + 1))
+
+    declarees = set(sitemap["urls"])
+
+    # Phase 1 : parcours en largeur depuis l'accueil — profondeur de clic exacte.
+    vider_file()
+    # Phase 2 : les URL DECLAREES au sitemap qu'aucun lien n'a fait decouvrir. Sans
+    # cette phase le crawl mesure ce qu'on atteint en navigant, pas le site (TF-0043).
+    restantes = [u for u in sitemap["urls"] if u not in vues]
+    file.extend((u, None) for u in restantes)
+    vider_file()
+    non_visitees = [u for u in connus if u not in vues]
 
     for url, v in vues.items():
         # Le champ du schema mesure le flux d'autorite : liens contextuels seuls,
@@ -224,12 +324,24 @@ def crawler(racine: str, plafond: int, delai: float) -> dict:
         v["liens_internes_entrants"] = entrants.get(url, 0)
         v["_entrants_tous"] = entrants_tous.get(url, 0)
 
-    pages = sorted(vues.values(), key=lambda x: (x["profondeur_clic"], x["url"]))
-    # Orpheline = AUCUN lien entrant, navigation comprise. Une page liee seulement
-    # depuis le menu n'est pas orpheline : elle est mal irriguee, ce que mesure deja
-    # liens_internes_entrants.
-    orphelines = [p["url"] for p in pages if p["_entrants_tous"] == 0
-                  and p["profondeur_clic"] > 0]
+    pages = sorted(vues.values(),
+                   key=lambda x: (x["profondeur_clic"] is None,
+                                  x["profondeur_clic"] or 0, x["url"]))
+    # TF-0044 -- l'ancienne definition etait INSATISFIABLE : « page du crawl avec zero
+    # lien entrant et profondeur > 0 ». Or une page n'entrait dans le crawl que parce
+    # qu'un lien y menait. Le controle ne pouvait pas echouer, donc il ne prouvait
+    # rien, et il affichait un zero rassurant sur un site a 208 orphelines.
+    #
+    # Definition juste : orpheline = URL DECLAREE (sitemap) qu'aucun lien interne du
+    # site ne cite. Elle suppose l'inventaire declare, d'ou TF-0043 en amont.
+    orphelines = sorted(
+        u for u in declarees
+        if entrants_tous.get(u, 0) == 0 and u != depart
+    )
+    # Honnetete de la mesure : les liens entrants ne sont connus que des pages
+    # effectivement crawlees. Si le plafond a coupe, le compte d'orphelines est un
+    # MAJORANT, et le resultat le declare plutot que de l'affirmer.
+    couverture_complete = not non_visitees
     titres: dict[str, int] = {}
     for p in pages:
         if p["title"]:
@@ -245,17 +357,30 @@ def crawler(racine: str, plafond: int, delai: float) -> dict:
             "robots_txt_lu": robots_lu,
             "urls_bloquees_par_robots": bloquees,
             "rendu_javascript": False,
+            "sitemaps_lus": sitemap["fichiers"],
+            "sitemaps_en_erreur": sitemap["erreurs"],
             "limite": ("Sans rendu JavaScript : le contenu injecté côté client est "
                        "invisible. Ne pas conclure à l'absence d'un contenu qui "
                        "pourrait ne pas être dans le HTML initial."),
+            "limite_orphelines": (
+                "Compte exact : toutes les URL déclarées ont été crawlées."
+                if couverture_complete else
+                f"MAJORANT : {len(vues)} URL crawlées sur {len(connus)} connues "
+                f"(plafond {plafond}). Les liens sortants des pages non crawlées ne "
+                "sont pas comptés — une page ici dite orpheline peut être citée par "
+                "l'une d'elles. Relancer avec --max supérieur pour un compte exact."),
         },
         "synthese": {
             "pages_crawlees": len(pages),
             "urls_decouvertes": len(connus),
-            "profondeur_max": max((p["profondeur_clic"] for p in pages), default=0),
+            "urls_declarees_sitemap": len(declarees),
+            "urls_declarees_non_crawlees": len([u for u in declarees if u not in vues]),
+            "profondeur_max": max((p["profondeur_clic"] or 0 for p in pages), default=0),
             "erreurs_4xx_5xx": sum(1 for p in pages if p["code_http"] >= 400),
             "non_indexables": sum(1 for p in pages if p["indexable"] is False),
             "pages_orphelines": len(orphelines),
+            "pages_orphelines_exemples": orphelines[:10],
+            "orphelines_compte_exact": couverture_complete,
             "pages_sans_lien_contextuel": sum(
                 1 for p in pages if p["liens_internes_entrants"] == 0),
             "titles_dupliques": sum(n for n in titres.values() if n > 1) -
@@ -297,10 +422,13 @@ def main() -> int:
     print(f"  durée               : {round(time.time() - debut)} s")
     print(f"  pages crawlées      : {s['pages_crawlees']} / {res['collecte']['plafond']}")
     print(f"  URLs découvertes    : {s['urls_decouvertes']}")
+    print(f"  déclarées au sitemap: {s['urls_declarees_sitemap']} "
+          f"({len(res['collecte']['sitemaps_lus'])} fichier(s) lu(s))")
     print(f"  profondeur max      : {s['profondeur_max']} clics")
     print(f"  erreurs 4xx/5xx     : {s['erreurs_4xx_5xx']}")
     print(f"  non indexables      : {s['non_indexables']}")
-    print(f"  pages orphelines    : {s['pages_orphelines']}")
+    print(f"  pages orphelines    : {s['pages_orphelines']}"
+          f"{'' if s['orphelines_compte_exact'] else ' (MAJORANT — plafond atteint)'}")
     print(f"  titles dupliqués    : {s['titles_dupliques']}")
     print(f"  pages < 300 mots    : {s['pages_fines_sous_300_mots']}")
     if not res["collecte"]["robots_txt_lu"]:

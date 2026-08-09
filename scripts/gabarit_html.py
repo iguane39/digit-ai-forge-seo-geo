@@ -15,16 +15,17 @@ Python 3, bibliotheque standard uniquement.
 from __future__ import annotations
 
 import html as _html
+import re
 from pathlib import Path
 
 RACINE = Path(__file__).resolve().parent.parent
 SOCLE = Path.home() / ".claude" / "skills" / "digit-ai-page-html" / "assets"
 VENDOR = RACINE / "assets" / "vendor"
 
-# Budgets de densite. Le document doit PARAITRE trois fois plus court et CONTENIR
-# deux fois plus : on stratifie, on ne tronque pas.
-MOTS_N1 = 12
-MOTS_N2 = 60
+# Densite : le document doit PARAITRE trois fois plus court et CONTENIR deux fois
+# plus. On stratifie, on ne tronque JAMAIS (regle L1 du socle). Le niveau 1 s'arrete
+# a une frontiere grammaticale, le niveau 2 porte le texte integral.
+PLAFOND_N1 = 170
 
 
 def _asset(nom: str) -> str:
@@ -100,34 +101,34 @@ def legende_preuves() -> str:
 # ------------------------------------------------------------- stratification
 
 
-def resume(texte: str, mots: int = MOTS_N1) -> tuple[str, bool]:
-    """Niveau 1 : l'essentiel en <= `mots` mots. Retourne (resume, tronque).
+def tete(texte: str, plafond: int = 170) -> str:
+    """Niveau 1 : la premiere unite de sens COMPLETE. Jamais une coupure.
 
-    On coupe a la premiere ponctuation forte si elle arrive tot -- une action reelle
-    enonce souvent sa proposition avant de detailler apres ':' ou '—'.
+    Regle L1 du socle : aucun texte ne se termine par une amputation. On ne
+    raccourcit qu'en s'arretant a une frontiere grammaticale REELLE -- fin de phrase,
+    deux-points, tiret cadratin. Si le texte n'en offre aucune avant `plafond`
+    caracteres, il est rendu ENTIER : une ligne longue est lisible, un fragment
+    ampute ne l'est pas.
+
+    L'ancien `resume()` coupait a 12 mots et ajoutait une ellipse. C'est le defaut 1
+    du rapport reel -- « Sur deux des… » -- et il etait present AUSSI au niveau 2,
+    ce qui rendait la suite definitivement inaccessible.
     """
-    t = (texte or "").strip()
+    t = " ".join((texte or "").split())
     if not t:
-        return "", False
-    for sep in (" : ", " — ", " – "):
+        return ""
+    coupes = []
+    for sep in (" : ", " — ", " – ", ". ", " ; "):
         i = t.find(sep)
-        if 0 < i <= 90:
-            tete = t[:i].strip()
-            if len(tete.split()) <= mots + 4:
-                return tete, True
-    lots = t.split()
-    if len(lots) <= mots:
-        return t, False
-    return " ".join(lots[:mots]) + "…", True
-
-
-def borne(texte: str, mots: int = MOTS_N2) -> str:
-    lots = (texte or "").split()
-    return " ".join(lots[:mots]) + ("…" if len(lots) > mots else "")
+        if 0 < i <= plafond:
+            coupes.append(i)
+    if coupes:
+        return t[:min(coupes)].strip(" .;:—–")
+    return t
 
 
 def strate(n1: str, n2_titre: str, n2_corps: list[tuple[str, str]]) -> str:
-    """Niveau 1 toujours visible, niveau 2 depliable EN PLACE.
+    """Niveau 1 toujours visible, niveau 2 depliable EN PLACE, INTEGRAL.
 
     Pas de ligne inseree : une <tr> supplementaire casserait le composant de filtres,
     qui itere les lignes du tbody.
@@ -138,12 +139,110 @@ def strate(n1: str, n2_titre: str, n2_corps: list[tuple[str, str]]) -> str:
         if v
     )
     if not lignes:
-        return f'<div class="n1">{n1}</div>'
+        return f'<div class="st"><div class="n1">{n1}</div></div>'
     return (
+        '<div class="st">'
         f'<div class="n1">{n1}</div>'
         f'<details class="n2"><summary>{esc(n2_titre)}</summary>'
-        f'<dl class="kv-l">{lignes}</dl></details>'
+        f'<dl class="kv-l">{lignes}</dl></details></div>'
     )
+
+
+# ------------------------------------------------------------------ markdown
+
+RE_MD_GRAS = re.compile(r"\*\*(.+?)\*\*", re.S)
+RE_MD_CODE = re.compile(r"`([^`\n]+)`")
+RE_MD_ITAL = re.compile(r"(?<![\w*])\*(?!\s)([^*\n]+?)(?<!\s)\*(?![\w*])")
+RE_MD_LIGNE_TABLE = re.compile(r"^\s*\|.*\|\s*$")
+RE_MD_SEP_TABLE = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
+
+
+def md(valeur) -> str:
+    """Rend le sous-ensemble sur du markdown des fiches, en ligne (TF-0046).
+
+    Les fiches sont des .md et le referentiel lui-meme met du gras dans les gabarits
+    (`critere_verdict` en contient). Injecte par `esc()` seul, le lecteur voit des
+    asterisques. On echappe D'ABORD -- le balisage est produit apres, jamais avant,
+    sinon un extrait de page crawlee redevient injectable.
+    """
+    s = esc(valeur)
+    s = RE_MD_GRAS.sub(r"<b>\1</b>", s)
+    s = RE_MD_CODE.sub(r"<code>\1</code>", s)
+    s = RE_MD_ITAL.sub(r"<i>\1</i>", s)
+    return s
+
+
+def md_bloc(valeur) -> str:
+    """Rend un bloc markdown : paragraphes, listes a puces et TABLEAUX de preuve.
+
+    Sans cela les tableaux des fiches sortent en soupe de barres verticales -- c'est
+    le cout constate de TF-0046, contourne cote mission par un convertisseur ad hoc.
+    """
+    brut = str(valeur or "").replace("\r\n", "\n")
+    if not brut.strip():
+        return ""
+    out, tampon_liste, tampon_table, tampon_para = [], [], [], []
+
+    def vider_para():
+        # Les fiches sont ecrites en markdown, donc repliees a ~80 colonnes. Traiter
+        # chaque ligne comme un paragraphe disloquait les phrases : « ...sur
+        # /contact/gites : » puis « meme titre, et... » devenaient deux blocs. Seule
+        # une ligne VIDE separe deux paragraphes.
+        if tampon_para:
+            out.append("<p>" + md(" ".join(tampon_para)) + "</p>")
+            tampon_para.clear()
+
+    def vider_liste():
+        if tampon_liste:
+            out.append("<ul class=\"md-l\">"
+                       + "".join(f"<li>{md(x)}</li>" for x in tampon_liste) + "</ul>")
+            tampon_liste.clear()
+
+    def vider_table():
+        if not tampon_table:
+            return
+        cellules = [
+            [c.strip() for c in ligne.strip().strip("|").split("|")]
+            for ligne in tampon_table if not RE_MD_SEP_TABLE.match(ligne)
+        ]
+        tampon_table.clear()
+        if not cellules:
+            return
+        entete, corps = cellules[0], cellules[1:]
+        th = "".join(f'<th scope="col">{md(c)}</th>' for c in entete)
+        tr = "".join(
+            "<tr>" + "".join(f"<td>{md(c)}</td>" for c in l) + "</tr>" for l in corps
+        )
+        # Table de preuve imbriquee : hors perimetre du composant de filtres (elle
+        # se lit, elle ne se parcourt pas), exemptee AVEC son motif.
+        out.append(
+            '<table class="mini" data-filterable="off" '
+            'data-filterable-reason="table de preuve d\'une fiche, lue en place">'
+            f"<thead><tr>{th}</tr></thead><tbody>{tr}</tbody></table>"
+        )
+
+    for ligne in brut.split("\n"):
+        t = ligne.rstrip()
+        if RE_MD_LIGNE_TABLE.match(t):
+            vider_para()
+            vider_liste()
+            tampon_table.append(t)
+            continue
+        vider_table()
+        nu = t.strip()
+        if nu.startswith(("- ", "* ", "• ")):
+            vider_para()
+            tampon_liste.append(nu[2:].strip())
+            continue
+        vider_liste()
+        if nu:
+            tampon_para.append(nu)
+        else:
+            vider_para()
+    vider_para()
+    vider_liste()
+    vider_table()
+    return "".join(out)
 
 
 # ------------------------------------------------------------------- fragments
@@ -160,36 +259,52 @@ def absence(titre: str, motif: str, cout: str, remede: str) -> str:
     )
 
 
-def chapitre(num: int, ident: str, titre: str, corps: str, sous_titre: str = "",
-             annexe: str = "") -> str:
+def chapitre(num: int, ident: str, titre: str, corps: str, apprend: str = "",
+             exemple: str = "", annexe: str = "") -> str:
     """`annexe` : si fourni, le corps est replie derriere ce libelle.
+
+    `apprend` (regle L7) : ce que ce chapitre apprend au lecteur. Un chapitre qui
+    ouvre sur un tableau oblige a lire le tableau pour savoir s'il interesse.
+    `exemple` (regle L10) : comment se lit une ligne, pour les chapitres de donnees.
+    Sans lui, une table exacte reste un vidage de donnees filtrable.
 
     Les tables de reference — couverture, inventaire d'URL — sont consultees, pas
     lues. Les laisser ouvertes rallonge le document de plusieurs milliers de pixels
     sans rien apporter au lecteur qui parcourt.
     """
-    st = f'<p class="ch-st">{esc(sous_titre)}</p>' if sous_titre else ""
+    tete_ch = (f'<p class="ch-apprend"><b>Ce que ce chapitre vous apprend</b> — '
+               f"{esc(apprend)}</p>" if apprend else "")
+    ex = (f'<p class="exemple-lecture"><b>Comment lire</b> — {esc(exemple)}</p>'
+          if exemple else "")
     if annexe:
         corps = (f'<details class="annexe"><summary>{esc(annexe)}</summary>'
-                 f'<div class="annexe-c">{corps}</div></details>')
+                 f'<div class="annexe-c">{ex}{corps}</div></details>')
+        ex = ""
     return (
         f'<section id="{esc(ident)}" class="ch">'
-        f'<h2><span class="ch-n">{num}</span>{esc(titre)}</h2>{st}{corps}</section>'
+        f'<h2><span class="ch-n">{num}</span>{esc(titre)}</h2>'
+        f"{tete_ch}{ex}{corps}</section>"
     )
 
 
-def sommaire(entrees: list[tuple[int, str, str, str]]) -> str:
-    """Sommaire collant. `entrees` = (num, ident, titre, compte)."""
+def sommaire(entrees: list[tuple[int, str, str, str, str]]) -> str:
+    """Sommaire collant. `entrees` = (num, ident, titre, annonce, compte).
+
+    Regle L6 : chaque entree porte une ANNONCE. Un sommaire de titres nus oblige a
+    ouvrir chaque chapitre pour savoir s'il interesse -- il coute plus qu'il ne
+    rapporte, et c'est le defaut 7 du rapport reel.
+    """
     li = "".join(
-        f'<li><a href="#{esc(i)}"><span class="toc-n">{n}</span>'
+        f'<li><a href="#{esc(i)}"><span class="toc-hd">'
+        f'<span class="toc-n">{n}</span>'
         f'<span class="toc-t">{esc(t)}</span>'
         + (f'<span class="toc-c">{esc(c)}</span>' if c else "")
-        + "</a></li>"
-        for n, i, t, c in entrees
+        + f'</span><span class="toc-d">{esc(a)}</span></a></li>'
+        for n, i, t, a, c in entrees
     )
     return (
         '<nav class="toc" aria-label="Sommaire"><details open><summary>'
-        '<span class="toc-h">Sommaire</span>'
+        '<span class="toc-h">Sommaire — ce que chaque chapitre apporte</span>'
         '<span class="toc-x" aria-hidden="true"></span></summary>'
         f"<ol>{li}</ol></details></nav>"
     )
@@ -271,16 +386,83 @@ def tableau(
     )
 
 
-def barre(valeur, maxi: int = 5, libelle: str = "") -> str:
-    """Echelle 1-5 lisible sans couleur : carres pleins et vides."""
+# Baremes : ce que valent les crans. Un score sans bareme n'informe pas -- « maturite
+# 1/5 » ne dit ni ce qu'est 1, ni ce qu'il faudrait pour atteindre 2. Regle L3 du
+# socle : le bareme existe DANS la page (il doit survivre au PDF, ou aucun `title`
+# ne subsiste) et chaque valeur y renvoie par aria-describedby.
+BAREMES = {
+    "maturite": ("Barème de maturité de la machine SEO (nœud 87)", [
+        ("1", "aucun dispositif — le site ne produit ni ne mesure sa visibilité"),
+        ("2", "dispositif partiel non instrumenté — on publie, on ne mesure pas"),
+        ("3", "mesure en place sans boucle de correction — on constate, on ne corrige pas"),
+        ("4", "boucle de correction outillée et périodique, sans objectif chiffré"),
+        ("5", "pilotage continu : objectifs chiffrés, revue périodique, arbitrage documenté"),
+    ]),
+    "gain": ("Barème de gain attendu d'une action", [
+        ("1", "effet marginal, non mesurable isolément"),
+        ("2", "effet mesurable sur un indicateur secondaire"),
+        ("3", "effet mesurable sur le trafic ou la conversion d'un gabarit"),
+        ("4", "effet mesurable sur le trafic global du site"),
+        ("5", "lève un blocage structurel dont dépendent d'autres actions"),
+    ]),
+    "effort": ("Barème d'effort de mise en œuvre", [
+        ("1", "moins d'une demi-journée, sans dépendance"),
+        ("2", "1 à 2 jours, une compétence disponible en interne"),
+        ("3", "3 à 5 jours, ou une compétence à mobiliser"),
+        ("4", "1 à 3 semaines, ou une dépendance externe (agence, éditeur)"),
+        ("5", "chantier de plus d'un mois, ou refonte d'un composant du site"),
+    ]),
+    "confiance": ("Barème de confiance dans l'estimation", [
+        ("1", "hypothèse non étayée — à requalifier avant engagement"),
+        ("2", "analogie avec un cas voisin, sans mesure sur ce site"),
+        ("3", "mécanisme connu, ampleur estimée par fourchette"),
+        ("4", "mécanisme constaté sur ce site, ampleur encadrée par une mesure"),
+        ("5", "effet déjà observé sur ce site lors d'un run précédent"),
+    ]),
+}
+
+
+def bareme(cle: str) -> str:
+    """Le bareme publie, cible des aria-describedby des valeurs correspondantes."""
+    titre, crans = BAREMES[cle]
+    li = "".join(f"<li><b>{esc(n)}</b> — {esc(t)}</li>" for n, t in crans)
+    return (f'<div class="bareme" id="bareme-{esc(cle)}">'
+            f"<b>{esc(titre)}</b><ol class=\"bareme-l\">{li}</ol></div>")
+
+
+def baremes(cles: list[str], ident: str = "baremes-scores") -> str:
+    """Bloc replie qui publie les baremes de la page. UNE seule fois.
+
+    Un bareme duplique produirait des id en double : aria-describedby ne resoudrait
+    plus de facon deterministe, et le controle L3 le dirait.
+    """
+    return (
+        f'<details class="baremes" id="{esc(ident)}">'
+        "<summary>Barèmes — ce que valent les crans de chaque score</summary>"
+        '<div class="baremes-c">'
+        + "".join(bareme(c) for c in cles if c in BAREMES)
+        + "</div></details>"
+    )
+
+
+def barre(valeur, maxi: int = 5, libelle: str = "", cle: str = "") -> str:
+    """Echelle 1-5 lisible sans couleur : carres pleins et vides.
+
+    `cle` designe le bareme publie auquel la valeur renvoie. Sans lui, la valeur
+    n'est pas interpretable et le controle L3 la refuse -- c'est voulu.
+    """
     try:
         v = int(float(valeur))
     except (TypeError, ValueError):
-        return '<span class="sc sc-na">n/d</span>'
+        return '<span class="sc-na">n/d</span>'
     v = max(0, min(maxi, v))
-    aide = f"{libelle} {v} sur {maxi}" if libelle else f"{v} sur {maxi}"
+    cle = cle or libelle
+    titre, crans = BAREMES.get(cle, ("", []))
+    sens = dict(crans).get(str(v), "")
+    aide = f"{libelle or cle} {v} sur {maxi}" + (f" — {sens}" if sens else "")
+    lien = f' aria-describedby="bareme-{esc(cle)}"' if cle in BAREMES else ""
     return (
-        f'<span class="sc" title="{esc(aide)}">'
+        f'<span class="sc" title="{esc(aide)}"{lien}>'
         f'<span aria-hidden="true">{"▩" * v}{"▢" * (maxi - v)}</span>'
         f'<span class="sr">{esc(aide)}</span></span>'
     )
@@ -326,7 +508,12 @@ p{margin:0 0 .7em;max-width:var(--prose)}
 li{max-width:var(--prose)}
 a{color:var(--blue)}
 code,.mono{font-family:var(--mono);font-size:.88em}
-mark.find{background:var(--mark);color:inherit;padding:0 1px;border-radius:2px}
+/* DEFAUT 6 -- le surlignage coupait « clics » en « clic|s ». La cause n'etait pas
+   le decoupage du noeud de texte (texte + <mark> + texte, correct et inline) mais
+   ce padding de 1px : il ecarte physiquement la partie surlignee du reste du mot.
+   Regle L5 du socle : surlignage inline, sans espacement ni changement de boite. */
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;border-radius:0;
+  display:inline;font:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
   clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
@@ -350,20 +537,24 @@ mark.find{background:var(--mark);color:inherit;padding:0 1px;border-radius:2px}
 .toc details{background:var(--surface);border:1px solid var(--line);
   border-radius:var(--r-sm)}
 .toc summary{list-style:none;cursor:pointer;padding:7px 12px;display:flex;
-  align-items:center;justify-content:space-between}
+  align-items:center;justify-content:space-between;gap:10px}
 .toc summary::-webkit-details-marker{display:none}
 .toc-h{font-family:var(--head);font-size:.72rem;text-transform:uppercase;
-  letter-spacing:.08em;color:var(--muted)}
-.toc-x{width:8px;height:8px;border-right:2px solid var(--faint);
+  letter-spacing:.08em;color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.toc-x{flex:0 0 8px;width:8px;height:8px;border-right:2px solid var(--faint);
   border-bottom:2px solid var(--faint);transform:rotate(45deg)}
 .toc details[open] .toc-x{transform:rotate(-135deg)}
-.toc ol{list-style:none;margin:0;padding:0 8px 8px;display:flex;flex-wrap:wrap;gap:3px}
+.toc ol{list-style:none;margin:0;padding:0 8px 8px;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:3px}
 .toc li{max-width:none}
-.toc a{display:flex;align-items:center;gap:5px;text-decoration:none;color:var(--ink);
-  font-size:.78rem;padding:3px 8px;border-radius:var(--r-sm);border:1px solid transparent}
+.toc a{display:block;text-decoration:none;color:var(--ink);
+  font-size:.78rem;padding:4px 8px;border-radius:var(--r-sm);border:1px solid transparent}
 .toc a:hover{background:var(--blue-fill);border-color:var(--blue-line)}
+.toc-hd{display:flex;align-items:center;gap:5px}
 .toc-n{font-family:var(--mono);font-size:.68rem;color:var(--faint);min-width:1.1em}
-.toc-c{font-family:var(--mono);font-size:.66rem;color:var(--faint)}
+.toc-t{font-weight:600}
+.toc-c{font-family:var(--mono);font-size:.66rem;color:var(--faint);margin-left:auto}
+.toc-d{display:block;font-size:.7rem;color:var(--muted);line-height:1.35;margin-top:1px}
 .find{flex:0 1 320px;display:flex;flex-direction:column;gap:2px}
 .find input{width:100%;padding:7px 10px;border:1px solid var(--line);
   border-radius:var(--r-sm);font:inherit;font-size:.85rem;background:var(--surface)}
@@ -376,6 +567,40 @@ section.ch{background:var(--surface);border:1px solid var(--line);
 section.ch>h2{border-left:3px solid var(--accent);padding-left:10px}
 .ch-n{font-family:var(--mono);font-size:.8rem;color:var(--faint)}
 .ch-st{color:var(--muted);font-size:.86rem;margin:-4px 0 12px}
+/* L7 : ce que le chapitre apprend, avant toute donnee. L10 : comment lire une
+   ligne. Deux blocs courts qui evitent au lecteur d'ouvrir pour savoir. */
+.ch-apprend{color:var(--ink);font-size:.88rem;margin:-2px 0 10px;padding:8px 12px;
+  background:var(--blue-fill);border-left:3px solid var(--blue-line);
+  border-radius:var(--r-sm);max-width:var(--prose)}
+.exemple-lecture{color:var(--muted);font-size:.82rem;margin:0 0 10px;padding:7px 12px;
+  background:var(--bg);border:1px dashed var(--line);border-radius:var(--r-sm);
+  max-width:var(--prose)}
+.ch-apprend b,.exemple-lecture b{font-family:var(--head);color:var(--ink)}
+
+/* --- baremes : un score sans bareme n'informe pas (L3) --- */
+details.baremes{margin:12px 0 0}
+details.baremes>summary{list-style:none;cursor:pointer;font-family:var(--head);
+  font-size:.76rem;color:var(--accent);display:inline-flex;align-items:center;gap:6px;
+  padding:4px 11px;border:1px solid var(--blue-line);border-radius:var(--r-sm);
+  background:var(--blue-fill)}
+details.baremes>summary::-webkit-details-marker{display:none}
+details.baremes>summary::before{content:"+";font-family:var(--mono);font-weight:700}
+details.baremes[open]>summary::before{content:"−"}
+.baremes-c{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:10px;margin-top:10px}
+.bareme{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 13px;
+  background:var(--surface);font-size:.8rem;break-inside:avoid}
+.bareme>b{font-family:var(--head);display:block;margin-bottom:5px}
+.bareme-l{margin:0;padding-left:1.1em;color:var(--muted)}
+.bareme-l li{max-width:none;margin-bottom:2px}
+.bareme-l b{font-family:var(--mono);color:var(--ink)}
+
+/* --- markdown rendu des fiches (TF-0046) --- */
+.md-l{margin:4px 0;padding-left:1.1em}
+table.mini{width:100%;margin:5px 0;font-size:.78rem;border:1px solid var(--line);
+  border-radius:var(--r-sm);table-layout:auto}
+table.mini th{background:var(--bg);font-size:.66rem}
+table.mini th,table.mini td{padding:4px 7px}
 details.annexe>summary{list-style:none;cursor:pointer;font-family:var(--head);
   font-size:.78rem;color:var(--accent);display:inline-flex;align-items:center;gap:6px;
   padding:5px 12px;border:1px solid var(--blue-line);border-radius:var(--r-sm);
@@ -426,12 +651,15 @@ details.annexe[open]>summary::before{content:"−"}
   margin:0 0 14px}
 .verdict p{margin:0 0 .4em}
 .verdict p:last-child{margin:0}
+.bl-n{display:block;font-weight:600;font-family:var(--head);margin:2px 0 3px}
+.bl-c{font-size:.8rem;color:var(--muted)}
 .top3{list-style:none;padding:0;margin:0;display:grid;
   grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px}
 .top3 li{border:1px solid var(--line);border-left:3px solid var(--accent);
   border-radius:var(--r-sm);padding:9px 12px;background:var(--bg);max-width:none}
 .top3 .t{font-weight:600;font-size:.88rem;display:block;margin-bottom:3px}
-.top3 .m{font-size:.72rem;color:var(--muted);font-family:var(--mono)}
+.top3 .m{font-size:.72rem;color:var(--muted);font-family:var(--mono);
+  display:flex;flex-wrap:wrap;align-items:center;gap:2px 7px}
 
 /* --- constats --- */
 .constats{list-style:none;padding:0;margin:0}
@@ -442,9 +670,19 @@ details.annexe[open]>summary::before{content:"−"}
 .constats>li.faible{border-left-color:var(--danger)}
 .constats .t{font-weight:600;margin:0 0 3px;display:flex;gap:6px;align-items:baseline;
   flex-wrap:wrap}
+/* DEFAUT 4 : « L'existant » etait verbeux et sans suite. Chaque constat porte
+   desormais sa chaine complete -- ce qu'on observe, ce que ca coute, ce qu'on fait,
+   ce qu'on en attend -- sur quatre lignes etiquetees. */
+.chaine{display:grid;gap:3px;margin:6px 0 0;font-size:.82rem}
+.chaine>div{display:grid;grid-template-columns:minmax(72px,10%) minmax(0,1fr);gap:9px}
+.chaine dt,.chaine .et{font-family:var(--head);font-size:.64rem;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--faint);padding-top:2px}
+.chaine .va{color:var(--ink);max-width:var(--prose)}
+.chaine .vide{color:var(--faint);font-style:italic}
 .trace{font-size:.68rem;color:var(--faint);font-family:var(--mono)}
 
 /* --- stratification --- */
+.st{min-width:0}
 .n1{font-weight:500}
 details.n2{margin-top:4px}
 details.n2>summary{list-style:none;cursor:pointer;font-size:.72rem;color:var(--accent);
@@ -459,6 +697,9 @@ details.n2[open]>summary::before{content:"−"}
 .kv dt{color:var(--faint);font-family:var(--head);font-size:.68rem;
   text-transform:uppercase;letter-spacing:.04em;padding-top:2px}
 .kv dd{margin:0;color:var(--ink);overflow-wrap:anywhere}
+.kv dd p,.chaine .va p{margin:0 0 .4em;max-width:none}
+.kv dd p:last-child,.chaine .va p:last-child{margin:0}
+.kv dd .md-l,.chaine .va .md-l{margin:.2em 0 .4em}
 
 /* --- barre d'outils de tableau --- */
 .tb{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 0 6px;
@@ -581,6 +822,7 @@ footer.doc{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);
   tr{border:1px solid var(--line);border-radius:var(--r-sm);margin-bottom:7px;
     padding:3px 0;background:var(--surface)}
   td{display:flex;gap:9px;border:0;padding:3px 11px}
+  td>.st,td>*{flex:1 1 0;min-width:0;max-width:100%}
   td::before{content:attr(data-l);flex:0 0 36%;color:var(--faint);
     font-family:var(--head);font-size:.66rem;text-transform:uppercase;
     letter-spacing:.04em;line-height:1.5}
@@ -589,6 +831,8 @@ footer.doc{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);
 }
 @media (max-width:640px){
   .wrap{padding:12px 10px 40px}
+  .kv,.chaine>div{grid-template-columns:1fr;gap:0}
+  .kv dt,.chaine .et{padding-top:5px}
   h1{font-size:1.4rem}
   .mx{font-size:.6rem}
   .mx .cell{min-height:38px}
@@ -603,7 +847,9 @@ footer.doc{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);
   .sticky,.find,.tb,.haut,.quad button{display:none !important}
   section.ch,.band,.legende,.card,.quad{break-inside:avoid;box-shadow:none}
   details{display:block}
-  details.n2>summary,details.annexe>summary{display:none}
+  details.n2>summary,details.annexe>summary,details.baremes>summary{display:none}
+  .baremes-c{display:block}
+  .ch-apprend,.exemple-lecture{border:1px solid var(--line)}
   .tf-btn,.tf-panel{display:none !important}
   /* Le client imprime ce qu'il croit avoir : ni un filtre ni un tri ne doivent
      amputer le papier. */
@@ -822,7 +1068,7 @@ def page(titre: str, blocs: list[str], pied: str) -> str:
         f"<title>{esc(titre)}</title>\n"
         f"<style>{CSS}</style>\n"
         "</head>\n<body>\n"
-        f'<div class="wrap">\n{"".join(blocs)}\n{pied}\n</div>\n'
+        f'<main class="wrap">\n{"".join(blocs)}\n{pied}\n</main>\n'
         '<button class="haut" onclick="window.scrollTo({top:0,behavior:\'smooth\'})">'
         "↑ Haut</button>\n"
         f"<script>{js}</script>\n"

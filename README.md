@@ -28,6 +28,8 @@ python c:/dev/digit-ai-forge-seo/scripts/new_mission.py \
 
 # 3. collecter — crawl du site, étape 1 du pipeline
 python c:/dev/digit-ai-forge-seo/scripts/crawler.py --projet . --url https://acme.fr
+#    lit sitemap.xml (via robots.txt, index suivis) AVANT de suivre les liens :
+#    l'inventaire mesuré est celui du site, pas celui du graphe de navigation.
 
 # 4. ouvrir seo/METHODE.md — garde-fous, runbook, contrat de sortie. Constater et
 #    interpréter dans les fiches de seo/analyse/ : c'est la partie humaine.
@@ -236,9 +238,17 @@ cérémoniel.
 Le rapport HTML se recette en trois couches :
 
 ```bash
-python scripts/rapport_html.py --projet . --verifier    # 8 contrôles sur le fichier
+python scripts/rapport_html.py --projet . --verifier    # 9 contrôles sur le fichier
 python scripts/oracle_interaction.py <page.html>        # 9 contrôles d'EXÉCUTION
 ```
+
+Le 9e contrôle est la **lisibilité L1-L10**, déléguée au socle `digit-ai-page-html`
+(`check_html.py --regles L`) : texte tronqué, largeur de lecture, score sans barème lié,
+liste longue non filtrable, surlignage qui casse les mots, sommaire muet ou à ancre morte,
+chapitre sans chapeau, lien interne sans destination, détail vide, table de données sans
+exemple de lecture. La règle appartient au socle, pas à cette forge : on l'applique, on ne
+la redéfinit pas — et le contrôle échoue bruyamment si le socle est introuvable, plutôt que
+de rendre un vert par défaut.
 
 puis par les oracles des skills `digit-ai-page-html` et `quality-oracles` :
 `check_html.py`, `render_page.py` (V1-V7, trois breakpoints), `oracle-filtres-tableau.mjs`

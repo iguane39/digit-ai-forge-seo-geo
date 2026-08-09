@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import io
 import json
 import re
 import sys
@@ -27,17 +28,19 @@ from pathlib import Path
 from gabarit_html import (
     absence,
     badge_preuve,
+    baremes,
     barre,
-    borne,
     chapitre,
     esc,
     legende_preuves,
+    md,
+    md_bloc,
     page,
     recherche_globale,
-    resume,
     sommaire,
     strate,
     tableau,
+    tete,
 )
 from gabarits import MOTIF_MODELE, front_matter
 from grille import NB_NOEUDS, RACINE
@@ -98,11 +101,59 @@ def corps_fiche(chemin: Path) -> dict:
                 else None
             )
             continue
-        if cle and t:
+        if cle is not None:
+            # Les lignes VIDES sont conservees : en markdown elles seules separent
+            # deux paragraphes. Sans elles, chaque ligne d'une phrase repliee a 80
+            # colonnes devient un paragraphe distinct, et la phrase se disloque.
             tampon[cle].append(t)
     for k in out:
-        out[k] = " ".join(tampon[k]).strip()
+        # Lignes PRESERVEES : md_bloc a besoin de la structure pour rendre les
+        # tableaux de preuve. Les aplatir en une chaine unique detruisait la seule
+        # information de mise en forme que portent les fiches (TF-0046).
+        out[k] = "\n".join(tampon[k]).strip()
     return out
+
+
+# En-tete minimal attendu d'un actions-*.csv : sert a valider le dialecte retenu.
+COLONNES_ACTIONS = {"id", "action", "libelle", "gain", "effort", "horizon", "score"}
+
+
+def lire_actions(chemin: Path) -> list[dict]:
+    """Lit actions-*.csv sans presumer du separateur (TF-0045).
+
+    `csv.DictReader(f)` sans `delimiter` lit en virgule. Un CSV point-virgule --
+    separateur par defaut d'Excel en locale francaise -- est alors lu comme un champ
+    unique par ligne : toutes les colonnes tombent a None et le rapport imprime
+    « n/d » sur l'integralite du tableau, sans le moindre avertissement.
+
+    On sonde, puis on VERIFIE que l'en-tete obtenu contient bien des colonnes
+    connues. Si aucun dialecte ne rend un en-tete reconnaissable, on REFUSE : un
+    tableau d'actions integralement vide qui se presente comme complet est pire
+    qu'une erreur.
+    """
+    brut = chemin.read_text(encoding="utf-8-sig")
+    premiere = brut.split("\n", 1)[0]
+    candidats = [";", ",", "\t", "|"]
+    try:
+        sonde = csv.Sniffer().sniff(premiere, delimiters="".join(candidats)).delimiter
+        candidats = [sonde] + [c for c in candidats if c != sonde]
+    except csv.Error:
+        pass
+
+    for sep in candidats:
+        lignes = list(csv.DictReader(io.StringIO(brut), delimiter=sep))
+        entete = {(c or "").strip().lower() for c in (lignes[0].keys() if lignes else [])}
+        if entete & COLONNES_ACTIONS:
+            if sep != ",":
+                print(f"  actions : separateur « {sep} » detecte dans {chemin.name}")
+            return lignes
+    raise SystemExit(
+        f"REFUS : {chemin.name} n'expose aucune colonne connue "
+        f"({', '.join(sorted(COLONNES_ACTIONS))}) quel que soit le separateur essaye "
+        f"({' '.join(repr(c) for c in candidats)}).\n"
+        "Un tableau d'actions rempli de « n/d » qui se presente comme complet est pire "
+        "qu'un refus. Verifier l'en-tete du fichier."
+    )
 
 
 def collecter(projet: Path) -> dict:
@@ -124,7 +175,14 @@ def collecter(projet: Path) -> dict:
             absents.append(n["chemin"])
             continue
         fm = front_matter(fiche)
-        noeuds.append({**n, **fm, **corps_fiche(fiche)})
+        # `front_matter()` rend des CHAINES : sans ce forcage, `id` ecrase l'entier du
+        # manifeste par "12". Les identifiants de `noeuds_couverts` etant lus en int,
+        # AUCUNE action n'etait rattachee a son noeud -- silencieusement. Consequences
+        # constatees sur le rapport reel : « Nœuds couverts : — » partout, branche « — »
+        # pour les 10 actions donc regroupement par branche vide de sens, et le choix
+        # du blocage principal retombant sur l'ordre de la grille (le defaut meme que
+        # TF-0047 corrige). Rien n'echouait : le rapport se generait, complet et faux.
+        noeuds.append({**n, **fm, **corps_fiche(fiche), "id": int(n["id"])})
 
     # REFUS si l'etude ne couvre pas toute la grille courante. Sans ce controle, une
     # etude ouverte avant une evolution de la grille rend un rapport silencieusement
@@ -149,8 +207,7 @@ def collecter(projet: Path) -> dict:
     actions = []
     csvs = sorted(livrables.glob("actions-*.csv")) if livrables.is_dir() else []
     if csvs:
-        with csvs[-1].open(encoding="utf-8-sig", newline="") as f:
-            actions = list(csv.DictReader(f))
+        actions = lire_actions(csvs[-1])
 
     # Chainage des runs : on filtre sur le domaine de l'etude et on trie sur la date
     # extraite du nom, pas sur l'ordre lexicographique du glob. Deux domaines dans un
@@ -330,26 +387,30 @@ def bloc_actions(actions: list[dict]) -> str:
 
     lignes = []
     for a in actions:
-        libelle = a.get("action") or a.get("libelle") or ""
-        n1, tronque = resume(libelle)
+        libelle = " ".join((a.get("action") or a.get("libelle") or "").split())
+        # DEFAUT 8 : la ligne portait un fragment coupe a 12 mots, et le niveau 2 en
+        # portait un autre, coupe a 60. Desormais la ligne s'arrete a une frontiere
+        # grammaticale et le detail contient l'ENONCE ENTIER, systematiquement.
+        n1 = tete(libelle)
         noeuds = ", ".join(f'{n["id"]} · {n["noeud"]}' for n in a["_noeuds"]) or "—"
         delai = a.get("delai_effet_mesurable") or a.get("delai_effet_mesurable_jours") or ""
         impact = (
-            f'{badge_preuve("T4", compact=True)} gain estimé {esc(a.get("gain"))}/5'
+            f'{badge_preuve("T4", compact=True)} gain estimé '
+            f'{barre(a.get("gain"), 5, "gain")}'
             + (f" · effet mesurable sous {esc(delai)}" if delai else "")
         )
         n2 = [
-            ("Énoncé complet", esc(libelle) if tronque else ""),
-            ("Pourquoi", esc(borne(a["_pourquoi"])) if a["_pourquoi"] else
+            ("Énoncé complet", md(libelle) if n1 != libelle else ""),
+            ("Pourquoi", md(a["_pourquoi"]) if a["_pourquoi"] else
              "<i>non renseigné — le mécanisme du nœud couvert n'a pas été instruit</i>"),
             ("Impact attendu", impact),
-            ("Critère d'acceptation", esc(a.get("critere_acceptation"))),
+            ("Critère d'acceptation", md(a.get("critere_acceptation"))),
             ("Nœuds couverts", esc(noeuds)),
             ("Régime", esc(a.get("regime_automatisation"))),
         ]
         lignes.append([
             (f'<span class="num">{esc(a.get("id"))}</span>', str(_ids(a.get("id")) or [0])[1:-1]),
-            strate(esc(n1), "pourquoi et impact", n2),
+            strate(md(n1), "énoncé complet, pourquoi et impact", n2),
             esc(a["_branche"]),
             esc(a.get("horizon")),
             esc(a["_filiere"]),
@@ -361,9 +422,13 @@ def bloc_actions(actions: list[dict]) -> str:
         ])
 
     return (
-        "<p>Une ligne par action, l'essentiel visible. <b>« + pourquoi et impact »</b> "
-        "déplie le raisonnement sans quitter la ligne. Trier, filtrer, grouper et "
-        "chercher agissent sur ce tableau — les vues du chapitre suivant le pilotent.</p>"
+        "<p>Une ligne par action, l'énoncé lisible d'un bout à l'autre. "
+        "<b>« + énoncé complet, pourquoi et impact »</b> déplie le raisonnement entier "
+        "sans quitter la ligne. Trier, filtrer, grouper et chercher agissent sur ce "
+        "tableau — les vues du chapitre 4, « Gains et priorités », le pilotent.</p>"
+        '<p>Gain, effort et confiance sont des notes sur 5 : leur signification cran par '
+        'cran est publiée au <a href="#baremes-scores" title="Aller aux barèmes des '
+        'scores, chapitre 1 Synthèse">bloc « Barèmes » du chapitre 1, Synthèse</a>.</p>'
         + tableau(
             "t-actions", colonnes, lignes, "Actions à mettre en œuvre",
             groupes=[("Horizon", 3), ("Filière", 4), ("Branche", 2)],
@@ -414,8 +479,10 @@ def bloc_gains(actions: list[dict]) -> str:
             chips = "".join(
                 '<button class="chip" type="button" '
                 f"onclick=\"DigitAITableTools.cibler('t-actions','{esc(a.get('id'))}')\" "
-                f'title="{esc(a.get("action") or a.get("libelle"))}">'
-                f'<b>{esc(a.get("id"))}</b>{esc(resume(a.get("action") or a.get("libelle"), 5)[0])}'
+                f'title="Filtrer le tableau des actions (chapitre 3) sur l\'action '
+                f'{esc(a.get("id"))} — {esc(a.get("action") or a.get("libelle"))}">'
+                f'<b>{esc(a.get("id"))}</b>'
+                f'{esc(" ".join((a.get("action") or a.get("libelle") or "").split()))}'
                 "</button>"
                 for a in sorted(lot, key=lambda x: -float(x.get("score") or 0))
             )
@@ -431,23 +498,28 @@ def bloc_gains(actions: list[dict]) -> str:
         for cout in ("GRATUIT", "PAYANT"):
             cle = f"{exe} + {cout}"
             lot = sorted(quads.get(cle, []), key=lambda x: -float(x.get("score") or 0))
-            tete = (resume(lot[0].get("action") or lot[0].get("libelle"), 8)[0]
-                    if lot else "—")
+            premiere = tete(lot[0].get("action") or lot[0].get("libelle")) if lot else "—"
             cartes.append(
                 f'<div class="quad"><h3>{esc(cle)}</h3>'
                 f'<p class="q-n">{len(lot)}</p>'
                 f'<p class="q-d">action{"s" if len(lot) > 1 else ""} · '
                 f'effort cumulé {sum(ent(a.get("effort")) for a in lot)} j-h estimés</p>'
-                f'<p class="q-a">En tête : {esc(tete)}</p>'
+                f'<p class="q-a">En tête : {md(premiere)}</p>'
                 + (
                     '<button type="button" onclick="DigitAITableTools.cibler'
-                    f"('t-actions','{esc(cle)}')\">Voir ces {len(lot)} actions</button>"
+                    f"('t-actions','{esc(cle)}')\" "
+                    f'title="Filtrer le tableau des actions du chapitre 3 sur la filière '
+                    f'{esc(cle)}">Filtrer le tableau des actions sur ces '
+                    f"{len(lot)} actions {esc(cle)}</button>"
                     if lot else ""
                 )
                 + "</div>"
             )
 
     socle = quads.get("MANUEL + PAYANT", [])
+    # DEFAUT 9 : les commandes de ce chapitre n'annoncaient pas leur destination et
+    # le lecteur perdait le fil. Chaque pastille et chaque bouton dit maintenant ce
+    # qu'il fait ET ou il agit -- le tableau du chapitre 3, nomme, pas « ci-dessus ».
     avert = (
         '<div class="warn"><p class="warn-t">Avertissement sur l\'avantage concurrentiel</p>'
         "<p>Le quadrant IA + GRATUIT est celui de la plus faible barrière à l'entrée, donc "
@@ -456,8 +528,8 @@ def bloc_gains(actions: list[dict]) -> str:
         "nécessaires — elles ramènent à la parité — mais elles ne créent pas d'écart.</p>"
     )
     if socle:
-        noms = ", ".join(
-            resume(a.get("action") or a.get("libelle"), 7)[0] for a in socle[:3]
+        noms = " ; ".join(
+            tete(a.get("action") or a.get("libelle")) for a in socle[:3]
         )
         avert += (
             '<p class="warn-t">Socle de différenciation</p>'
@@ -472,8 +544,13 @@ def bloc_gains(actions: list[dict]) -> str:
     avert += "</div>"
 
     return (
-        "<p>Chaque pastille est un bouton : elle <b>filtre le tableau des actions</b> "
-        "ci-dessus. Les rangées et colonnes vides sont masquées.</p>"
+        "<p>Ce chapitre ne contient aucune donnée nouvelle : il <b>pilote le tableau du "
+        "chapitre 3, « Actions à mettre en œuvre »</b>. Chaque pastille et chaque bouton "
+        "est une commande qui filtre ce tableau et vous y emmène ; le libellé dit "
+        "toujours sur quoi. Les rangées et colonnes vides sont masquées.</p>"
+        '<p>Pour revenir à la liste complète, vider le champ « Filtrer ces lignes… » du '
+        '<a href="#actions" title="Aller au chapitre 3, Actions à mettre en œuvre">'
+        "chapitre 3, Actions à mettre en œuvre</a>.</p>"
         "<h3>Gain × effort</h3>" + "".join(html)
         + "<h3>Dispatch en 4 quadrants</h3>"
         + f'<div class="quads">{"".join(cartes)}</div>' + avert
@@ -502,6 +579,36 @@ def manque_a_fournir(d: dict) -> list[str]:
     return besoin
 
 
+def pese_blocage(faibles: list[dict], actions: list[dict]):
+    """Classe les verdicts non conformes par GRAVITE, pas par ordre de grille (TF-0047).
+
+    Gravite mesurable sans jugement : le nombre d'actions retenues qui visent le noeud,
+    puis le gain cumule de ces actions. Un noeud que le plan attaque plusieurs fois,
+    avec de gros gains, est le blocage dont depend le reste. A defaut d'action, on
+    retombe sur l'ordre de la grille -- mais en le DISANT.
+    """
+    if not faibles:
+        return None
+    poids = {}
+    for a in actions:
+        for n in a["_noeuds"]:
+            try:
+                g = int(float(a.get("gain") or 0))
+            except (TypeError, ValueError):
+                g = 0
+            cites, gain = poids.get(n["id"], (0, 0))
+            poids[n["id"]] = (cites + 1, gain + g)
+    classe = sorted(
+        faibles,
+        key=lambda n: (-poids.get(n["id"], (0, 0))[0],
+                       -poids.get(n["id"], (0, 0))[1],
+                       n["id"]),
+    )
+    tete_n = classe[0]
+    cites, gain = poids.get(tete_n["id"], (0, 0))
+    return tete_n, cites, gain
+
+
 def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
     """Un lecteur qui ne lit que ce chapitre doit pouvoir décider."""
     snap, noeuds = d["snapshot"], d["noeuds"]
@@ -511,10 +618,6 @@ def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
     maturite = (snap.get("maturite") or {}).get("score")
 
     faibles = [n for n in noeuds if n.get("verdict") == "non-conforme"]
-    blocage = ""
-    if faibles:
-        blocage = (faibles[0].get("interpretation") or faibles[0].get("constat")
-                   or f'{faibles[0]["branche"]} / {faibles[0]["noeud"]}')
 
     verdict = ["<p><b>Le constat</b> — "]
     verdict.append(
@@ -522,8 +625,35 @@ def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
             f"{len(faibles)} verdicts non conformes.")
         + "</p>"
     )
-    if blocage:
-        verdict.append(f"<p><b>Le blocage principal</b> — {esc(borne(blocage, 45))}</p>")
+
+    # TF-0047 : le blocage principal etait `faibles[0]`, soit le premier non-conforme
+    # dans l'ordre du manifeste. Cet ordre est THEMATIQUE, pas hierarchique : le noeud 2
+    # passait devant des constats bien plus lourds. Le critere est desormais explicite
+    # et AFFICHE -- le noeud le plus cite par les actions retenues, departage par le
+    # gain cumule de ces actions. Un lecteur peut contester le choix, ce qui suppose
+    # qu'il le connaisse.
+    grave = pese_blocage(faibles, actions)
+    if grave:
+        n, cites, gain_cum = grave
+        texte = (n.get("interpretation") or n.get("constat")
+                 or f'{n["branche"]} / {n["noeud"]}')
+        critere = (
+            f'{cites} action{"s" if cites > 1 else ""} du plan '
+            f"le{'s' if cites > 1 else ''} vise{'nt' if cites > 1 else ''}, "
+            f"pour un gain cumulé de {gain_cum} points"
+            if cites else
+            "aucune action ne le vise encore ; il est retenu comme premier verdict "
+            "non conforme de la grille"
+        )
+        verdict.append(
+            "<p><b>Le blocage principal</b> — "
+            f'<span class="bl-n">{esc(n["branche"])} / {esc(n["noeud"])} '
+            f'(nœud {esc(n["id"])})</span>. {md(texte)}</p>'
+            f'<p class="bl-c">Pourquoi celui-là — {esc(critere)}. '
+            "Le classement des constats par gravité se lit au chapitre 2, "
+            '<a href="#existant" title="Aller au chapitre 2, L\'existant">'
+            "L'existant</a>.</p>"
+        )
     manquants = manque_a_fournir(d)
     if manquants:
         verdict.append(
@@ -537,8 +667,9 @@ def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
         + (f", {hors_mod} hors portée du modèle" if hors_mod else "")
         + "</small></p></div>",
         '<div class="card"><h3>Maturité</h3><p class="kpi">'
-        + (barre(maturite, 5, "maturité") if maturite else "n/d")
-        + "<small>« Machine SEO » — nœud 87</small></p></div>",
+        + (barre(maturite, 5, "maturité", "maturite") if maturite else "n/d")
+        + "<small>« Machine SEO » — nœud 87. Les cinq crans sont détaillés dans "
+          "« Barèmes » ci-dessous.</small></p></div>",
         f'<div class="card"><h3>Actions</h3><p class="kpi">{len(actions)}'
         "<small>chiffrées, priorisées, dispatchées</small></p></div>",
     ]
@@ -549,8 +680,8 @@ def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
             f'<div class="card"><h3>Cible {esc(h.get("echeance_mois"))} mois</h3>'
             f'<p class="kpi">{esc(h.get("borne_basse"))}–{esc(h.get("borne_haute"))} '
             f'{badge_preuve("T4", compact=True)}'
-            f'<small>{esc(borne(str(h.get("indicateur")) + " — " + str(h.get("calcul")), 22))}'
-            "</small></p></div>"
+            f'<small>{esc(h.get("indicateur"))} — {esc(h.get("calcul"))}</small>'
+            "</p></div>"
         )
     else:
         cartes.append(
@@ -566,45 +697,113 @@ def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
         # FIGÉES : les trois premières par score, pas « les trois du tri courant ».
         trois = sorted(actions, key=lambda a: -float(a.get("score") or 0))[:3]
         li = "".join(
-            f'<li><span class="t">{esc(resume(a.get("action") or a.get("libelle"), 14)[0])}</span>'
-            f'<span class="m">{esc(a.get("id"))} · gain {esc(a.get("gain"))}/5 · '
-            f'effort {esc(a.get("effort"))}/5 · {esc(a.get("horizon"))} · '
+            '<li><span class="t">'
+            + md(" ".join((a.get("action") or a.get("libelle") or "").split()))
+            + "</span>"
+            f'<span class="m">{esc(a.get("id"))} · gain '
+            f'{barre(a.get("gain"), 5, "gain")} · effort '
+            f'{barre(a.get("effort"), 5, "effort")} · {esc(a.get("horizon"))} · '
             f'{esc(a["_filiere"])}</span></li>'
             for a in trois
         )
-        top = f"<h3>Les 3 actions qui comptent</h3><ul class=\"top3\">{li}</ul>"
+        top = ("<h3>Les 3 actions qui comptent</h3>"
+               "<p>Figées par score, indépendantes du tri courant. Elles sont détaillées "
+               '<a href="#actions" title="Aller au chapitre 3, Actions à mettre en '
+               'œuvre">au chapitre 3, Actions à mettre en œuvre</a>.</p>'
+               f'<ul class="top3">{li}</ul>')
 
     return (
         f'<div class="verdict">{"".join(verdict)}</div>'
         f'<div class="cards">{"".join(cartes)}</div>{top}{legende_preuves()}'
+        + baremes(["maturite", "gain", "effort", "confiance"])
     )
 
 
 # ---------------------------------------------------------------- existant
 
 
-def constat_li(n: dict, classe: str) -> str:
+def constat_li(n: dict, classe: str, actions_par_noeud: dict) -> str:
+    """DEFAUT 4 : ce chapitre etait verbeux et sans suite -- des constats empiles,
+    sans impact chiffre ni action rattachee. Chaque entree porte desormais sa CHAINE
+    COMPLETE : ce qu'on observe, ce que ca coute, ce qu'on fait, ce qu'on en attend.
+    Le lecteur n'a plus a chercher dans le chapitre 3 quelle action repond a quoi.
+    """
     tier = (n.get("niveau_preuve") or "").upper()
     if n.get("verdict") == "non-mesure" or n.get("etat") == "hors-perimetre":
         tier = "NM"
-    n1, tronque = resume(n.get("constat") or f'{n["branche"]} / {n["noeud"]}', 16)
+
+    liees = actions_par_noeud.get(n["id"], [])
+    constat = n.get("constat") or f'{n["branche"]} / {n["noeud"]}'
+    impact = n.get("interpretation") or ""
+
+    def ligne(etiquette, contenu, vide=""):
+        if contenu:
+            return (f'<div><span class="et">{esc(etiquette)}</span>'
+                    f'<span class="va">{contenu}</span></div>')
+        return (f'<div><span class="et">{esc(etiquette)}</span>'
+                f'<span class="va vide">{esc(vide)}</span></div>')
+
+    if liees:
+        acts = "".join(
+            f'<div class="va">{esc(a.get("id"))} · '
+            + md(" ".join((a.get("action") or a.get("libelle") or "").split()))
+            + "</div>"
+            for a in liees
+        )
+        act_html = ligne(
+            "Action", acts
+            + '<div class="va"><a href="#actions" title="Aller au chapitre 3, Actions '
+              'à mettre en œuvre">Détail au chapitre 3, Actions à mettre en œuvre</a>'
+              "</div>")
+        gains = []
+        for a in liees:
+            g = a.get("gain")
+            delai = (a.get("delai_effet_mesurable")
+                     or a.get("delai_effet_mesurable_jours") or "")
+            gains.append(
+                f'{esc(a.get("id"))} · {badge_preuve("T4", compact=True)} '
+                f'gain {barre(g, 5, "gain")}'
+                + (f" · effet mesurable sous {esc(delai)}" if delai else "")
+            )
+        gain_html = ligne("Gain attendu", "<br>".join(gains))
+    else:
+        act_html = ligne(
+            "Action", "",
+            "aucune action du plan ne couvre ce nœud — constat porté sans remède chiffré")
+        gain_html = ligne("Gain attendu", "", "sans action rattachée, aucun gain à annoncer")
+
+    chaine = (
+        '<div class="chaine">'
+        + ligne("Constat", md_bloc(constat))
+        + ligne("Impact", md_bloc(impact),
+                "mécanisme non instruit — l'effet de ce constat n'est pas établi")
+        + act_html + gain_html
+        + "</div>"
+    )
+
     n2 = [
-        ("Constat complet", esc(n.get("constat")) if tronque else ""),
-        ("Mécanisme", esc(borne(n.get("interpretation")))),
-        ("Question d'audit", esc(n.get("question_audit"))),
-        ("Critère de verdict", esc(n.get("critere_verdict"))),
-        ("Preuves", esc(n.get("preuves"))),
-        ("Motif", esc((n.get("motif_hors_perimetre") or "").strip('"'))),
+        ("Question d'audit", md(n.get("question_audit"))),
+        ("Critère de verdict", md(n.get("critere_verdict"))),
+        ("Preuves", md_bloc(n.get("preuves"))),
+        ("Motif", md((n.get("motif_hors_perimetre") or "").strip('"'))),
     ]
     return (
         f'<li class="{classe}">'
         f'<p class="t">{badge_preuve(tier)} {esc(n["branche"])} / {esc(n["noeud"])}</p>'
-        + strate(esc(n1), "détail, mécanisme et preuves", n2)
+        + chaine
+        + strate("", "question d'audit, critère et preuves", n2)
         + f'<p class="trace">nœud {esc(n["id"])}</p></li>'
     )
 
 
-def bloc_existant(d: dict) -> str:
+def bloc_existant(d: dict, actions: list[dict]) -> str:
+    # Rattachement inverse : de quelle action releve chaque noeud. C'est ce chainon
+    # qui manquait -- le constat et son remede vivaient dans deux chapitres sans lien.
+    par_noeud: dict[int, list[dict]] = {}
+    for a in actions:
+        for n in a["_noeuds"]:
+            par_noeud.setdefault(n["id"], []).append(a)
+
     faits = [n for n in d["noeuds"] if n.get("etat") == "fait"]
     if not faits:
         return absence(
@@ -615,16 +814,23 @@ def bloc_existant(d: dict) -> str:
             "renseigner les fiches de seo/analyse/ puis régénérer ce rapport",
         )
     forts = [n for n in faits if n.get("verdict") == "conforme"][:MAX_FORTS]
-    faibles = [n for n in faits if n.get("verdict") in ("non-conforme", "partiel")][:MAX_FAIBLES]
+    faibles = [n for n in faits if n.get("verdict") in ("non-conforme", "partiel")]
+    # Ordre de GRAVITE : le plus attaque par le plan d'abord. « Par impact decroissant »
+    # etait annonce sans etre fait -- l'ordre etait celui de la grille (TF-0047).
+    faibles.sort(key=lambda n: (-len(par_noeud.get(n["id"], [])),
+                                0 if n.get("verdict") == "non-conforme" else 1,
+                                n["id"]))
+    faibles = faibles[:MAX_FAIBLES]
     out = []
     if faibles:
-        out.append(f"<h3>Points faibles, par impact décroissant ({len(faibles)})</h3>")
+        out.append(f"<h3>Points faibles, du plus attaqué par le plan au moins "
+                   f"attaqué ({len(faibles)})</h3>")
         out.append('<ul class="constats">'
-                   + "".join(constat_li(n, "faible") for n in faibles) + "</ul>")
+                   + "".join(constat_li(n, "faible", par_noeud) for n in faibles) + "</ul>")
     if forts:
         out.append(f"<h3>Points forts ({len(forts)})</h3>")
         out.append('<ul class="constats">'
-                   + "".join(constat_li(n, "fort") for n in forts) + "</ul>")
+                   + "".join(constat_li(n, "fort", par_noeud) for n in forts) + "</ul>")
     if not out:
         out.append(absence(
             "Aucun verdict tranché",
@@ -665,26 +871,28 @@ def bloc_requetes(d: dict) -> str:
     ]
     lignes = []
     for n in mesures:
-        n1, tronque = resume(n.get("constat"), 14)
+        constat = " ".join((n.get("constat") or "").split())
+        n1 = tete(constat)
         n2 = [
-            ("Constat complet", esc(n.get("constat")) if tronque else ""),
-            ("Question d'audit", esc(n.get("question_audit"))),
-            ("Critère de verdict", esc(n.get("critere_verdict"))),
-            ("Mécanisme", esc(borne(n.get("interpretation")))),
+            ("Constat complet", md_bloc(n.get("constat")) if n1 != constat else ""),
+            ("Question d'audit", md(n.get("question_audit"))),
+            ("Critère de verdict", md(n.get("critere_verdict"))),
+            ("Mécanisme", md_bloc(n.get("interpretation"))),
+            ("Preuves (source entière)", md_bloc(n.get("preuves"))),
         ]
         v = n.get("verdict") or ""
         lignes.append([
             f'{esc(n["noeud"])} <span class="trace">#{esc(n["id"])}</span>',
             esc(n["branche"]),
             badge_preuve((n.get("niveau_preuve") or "NM").upper()),
-            strate(esc(n1), "question, critère, mécanisme", n2),
+            strate(md(n1), "constat entier, question, critère, mécanisme", n2),
             esc(LIBELLE_VERDICT.get(v, v)),
-            esc(borne(n.get("preuves"), 12)),
+            md(tete(" ".join((n.get("preuves") or "").split()), 90)),
         ])
     return (
         "<p>Ce que cherchait chaque nœud, ce qui a été mesuré, et ce que l'écart coûte. "
-        "Déplier une ligne donne la question d'audit et le critère qui produit le verdict "
-        "— c'est ce qui rend le constat opposable.</p>"
+        "Déplier une ligne donne le constat entier, la question d'audit et le critère qui "
+        "produit le verdict — c'est ce qui rend le constat opposable.</p>"
         + tableau("t-requetes", colonnes, lignes, "Requêtes et résultats des recherches",
                   groupes=[("Branche", 1), ("Verdict", 4)], tri_defaut=(1, 1))
     )
@@ -825,7 +1033,7 @@ def bloc_couverture(d: dict) -> str:
             esc(LIBELLE_VOLET.get(n["volet"], n["volet"])),
             f'{esc(n["statut"])} — {esc(LIBELLE_STATUT.get(n["statut"], ""))}',
             esc(n.get("etat")),
-            esc(LIBELLE_VERDICT.get(v, v)) or esc(borne(motif, 14)) or "—",
+            esc(LIBELLE_VERDICT.get(v, v)) or md(motif) or "—",
         ])
     return (
         f"<p>Les {len(lignes)} nœuds de la grille, aucun omis. Un nœud hors périmètre "
@@ -943,7 +1151,7 @@ def bloc_diff(d: dict) -> str:
     ]
     lignes = [
         [(f'<span class="num">{esc(x.get("id"))}</span>', x.get("id") or ""),
-         esc(resume(x.get("libelle"), 14)[0]),
+         md(" ".join((x.get("libelle") or "").split())),
          esc(x.get("statut_execution")),
          esc(x.get("effet_constate") or "aucun effet mesurable")]
         for x in prec["actions"]
@@ -966,37 +1174,102 @@ def construire(d: dict) -> str:
     domaine = d["etat"].get("domaine") or "site"
 
     npages = len(d["snapshot"].get("pages") or [])
+    nact = len(actions)
+    nnoeuds = len(d["noeuds"])
+
+    # Chaque chapitre porte trois choses en plus de son corps :
+    #   `apprend` (L7) — ce que le lecteur y gagne, avant toute donnee ;
+    #   `annonce` (L6) — la meme promesse, en une ligne, dans le sommaire ;
+    #   `exemple` (L10) — comment se lit une ligne, pour les chapitres de donnees.
+    # Les chapitres 7 a 10 en manquaient totalement : ils s'ouvraient sur un tableau
+    # de 87 ou 200 lignes sans dire ni a quoi il sert ni comment le lire (defaut 10).
     plan = [
-        ("synthese", "Synthèse", "décider en une page", bloc_synthese(d, actions, compte), "", ""),
-        ("existant", "L'existant", "ce qui a été mesuré, et ce que l'écart coûte",
-         bloc_existant(d), "", ""),
-        ("actions", "Actions à mettre en œuvre", "chiffrées, priorisées, dispatchées",
-         bloc_actions(actions), str(len(actions)) if actions else "", ""),
-        ("gains", "Gains et priorités", "où sont les gains faciles, et par quelle filière",
-         bloc_gains(actions), "", ""),
-        ("trajectoire", "Trajectoire 12–24 mois", "où le site peut aller, et à quelles conditions",
-         bloc_trajectoire(d), "", ""),
-        ("requetes", "Requêtes et résultats", "constat → nœud → critère → mécanisme",
-         bloc_requetes(d), "", ""),
-        ("pages", "Pages analysées", "l'inventaire par URL", bloc_pages(d),
-         str(npages) if npages else "",
+        ("synthese", "Synthèse",
+         "l'état du site, le blocage dont tout dépend, et les trois actions qui comptent — "
+         "de quoi décider sans lire la suite",
+         "ce qui a été mesuré, ce qui bloque, et ce qu'il faut décider",
+         bloc_synthese(d, actions, compte), "", "", ""),
+        ("existant", "L'existant",
+         "pour chaque constat : ce qui est observé, ce que ça coûte, quelle action y "
+         "répond et quel gain en attendre — la chaîne entière sur une seule fiche",
+         "les constats, avec leur impact, leur action et leur gain",
+         bloc_existant(d, actions), "", "", ""),
+        ("actions", "Actions à mettre en œuvre",
+         f"les {nact} actions retenues, chiffrées en gain, effort, confiance et coût, "
+         "avec le mécanisme qui les justifie",
+         f"{nact} actions chiffrées, triables, filtrables et groupables",
+         bloc_actions(actions), str(nact) if actions else "",
+         "la ligne A-01 se lit « action de gain 4 sur 5, effort 2 sur 5, horizon court, "
+         "filière IA + GRATUIT » ; déplier « + énoncé complet » donne le raisonnement.",
+         ""),
+        ("gains", "Gains et priorités",
+         "où sont les gains faciles et par quelle filière les obtenir — ce chapitre ne "
+         "contient aucune donnée nouvelle, il pilote le tableau du chapitre 3",
+         "la carte gain × effort et les 4 quadrants, qui commandent le chapitre 3",
+         bloc_gains(actions), "", "", ""),
+        ("trajectoire", "Trajectoire 12–24 mois",
+         "où le site peut aller si le plan est exécuté, sous quelles hypothèses, et ce "
+         "qui casse la projection si l'une d'elles est fausse",
+         "la cible chiffrée, ses jalons et les hypothèses qui la portent",
+         bloc_trajectoire(d), "", "", ""),
+        ("requetes", "Requêtes et résultats",
+         "ce que chaque nœud cherchait, ce qui a été mesuré, et le critère exact qui a "
+         "produit le verdict — c'est ce qui rend le constat opposable",
+         "constat, question d'audit, critère et mécanisme, nœud par nœud",
+         bloc_requetes(d), "",
+         "la ligne « Intention » se lit « nœud de la branche Mots Clés, preuve T2 déclarée, "
+         "verdict Non conforme » ; déplier donne le critère qui a produit ce verdict.",
+         ""),
+        ("pages", "Pages analysées",
+         f"l'inventaire des {npages} URL mesurées : code HTTP, profondeur de clic, title, "
+         "H1, indexabilité et liens internes entrants — la base de tous les constats T1",
+         f"{npages} URL mesurées une à une, filtrables par gabarit et par code",
+         bloc_pages(d), str(npages) if npages else "",
+         "une ligne à profondeur 3 et 0 lien entrant se lit « page atteignable en trois "
+         "clics et citée par aucune autre » : c'est une page à re-mailler, pas une erreur.",
          f"Afficher l'inventaire des {npages} URL" if npages else ""),
-        ("couverture", "Couverture de la grille", "tous les nœuds, aucun omis",
-         bloc_couverture(d), str(len(d["noeuds"])),
-         f"Afficher les {len(d['noeuds'])} nœuds"),
-        ("dette", "Dette d'instrumentation", "ce qu'il faudrait pour mesurer plus",
-         bloc_dette(d), "", "Afficher la dette"),
-        ("methode", "Méthode et traçabilité", "sur quoi ce rapport repose",
-         bloc_methode(d), "", "Afficher les sources et la traçabilité"),
+        ("couverture", "Couverture de la grille",
+         f"les {nnoeuds} nœuds de la grille et leur sort : instruit, hors périmètre avec "
+         "motif, ou non mesurable — la preuve qu'aucune question n'a été esquivée",
+         f"les {nnoeuds} nœuds et leur sort, aucun omis",
+         bloc_couverture(d), str(nnoeuds),
+         "un nœud « hors-perimetre » avec motif est un résultat : la question a été posée "
+         "et la réponse est « pas ici », pas « pas regardé ».",
+         f"Afficher les {nnoeuds} nœuds"),
+        ("dette", "Dette d'instrumentation",
+         "ce qui n'a pas pu être mesuré, pourquoi, et ce qu'il faut fournir pour le "
+         "mesurer au prochain run — la liste de courses de l'audit suivant",
+         "ce qui manque pour mesurer plus, et comment le lever",
+         bloc_dette(d), "",
+         "chaque ligne se lit « nœud X, non mesurable parce que Y, fournir Z » : la "
+         "colonne « Ce qu'il faut obtenir » est la seule action à mener.",
+         "Afficher la dette"),
+        ("methode", "Méthode et traçabilité",
+         "sur quelles sources ce rapport repose, lesquelles manquaient, et ce qu'il ne "
+         "peut donc pas affirmer — la limite est déclarée, pas masquée",
+         "les sources, leur période, et ce que le rapport ne peut pas dire",
+         bloc_methode(d), "",
+         "une source « non » disponible n'invalide pas le rapport : elle borne ce qu'il "
+         "affirme, et les nœuds concernés sont marqués « non mesuré ».",
+         "Afficher les sources et la traçabilité"),
     ]
     diff = bloc_diff(d)
     if diff:
-        plan.insert(1, ("diff", "Depuis le run précédent", "ce qui a bougé", diff, "", ""))
+        plan.insert(1, (
+            "diff", "Depuis le run précédent",
+            "ce qui a été exécuté depuis le dernier audit et l'effet constaté — ce "
+            "chapitre mesure la progression, pas l'état",
+            "ce qui a bougé depuis le run précédent, action par action",
+            diff, "",
+            "une action « faite » sans effet constaté n'est pas un échec : l'effet SEO "
+            "se mesure sur plusieurs semaines, la colonne le dit quand c'est le cas.",
+            ""))
 
     chapitres, entrees = [], []
-    for num, (ident, titre, st, corps, compt, annexe) in enumerate(plan, start=1):
-        chapitres.append(chapitre(num, ident, titre, corps, st, annexe))
-        entrees.append((num, ident, titre, compt))
+    for num, (ident, titre, apprend, annonce, corps, compt, exemple, annexe) in \
+            enumerate(plan, start=1):
+        chapitres.append(chapitre(num, ident, titre, corps, apprend, exemple, annexe))
+        entrees.append((num, ident, titre, annonce, compt))
 
     blocs = [
         bloc_bandeau(d, repart),
@@ -1136,7 +1409,29 @@ def controles(chemin: Path, html: str, d: dict) -> int:
     if not ok:
         echecs.append("tokens")
 
-    print(f"\n{8 - len(echecs)}/8 controles passes")
+    # Lisibilite L1-L10 : delegue au socle digit-ai-page-html, qui en est
+    # proprietaire. On ne redefinit pas la regle ici -- on l'applique, et on echoue
+    # bruyamment si le socle est introuvable plutot que de rendre un vert par defaut.
+    socle = Path.home() / ".claude" / "skills" / "digit-ai-page-html" / "scripts"
+    if (socle / "check_html.py").exists():
+        sys.path.insert(0, str(socle))
+        try:
+            from check_html import check as _check_socle
+            l_fails, _ = _check_socle(html, regles="L")
+        finally:
+            sys.path.remove(str(socle))
+        ok = not l_fails
+        print(f"  [{'OK  ' if ok else 'ECHEC'}] L1-L10 lisibilite (socle) — "
+              f"{len(l_fails)} echec(s)")
+        for x in l_fails[:5]:
+            print(f"        {x}")
+        if not ok:
+            echecs.append("lisibilite")
+    else:
+        print("  [ECHEC] L1-L10 lisibilite — socle digit-ai-page-html introuvable")
+        echecs.append("lisibilite")
+
+    print(f"\n{9 - len(echecs)}/9 controles passes")
     return 1 if echecs else 0
 
 

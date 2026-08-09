@@ -99,7 +99,11 @@ def dette(fiches: list[dict], date: str) -> list[dict]:
         if MOTIF_MODELE in motif or n["statut"] == "RV":
             continue
         out.append({
-            "noeud_id": n["id"],
+            # TF-0042 : `front_matter()` rend des CHAINES. `noeuds_snapshot()` le
+            # corrigeait par un int() explicite, la correction n'avait pas ete
+            # reportee ici. Consequence : snapshot juge non conforme, RIEN d'ecrit,
+            # donc toute etude comportant au moins un noeud hors perimetre bloquee.
+            "noeud_id": int(n["id"]),
             "motif": motif or "non renseigné",
             "a_obtenir": (n.get("source_requise") or "").strip('"') or "à préciser",
             "date_premiere_constatation": date,
