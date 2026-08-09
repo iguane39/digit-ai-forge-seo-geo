@@ -101,7 +101,7 @@ d'instrumentation : il n'y a rien à obtenir pour le lever.
 | `donnees/crawl/crawl-<domaine>-<date>.json` | collecte brute, étape 1 | `crawler.py` |
 | `livrables/snapshot-<domaine>-<date>.json` | état mesuré, conforme au schéma | `livrables.py` |
 | `livrables/actions-<domaine>-<date>.csv` | colonnes de `referentiel/scoring.md` | en-tête généré, contenu humain |
-| `livrables/Digit-AI - Audit - SEO …html` | **le livrable client** | `rapport_html.py` |
+| `livrables/<Projet> - Audit SEO - AAAAMMJJ<i>.html` | **le livrable client** | `rapport_html.py` |
 
 Il n'y a **pas** de rapport Markdown séparé. Le rapport HTML porte les volets ÉTAT et
 STRATÉGIE, la trajectoire et la dette d'instrumentation : produire un jumeau Markdown

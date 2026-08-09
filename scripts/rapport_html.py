@@ -692,10 +692,17 @@ def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
             "aucune action ne le vise encore ; il est retenu comme premier verdict "
             "non conforme de la grille"
         )
+        # CONSTAT 1 du 09/08 : le nom du noeud etait injecte AU MILIEU de la phrase,
+        # dans un <span> passe en bloc pour lui donner sa ligne. Le point qui suivait
+        # restait derriere la balise et ouvrait la ligne suivante : « . La fusion a
+        # operer… ». Chaque element porte desormais une phrase ENTIERE -- le titre en
+        # est une, le propos en est une autre -- au lieu d'un fragment coupe par une
+        # balise. Regle L1(b) du socle.
         verdict.append(
-            "<p><b>Le blocage principal</b> — "
-            f'<span class="bl-n">{esc(n["branche"])} / {esc(n["noeud"])} '
-            f'(nœud {esc(n["id"])})</span>. {md(texte)}</p>'
+            '<p><b>Le blocage principal</b> — <span class="bl-n">'
+            f'{esc(n["branche"])} / {esc(n["noeud"])} (nœud {esc(n["id"])})'
+            "</span></p>"
+            f"<div class=\"bl-t\">{md_bloc(texte)}</div>"
             f'<p class="bl-c">Pourquoi celui-là — {esc(critere)}. '
             "Le classement des constats par gravité se lit au chapitre 2, "
             '<a href="#existant" title="Aller au chapitre 2, L\'existant">'
@@ -1352,11 +1359,27 @@ def construire(d: dict) -> str:
 # ----------------------------------------------------------------- ecriture
 
 
-def nom_fichier(domaine: str, jour: str, indice: str) -> str:
-    # Gabarit D-03. Le conflit prefixe projet / emetteur reste ouvert cote
-    # forge-organization : on applique l'hypothese de travail (prefixe Digit-AI
-    # pour ce qui sort du projet) EN LA DECLARANT comme hypothese.
-    return f"Digit-AI - Audit - SEO {domaine} - {jour}{indice}.html"
+def nom_projet(d: dict) -> str:
+    """Le nom du PROJET audite, tel qu'il figure au cadrage de la mission.
+
+    Q3-bis (decision humaine du 09/08/2026) : dans le nom d'un livrable, le projet
+    prime sur l'emetteur. Un client classe ses documents par affaire, pas par
+    prestataire ; et le meme rapport change de nom selon qui le produit si l'on
+    prefixe par l'emetteur, ce qui casse le chainage entre deux runs.
+    """
+    e = d["etat"]
+    nom = (e.get("projet") or e.get("nom_projet") or e.get("client")
+           or champ_cadrage(d["cadrage"], "Projet")
+           or champ_cadrage(d["cadrage"], "Client")
+           or e.get("domaine") or "Projet")
+    # Le nom entre dans un nom de fichier : on ecarte ce que Windows refuse, sans
+    # translitterer -- « Produit-02 » doit rester lisible.
+    return re.sub(r'[\\/:*?"<>|]+', " ", str(nom)).strip(" .") or "Projet"
+
+
+def nom_fichier(projet: str, jour: str, indice: str) -> str:
+    """Gabarit Q3-bis : `<Projet> - <Objet> - AAAAMMJJ<indice>.html`."""
+    return f"{projet} - Audit SEO - {jour}{indice}.html"
 
 
 def ecrire_rapport(projet: Path, verifier: bool = False) -> int:
@@ -1365,10 +1388,15 @@ def ecrire_rapport(projet: Path, verifier: bool = False) -> int:
 
     livrables = d["base"] / "livrables"
     livrables.mkdir(parents=True, exist_ok=True)
-    domaine = d["etat"].get("domaine") or "site"
+    projet_nom = nom_projet(d)
     jour = dt.date.today().strftime("%Y%m%d")
 
-    existants = sorted(livrables.glob(f"Digit-AI - Audit - SEO {domaine} - *.html"))
+    # Le motif de nommage a change (Q3-bis) : les livrables produits sous l'ancien
+    # motif ne sont NI renommes NI archives par ce script -- l'historique reste tel
+    # qu'il a ete livre au client. Seuls les fichiers du motif courant entrent dans
+    # le cycle d'indices et d'archivage.
+    motif = f"{projet_nom} - Audit SEO - *.html"
+    existants = sorted(livrables.glob(motif))
     if existants and existants[-1].read_text(encoding="utf-8") == html:
         print(f"identique a {existants[-1].name} — aucun nouvel indice")
         if verifier:
@@ -1379,13 +1407,13 @@ def ecrire_rapport(projet: Path, verifier: bool = False) -> int:
     # Les versions deja archivees comptent : sans elles les lettres se reutilisent,
     # et l'archivage suivant entre en collision avec un fichier de meme nom.
     old = livrables / "Old"
-    archives = list(old.glob(f"Digit-AI - Audit - SEO {domaine} - *.html")) if old.is_dir() else []
+    archives = list(old.glob(motif)) if old.is_dir() else []
     pris = {p.stem[-1] for p in existants + archives if p.stem[-9:-1] == jour}
     libres = [c for c in "abcdefghijklmnopqrstuvwxyz" if c not in pris]
     if not libres:
-        print(f"26 versions deja produites le {jour} pour {domaine} — rien d'ecrit.")
+        print(f"26 versions deja produites le {jour} pour {projet_nom} — rien d'ecrit.")
         return 1
-    cible = livrables / nom_fichier(domaine, jour, libres[0])
+    cible = livrables / nom_fichier(projet_nom, jour, libres[0])
 
     # Archivage sans effacement (D-02). Sous Windows, rename echoue si la cible
     # existe : on ne veut jamais ecraser une version archivee en silence.

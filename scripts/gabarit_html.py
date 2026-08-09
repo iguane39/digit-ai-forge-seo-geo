@@ -560,11 +560,18 @@ body{margin:0}
   --head:"Roboto",system-ui,-apple-system,"Segoe UI",sans-serif;
   --sans:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,"Consolas",monospace;
-  /* Deux largeurs, pas une : un livrable dense a besoin de place pour ses tables,
-     une ligne de prose sur 1680px reste illisible. Elargir uniformement
-     remplacerait un defaut par un autre. */
+  /* CONSTAT 2 du 09/08 -- « le texte s'arrete a la moitie de son conteneur ».
+     La doctrine precedente bornait CHAQUE PARAGRAPHE a 75ch. Sur un conteneur de
+     1245px, cela donnait 606px de texte et 639px de vide : exactement le defaut
+     de largeur qu'elle pretendait eviter, une iteration plus tot. Le controle
+     statique de L2 passait au vert -- il lit le CSS du conteneur, pas la boite
+     rendue.
+     Regle retenue : la mesure de lecture est portee par le CONTENEUR. Si les
+     lignes doivent etre courtes, on retrecit la colonne (`.mesure`) et le texte
+     la remplit ; on ne laisse jamais un paragraphe flotter dans une boite deux
+     fois plus large que lui. Mesure au rendu : render_page.py, ratio >= 0,85. */
   --w:min(92vw,1680px);
-  --prose:75ch;
+  --mesure:88ch;
 }
 
 body{background:var(--bg);color:var(--ink);font-family:var(--sans);
@@ -575,8 +582,10 @@ h1{font-size:1.85rem;letter-spacing:-.01em}
 h2{font-size:1.15rem;margin:0 0 .6em;display:flex;align-items:baseline;gap:10px}
 h3{font-size:.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;
   margin:18px 0 8px}
-p{margin:0 0 .7em;max-width:var(--prose)}
-li{max-width:var(--prose)}
+p{margin:0 0 .7em}
+/* Colonne de mesure explicite, a poser sur un CONTENEUR quand un bloc de
+   prose merite des lignes courtes. Jamais sur le paragraphe lui-meme. */
+.mesure{max-width:var(--mesure)}
 a{color:var(--blue)}
 code,.mono{font-family:var(--mono);font-size:.88em}
 /* DEFAUT 6 -- le surlignage coupait « clics » en « clic|s ». La cause n'etait pas
@@ -642,10 +651,9 @@ section.ch>h2{border-left:3px solid var(--accent);padding-left:10px}
    ligne. Deux blocs courts qui evitent au lecteur d'ouvrir pour savoir. */
 .ch-apprend{color:var(--ink);font-size:.88rem;margin:-2px 0 10px;padding:8px 12px;
   background:var(--blue-fill);border-left:3px solid var(--blue-line);
-  border-radius:var(--r-sm);max-width:var(--prose)}
+  border-radius:var(--r-sm)}
 .exemple-lecture{color:var(--muted);font-size:.82rem;margin:0 0 10px;padding:7px 12px;
-  background:var(--bg);border:1px dashed var(--line);border-radius:var(--r-sm);
-  max-width:var(--prose)}
+  background:var(--bg);border:1px dashed var(--line);border-radius:var(--r-sm)}
 .ch-apprend b,.exemple-lecture b{font-family:var(--head);color:var(--ink)}
 
 /* --- baremes : un score sans bareme n'informe pas (L3) --- */
@@ -732,6 +740,8 @@ details.annexe[open]>summary::before{content:"−"}
 .verdict p{margin:0 0 .4em}
 .verdict p:last-child{margin:0}
 .bl-n{display:block;font-weight:600;font-family:var(--head);margin:2px 0 3px}
+.bl-t p{margin:0 0 .5em}
+.bl-t p:last-child{margin:0 0 .6em}
 .bl-c{font-size:.8rem;color:var(--muted)}
 .top3{list-style:none;padding:0;margin:0;display:grid;
   grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px}
@@ -757,7 +767,7 @@ details.annexe[open]>summary::before{content:"−"}
 .chaine>div{display:grid;grid-template-columns:minmax(72px,10%) minmax(0,1fr);gap:9px}
 .chaine dt,.chaine .et{font-family:var(--head);font-size:.64rem;text-transform:uppercase;
   letter-spacing:.05em;color:var(--faint);padding-top:2px}
-.chaine .va{color:var(--ink);max-width:var(--prose)}
+.chaine .va{color:var(--ink);min-width:0}
 .chaine .vide{color:var(--faint);font-style:italic}
 .trace{font-size:.68rem;color:var(--faint);font-family:var(--mono)}
 

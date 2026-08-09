@@ -242,6 +242,14 @@ python scripts/rapport_html.py --projet . --verifier    # 10 contrôles sur le f
 python scripts/oracle_interaction.py <page.html>        # 9 contrôles d'EXÉCUTION
 ```
 
+Nommage du livrable — **décision Q3-bis du 09/08/2026** : dans le nom d'un fichier, le
+**projet prime sur l'émetteur**. Le motif est `<Projet> - <Objet> - AAAAMMJJ<indice>.ext`,
+soit `Produit-02 - Audit SEO - 20260809a.html`. Un client classe ses documents
+par affaire, pas par prestataire ; et préfixer par l'émetteur ferait changer de nom un même
+rapport selon qui le produit, ce qui casse le chaînage entre deux runs. Les livrables déjà
+émis sous l'ancien motif ne sont ni renommés ni archivés : l'historique reste tel qu'il a
+été livré.
+
 Le 9e contrôle est la **lisibilité L1-L11**, déléguée au socle `digit-ai-page-html`
 (`check_html.py --regles L`) : texte tronqué, largeur de lecture, score sans barème lié,
 liste longue non filtrable, surlignage qui casse les mots, sommaire muet ou à ancre morte,
