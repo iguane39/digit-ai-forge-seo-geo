@@ -63,8 +63,15 @@ mon-client/seo/
 ├── .gitignore           garde-fou de confidentialité
 ├── donnees/             exports bruts — gsc/ ga/ crm/ logs/ crawl/
 ├── analyse/             104 dossiers, 87 fiches hydratées
-└── livrables/           audit, roadmap, actions.csv, snapshot, dette, rapport HTML
+└── livrables/           snapshot, actions.csv, rapport HTML client
 ```
+
+**Quatre livrables, pas six.** L'audit, la trajectoire (roadmap) et la dette
+d'instrumentation ne sont **pas** des fichiers séparés : ce sont des blocs du rapport
+HTML, alimentés par le snapshot. Le choix est explicite dans `referentiel/methode.md` —
+un jumeau Markdown créerait une seconde source, qui divergerait au premier correctif.
+Cette ligne annonçait encore les cinq livrables du prompt d'origine (`prompts/`,
+archivé) : le référentiel fait foi, l'archive non.
 
 **Rien ne reste dans la forge.** C'est un invariant testé : le contrôle 8 de
 `validate.py` échoue si une étude s'y installe, et `new_mission.py` refuse de viser la
