@@ -27,6 +27,7 @@ import json
 import sys
 
 from gabarits import (
+    VERSION_MANIFESTE,
     Compteur,
     dossier,
     ecrire,
@@ -59,7 +60,7 @@ CHAMPS_MANIFESTE = (
 
 def construire_manifeste(donnees: dict) -> dict:
     return {
-        "schema_version": "1.0.0",
+        "schema_version": VERSION_MANIFESTE,
         "source": "referentiel/grille-noeuds.md",
         "avertissement": (
             "Genere par scripts/scaffold.py depuis la grille. Ne pas editer a la "

@@ -26,7 +26,7 @@ import json
 import sys
 from pathlib import Path
 
-from gabarits import MOTIF_MODELE, front_matter
+from gabarits import MOTIF_MODELE, front_matter, version_snapshot
 from grille import NB_NOEUDS, RACINE
 from schema import valider
 
@@ -140,7 +140,10 @@ def assembler(projet: Path, verifier: bool = False) -> int:
     socle = json.loads(anciens[-1].read_text(encoding="utf-8")) if anciens else {}
 
     snap = dict(socle)
-    snap.setdefault("schema_version", "1.1.0")
+    # Ecriture, pas setdefault : ce snapshot est produit par CE code, il declare
+    # donc le contrat de ce code. Herite du socle, il aurait garde la version du
+    # run precedent et menti sur ce qu'il contient.
+    snap["schema_version"] = version_snapshot()
     snap.setdefault("run", {})
     snap["run"] = {
         **snap["run"],

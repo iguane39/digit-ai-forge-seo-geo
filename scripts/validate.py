@@ -21,7 +21,13 @@ import re
 import sys
 from pathlib import Path
 
-from gabarits import SOUS_DOSSIERS_DONNEES, front_matter
+from gabarits import (
+    SOUS_DOSSIERS_DONNEES,
+    VERSION_ETAT,
+    VERSION_MANIFESTE,
+    front_matter,
+    version_snapshot,
+)
 from livrables import compteurs, lire_fiches
 from schema import valider
 from grille import GRILLE, NB_BRANCHES, NB_NOEUDS, RACINE, lire
@@ -144,6 +150,43 @@ def controler_fiches(base: Path, noeuds: list[dict]) -> list[str]:
         if fm.get("etat") not in ETATS:
             invalides.append(f"{n['chemin']} : etat invalide {fm.get('etat')!r}")
     return invalides
+
+
+def controler_versions(base: Path) -> tuple[list[str], str]:
+    """Versions de schema declarees par l'etude contre celles que la forge produit.
+
+    TF-0028 : sans ce controle, une etude creee par une forge anterieure gardait un
+    etat.json ou un snapshot au contrat perime, et RIEN ne le signalait -- ni le
+    texte ni le JSON. La derive n'etait visible qu'a l'oeil, en ouvrant trois
+    fichiers a la main.
+    """
+    ecarts: list[str] = []
+    resume: list[str] = []
+
+    attendus: list[tuple[str, Path, str]] = [("etat.json", base / "etat.json", VERSION_ETAT)]
+    snaps = (
+        sorted((base / "livrables").glob("snapshot-*.json"))
+        if (base / "livrables").is_dir()
+        else []
+    )
+    if snaps:
+        attendus.append((snaps[-1].name, snaps[-1], version_snapshot()))
+
+    for nom, chemin, attendu in attendus:
+        if not chemin.exists():
+            ecarts.append(f"{nom} : absent")
+            continue
+        try:
+            declare = json.loads(chemin.read_text(encoding="utf-8")).get("schema_version")
+        except json.JSONDecodeError as e:
+            ecarts.append(f"{nom} : illisible -- {e}")
+            continue
+        resume.append(f"{nom} {declare}")
+        if declare != attendu:
+            ecarts.append(
+                f"{nom} : schema_version {declare!r}, la forge produit {attendu!r}"
+            )
+    return ecarts, " · ".join(resume)
 
 
 # ------------------------------------------------------- referentiel canonique
@@ -276,6 +319,18 @@ def valider_referentiel(json_mode: bool = False) -> int:
         f"{len(vides)} dossier(s) vide(s)" if vides else "arborescence survivra au clone",
     )
 
+    # 11 -- le manifeste declare la version que scaffold.py produit aujourd'hui.
+    # Un manifeste regenere par une forge plus recente et laisse en place porterait
+    # une structure nouvelle sous un numero ancien : indetectable sans ce controle.
+    v_manifeste = manifeste.get("schema_version")
+    r.controle(
+        "11. versions de schema declarees a la source unique",
+        v_manifeste == VERSION_MANIFESTE,
+        f"manifest.json {v_manifeste} · snapshot.schema.json {version_snapshot()}"
+        + ("" if v_manifeste == VERSION_MANIFESTE
+           else f" -- scaffold.py produit {VERSION_MANIFESTE}"),
+    )
+
     return r.bilan()
 
 
@@ -375,6 +430,15 @@ def valider_mission(projet: Path, json_mode: bool = False) -> int:
             f"{snaps[-1].name} — {len(ecarts)} ecart(s)" if ecarts else snaps[-1].name,
             ecarts[:5],
         )
+
+    # 7 -- les contrats sous lesquels l'etude a ete produite sont ceux de la forge
+    ecarts_v, resume_v = controler_versions(base)
+    r.controle(
+        "7. versions de schema de l'etude alignees sur la forge",
+        not ecarts_v,
+        resume_v or "aucun artefact versionne",
+        ecarts_v[:5],
+    )
 
     return r.bilan()
 

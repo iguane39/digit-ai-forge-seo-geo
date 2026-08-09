@@ -14,9 +14,42 @@ import hashlib
 import json
 from pathlib import Path
 
-from grille import NB_NOEUDS
+from grille import NB_NOEUDS, RACINE
 
 SOUS_DOSSIERS_DONNEES = ["gsc", "ga", "crm", "logs", "crawl"]
+
+# ----------------------------------------------------------- versions de schema
+#
+# TF-0028 : trois litteraux de version vivaient dans trois fichiers -- 1.0.0 pour
+# etat.json (ici), 1.0.0 pour manifest.json (scaffold.py), 1.1.0 pour le snapshot
+# (livrables.py). Rien ne disait s'ils differaient par intention ou par oubli, et
+# aucune machine ne pouvait le verifier : une etude ancienne portait une version
+# perimee sans qu'un seul controle s'en apercoive.
+#
+# Ils sont declares ici, et ils restent volontairement DIFFERENTS : ce sont trois
+# contrats distincts (avancement d'une etude, manifeste de la grille, snapshot
+# mesure). Les aligner sur un meme numero ferait croire qu'une modification de
+# l'un vaut modification des autres. Ce qui est mutualise, c'est la declaration --
+# pas la valeur.
+#
+# Regle de bump : toute modification de la STRUCTURE d'un artefact incremente sa
+# version ici, et nulle part ailleurs. validate --mission oppose ces valeurs a ce
+# que l'etude porte reellement.
+
+VERSION_ETAT = "1.0.0"
+VERSION_MANIFESTE = "1.0.0"
+
+SNAPSHOT_SCHEMA = RACINE / "referentiel" / "snapshot.schema.json"
+
+
+def version_snapshot() -> str:
+    """Version du contrat de snapshot, LUE dans le schema.
+
+    Elle etait recopiee en litteral dans livrables.py : deux verites pour un seul
+    contrat, donc une divergence garantie au premier bump du schema.
+    """
+    sch = json.loads(SNAPSHOT_SCHEMA.read_text(encoding="utf-8"))
+    return sch["properties"]["schema_version"]["const"]
 
 LIBELLE_STATUT = {
     "SD": "instrumente sans dependance externe",
@@ -327,7 +360,7 @@ def etat(client: str | None, domaine: str | None, date: str | None,
     return (
         json.dumps(
             {
-                "schema_version": "1.0.0",
+                "schema_version": VERSION_ETAT,
                 "client": client,
                 "domaine": domaine,
                 "date_creation": date,

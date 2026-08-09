@@ -93,7 +93,7 @@ forge-seo/
 ├── seo/                 arborescence canonique générée depuis referentiel/ — lecture seule
 ├── scripts/             grille · gabarits · scaffold · new_mission · validate
 │                        · schema · crawler · livrables · gabarit_html · rapport_html
-│                        · oracle_interaction
+│                        · oracle_interaction · autotest
 ├── assets/vendor/       composant de filtres, copie verbatim tracée
 ├── output/              décisions et veille (livrables de la forge)
 ├── prompts/             archives datées du chantier
@@ -116,9 +116,16 @@ grille, et rien ne le signalerait.
 
 ```bash
 python scripts/scaffold.py                      # régénère seo/ depuis referentiel/
-python scripts/validate.py                      # 10 contrôles, non-zéro si échec
+python scripts/validate.py                      # 11 contrôles, non-zéro si échec
+python scripts/validate.py --json               # même verdict, en objet machine
+python scripts/autotest.py                      # fixtures vertes ET rouges des contrôles
 python scripts/new_mission.py --liste           # registre local des études créées
 ```
+
+`autotest.py` existe parce qu'un contrôle qu'on n'a jamais vu **échouer** n'est pas un
+contrôle : c'est une ligne qui imprime OK. Chaque règle y porte une fixture verte qui
+passe et une fixture rouge qui échoue pour la bonne raison, construites dans un
+répertoire temporaire du système — rien n'est écrit dans la forge ni chez une mission.
 
 `missions.json` est un registre local — client, domaine, chemin, date, version de
 grille. Aucune donnée client. Il n'est pas versionné.
@@ -225,6 +232,7 @@ cérémoniel.
 8. **la forge n'héberge aucune donnée ni livrable client**
 9. le schéma de snapshot suit le compte de la grille
 10. aucun dossier sans fichier ni `.gitkeep`
+11. versions de schéma déclarées à la source unique
 
 `validate.py --mission <projet>` — étude d'un projet :
 
@@ -234,6 +242,16 @@ cérémoniel.
 4. version de grille alignée sur la forge
 5. compteurs d'avancement **conformes aux fiches** — pas seulement à leur somme
 6. snapshot conforme à `snapshot.schema.json`
+7. versions de schéma de l'étude alignées sur la forge
+
+**Versions de schéma — une seule déclaration.** Trois artefacts générés portent un
+`schema_version` : `etat.json`, `seo/manifest.json` et le snapshot. Ils sont déclarés
+dans `gabarits.py` (`VERSION_ETAT`, `VERSION_MANIFESTE`, `version_snapshot()` — cette
+dernière **lue** dans `snapshot.schema.json`, jamais recopiée). Leurs numéros restent
+volontairement différents : ce sont trois contrats distincts, et les aligner ferait
+croire qu'un bump de l'un vaut bump des autres. Ce qui est mutualisé, c'est la
+déclaration, pas la valeur — avant, trois littéraux vivaient dans trois fichiers et
+rien ne disait s'ils divergeaient par intention ou par oubli.
 
 `--json` rend le même verdict sur stdout en objet machine — `verdict`, `controles[]`
 (nom, ok, détail), `echecs[]` — pour qu'un orchestrateur lise le résultat sans parser
