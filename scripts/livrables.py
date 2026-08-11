@@ -301,11 +301,47 @@ def assembler(projet: Path, verifier: bool = False) -> int:
     return 0
 
 
+def fermer_etape(projet: Path, etape: str, note: str | None) -> int:
+    """Ferme `etape` (statut fait) et avance etape_courante — TF-0074.
+
+    C'est le trou laissé par le rapatriement des moteurs (TF-0030) : les compteurs
+    de nœuds étaient recalculés, mais AUCUN script ne touchait etape_courante ni les
+    statuts — etat.json promettait une reprise qu'il ne savait pas décrire.
+    Garde-fous : étape inconnue = erreur ; fermer une étape alors qu'une étape
+    ANTÉRIEURE n'est pas faite = erreur (les étapes se ferment dans l'ordre).
+    """
+    base = projet / "seo"
+    chemin = base / "etat.json"
+    etat = json.loads(chemin.read_text(encoding="utf-8"))
+    ordre = list(etat["etapes"])
+    if etape not in ordre:
+        print(f"étape inconnue : {etape} — attendu : {', '.join(ordre)}")
+        return 2
+    rang = ordre.index(etape)
+    pas_faites = [e for e in ordre[:rang] if etat["etapes"][e]["statut"] != "fait"]
+    if pas_faites:
+        print(f"refus : {', '.join(pas_faites)} non faite(s) — les étapes se ferment dans l'ordre")
+        return 1
+    etat["etapes"][etape]["statut"] = "fait"
+    if note:
+        etat["etapes"][etape]["note"] = note
+    suivantes = [e for e in ordre[rang + 1:] if etat["etapes"][e]["statut"] != "fait"]
+    etat["etape_courante"] = suivantes[0] if suivantes else etape
+    chemin.write_text(json.dumps(etat, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"etat.json : {etape} → fait · étape courante → {etat['etape_courante']}"
+          + (" (étude complète)" if not suivantes else ""))
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="Assemble les livrables mécaniques.")
     p.add_argument("--projet", required=True, help="chemin du projet audité")
     p.add_argument("--verifier", action="store_true", help="état seul, aucune écriture")
+    p.add_argument("--etape", help="ferme cette étape (statut fait) et avance etape_courante")
+    p.add_argument("--note", help="note consignée sur l'étape fermée (avec --etape)")
     args = p.parse_args()
+    if args.etape:
+        return fermer_etape(Path(args.projet), args.etape, args.note)
     return assembler(Path(args.projet), args.verifier)
 
 

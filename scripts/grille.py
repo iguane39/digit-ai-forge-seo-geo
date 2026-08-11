@@ -82,8 +82,15 @@ def version_grille(chemin: Path | None = None) -> str:
 
     Une etude la fige a sa creation dans `.forge-seo.json` : c'est ce qui permet
     de dire si elle a ete produite sur la grille d'aujourd'hui.
+
+    Le hachage NORMALISE les fins de ligne (TF-0072) : la grille est stockee LF
+    mais un poste Windows (autocrlf) la sert en CRLF — hacher les octets bruts
+    faisait dependre l'empreinte du poste, et un clone Linux aurait declare
+    perimees toutes les etudes produites sous Windows. Migration declaree au
+    registre correspondances-grille (jamais un changement silencieux).
     """
-    return hashlib.sha256((chemin or GRILLE).read_bytes()).hexdigest()[:12]
+    octets = (chemin or GRILLE).read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(octets).hexdigest()[:12]
 
 
 def registre_evolutions() -> dict:

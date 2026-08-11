@@ -7,7 +7,17 @@
     "Un identifiant retiré ne se réaffecte JAMAIS à un autre nœud : il sort, il ne se recycle pas.",
     "Les évolutions se chaînent. Une étude qui a sauté plusieurs versions est récupérable tant qu'une suite d'entrées relie sa version à la version courante."
   ],
-  "version_courante": "3d0af44aae9a",
-  "evolutions": [],
+  "version_courante": "4c6e353fc86e",
+  "evolutions": [
+    {
+      "de": "3d0af44aae9a",
+      "vers": "4c6e353fc86e",
+      "date": "2026-08-11",
+      "motif": "TF-0072 : normalisation des fins de ligne dans le hachage de la grille (CRLF->LF avant sha256). La grille elle-meme est INCHANGEE : meme contenu, memes 87 noeuds, memes identifiants — seule la methode de calcul de l empreinte devient independante du poste (l ancienne hachait les octets bruts servis par git, donc CRLF sous Windows et LF sous Linux pour un meme fichier).",
+      "correspondances": {},
+      "identifiants_retires": [],
+      "identifiants_nouveaux": []
+    }
+  ],
   "limite_connue": "Les évolutions antérieures à ce registre — dont le passage de 82 à 87 nœuds — n'y figurent pas : leurs empreintes de grille ne sont pas reconstituables de façon fiable (les fichiers sont stockés en LF et lus en CRLF sur poste Windows, l'empreinte diffère donc de celle qu'une étude de l'époque a figée). Le mécanisme commence ici ; il n'invente pas un passé qu'il ne peut pas prouver."
 }
