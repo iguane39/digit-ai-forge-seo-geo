@@ -1,5 +1,5 @@
 ---
-id: 82
+id: 83
 branche: Croissance
 noeud: Actifs Qui Composent
 volet: STRATEGIE

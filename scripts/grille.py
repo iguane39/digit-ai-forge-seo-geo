@@ -42,7 +42,7 @@ GRILLE = RACINE / "referentiel" / "grille-noeuds.md"
 CORRESPONDANCES = RACINE / "referentiel" / "correspondances-grille.json"
 
 NB_BRANCHES = 17
-NB_NOEUDS = 87
+NB_NOEUDS = 88
 
 STATUTS = {"SD", "EX", "PY", "NM", "RV", "CA"}
 

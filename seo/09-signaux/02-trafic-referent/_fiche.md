@@ -30,11 +30,11 @@ GA (acquisition)
 
 ## Methode
 
-relevé des domaines référents par sessions
+relevé des domaines référents par sessions ; PART IA isolée (décision du 11/08/2026) : segmenter les référents des assistants génératifs (chatgpt.com, perplexity.ai, copilot.microsoft.com, gemini.google.com, claude.ai…) — liste à rafraîchir par vérification web datée au run
 
 ## Critere de verdict
 
-aucun — descriptif
+part IA du trafic référent relevée et datée ; le reste descriptif
 
 ---
 

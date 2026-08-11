@@ -7,7 +7,7 @@
     "Un identifiant retiré ne se réaffecte JAMAIS à un autre nœud : il sort, il ne se recycle pas.",
     "Les évolutions se chaînent. Une étude qui a sauté plusieurs versions est récupérable tant qu'une suite d'entrées relie sa version à la version courante."
   ],
-  "version_courante": "4c6e353fc86e",
+  "version_courante": "a18e7e10aab6",
   "evolutions": [
     {
       "de": "3d0af44aae9a",
@@ -17,6 +17,48 @@
       "correspondances": {},
       "identifiants_retires": [],
       "identifiants_nouveaux": []
+    },
+    {
+      "de": "4c6e353fc86e",
+      "vers": "a18e7e10aab6",
+      "date": "2026-08-11",
+      "motif": "TF-0093 (3 decisions humaines du 11/08) : noeud 58 « Acces & Directives IA » insere en branche GEO — posture par defaut AUTORISE pour les agents IA de recherche (tout blocage = decision consignee), llms.txt ADOPTE par decision (standard emergent, consommation a reverifier datee a chaque run), blocages CDN/WAF controles sur logs. Le noeud 44 (Trafic Referent) est ETENDU a la part IA (referents chatgpt/perplexity/copilot/gemini/claude, liste a rafraichir au run) — id inchange. Renumerotation declaree : 30 identifiants decales.",
+      "correspondances": {
+        "58": "59",
+        "59": "60",
+        "60": "61",
+        "61": "62",
+        "62": "63",
+        "63": "64",
+        "64": "65",
+        "65": "66",
+        "66": "67",
+        "67": "68",
+        "68": "69",
+        "69": "70",
+        "70": "71",
+        "71": "72",
+        "72": "73",
+        "73": "74",
+        "74": "75",
+        "75": "76",
+        "76": "77",
+        "77": "78",
+        "78": "79",
+        "79": "80",
+        "80": "81",
+        "81": "82",
+        "82": "83",
+        "83": "84",
+        "84": "85",
+        "85": "86",
+        "86": "87",
+        "87": "88"
+      },
+      "identifiants_retires": [],
+      "identifiants_nouveaux": [
+        58
+      ]
     }
   ],
   "limite_connue": "Les évolutions antérieures à ce registre — dont le passage de 82 à 87 nœuds — n'y figurent pas : leurs empreintes de grille ne sont pas reconstituables de façon fiable (les fichiers sont stockés en LF et lus en CRLF sur poste Windows, l'empreinte diffère donc de celle qu'une étude de l'époque a figée). Le mécanisme commence ici ; il n'invente pas un passé qu'il ne peut pas prouver."

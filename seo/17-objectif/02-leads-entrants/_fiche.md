@@ -1,12 +1,12 @@
 ---
-id: 84
+id: 85
 branche: Objectif
 noeud: Leads Entrants
 volet: CADRAGE
 statut_instrumentation: CA
 source_requise: "cadrage + nœuds 66 et 46"
 doublon_de: null
-modeles: b2b-lead-gen,e-commerce,local,media-affiliation,saas
+modeles: e-commerce
 # --- rempli pendant la mission ---
 etat: a-faire
 motif_hors_perimetre: null

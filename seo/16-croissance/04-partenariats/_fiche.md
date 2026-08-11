@@ -1,5 +1,5 @@
 ---
-id: 81
+id: 82
 branche: Croissance
 noeud: Partenariats
 volet: STRATEGIE

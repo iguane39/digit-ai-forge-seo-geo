@@ -268,7 +268,7 @@
             "items": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 87
+              "maximum": 88
             },
             "description": "noeuds de la grille que cette page documente"
           },
@@ -286,9 +286,9 @@
     },
     "noeuds": {
       "type": "array",
-      "description": "Les 87 noeuds de la grille. Aucun omis : le tableau en contient exactement 87. Le compte est verifie contre NB_NOEUDS par validate.py — un schema qui reste sur l'ancien compte est une derive silencieuse.",
-      "minItems": 87,
-      "maxItems": 87,
+      "description": "Les 88 noeuds de la grille. Aucun omis : le tableau en contient exactement 88. Le compte est verifie contre NB_NOEUDS par validate.py — un schema qui reste sur l'ancien compte est une derive silencieuse.",
+      "minItems": 88,
+      "maxItems": 88,
       "items": {
         "type": "object",
         "required": [
@@ -303,7 +303,7 @@
           "id": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 87
+            "maximum": 88
           },
           "branche": {
             "type": "string"
@@ -512,7 +512,7 @@
             "items": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 87
+              "maximum": 88
             }
           },
           "gain": {
@@ -671,7 +671,7 @@
           "noeud_id": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 87
+            "maximum": 88
           },
           "motif": {
             "type": "string"
@@ -769,5 +769,5 @@
       }
     }
   },
-  "schema_version_note": "1.1.0 — ajout du bloc pages[] (inventaire par URL)"
+  "schema_version_note": "1.2.0 — grille à 88 noeuds (évolution TF-0093 : noeud 58 Accès et Directives IA, renumérotation déclarée au registre)"
 }

@@ -1,12 +1,12 @@
 ---
-id: 85
+id: 86
 branche: Objectif
 noeud: Ventes
 volet: CADRAGE
 statut_instrumentation: CA
 source_requise: "cadrage + nœuds 8 et 67"
 doublon_de: null
-modeles: e-commerce
+modeles: b2b-lead-gen,e-commerce,local,media-affiliation,saas
 # --- rempli pendant la mission ---
 etat: a-faire
 motif_hors_perimetre: null

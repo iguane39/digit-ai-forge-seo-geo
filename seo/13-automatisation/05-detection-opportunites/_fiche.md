@@ -1,5 +1,5 @@
 ---
-id: 67
+id: 68
 branche: Automatisation
 noeud: Détection Opportunités
 volet: TRANSVERSAL

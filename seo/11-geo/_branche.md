@@ -2,12 +2,12 @@
 rang: 11
 branche: GEO
 volet_dominant: TRANSVERSAL
-nb_noeuds: 5
+nb_noeuds: 6
 ---
 
 # 11. GEO
 
-5 noeuds. Volet dominant : **TRANSVERSAL**.
+6 noeuds. Volet dominant : **TRANSVERSAL**.
 
 | # | Noeud | Volet | Statut | Dossier |
 |---|---|---|---|---|
@@ -16,6 +16,7 @@ nb_noeuds: 5
 | 55 | Citations | TRANSVERSAL | `SD` | `03-citations/` |
 | 56 | Contenu Utile | TRANSVERSAL | `SD` | `04-contenu-utile/` |
 | 57 | Présence Dans Les Réponses IA | TRANSVERSAL | `SD` | `05-presence-dans-les-reponses-ia/` |
+| 58 | Accès & Directives IA | TRANSVERSAL | `SD` | `06-acces-directives-ia/` |
 
 > Referentiel canonique de la forge, en lecture seule. Le travail se fait
 > dans le dossier `seo/analyse/` du projet audite.

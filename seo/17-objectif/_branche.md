@@ -11,11 +11,11 @@ nb_noeuds: 5
 
 | # | Noeud | Volet | Statut | Dossier |
 |---|---|---|---|---|
-| 83 | Trafic Qualifié | CADRAGE | `CA` | `01-trafic-qualifie/` |
-| 84 | Leads Entrants | CADRAGE | `CA` | `02-leads-entrants/` |
-| 85 | Ventes | CADRAGE | `CA` | `03-ventes/` |
-| 86 | Autorité | CADRAGE | `RV` | `04-autorite/` |
-| 87 | Machine SEO | CADRAGE | `SD` | `05-machine-seo/` |
+| 84 | Trafic Qualifié | CADRAGE | `CA` | `01-trafic-qualifie/` |
+| 85 | Leads Entrants | CADRAGE | `CA` | `02-leads-entrants/` |
+| 86 | Ventes | CADRAGE | `CA` | `03-ventes/` |
+| 87 | Autorité | CADRAGE | `RV` | `04-autorite/` |
+| 88 | Machine SEO | CADRAGE | `SD` | `05-machine-seo/` |
 
 > Referentiel canonique de la forge, en lecture seule. Le travail se fait
 > dans le dossier `seo/analyse/` du projet audite.

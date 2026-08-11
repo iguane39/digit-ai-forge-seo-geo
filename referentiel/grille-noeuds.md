@@ -66,7 +66,7 @@ l'audit. La liste est donc volontairement courte, et chaque restriction est just
 
 | Nœuds | Modèles concernés | Justification |
 |---|---|---|
-| 58-62 (branche `Local`) | `local` | fiche d'établissement, NAP, annuaires et zones n'ont pas d'objet hors présence physique |
+| 59-63 (branche `Local`) | `local` | fiche d'établissement, NAP, annuaires et zones n'ont pas d'objet hors présence physique |
 | 25 `Contenu Programmatique` | `e-commerce` · `media-affiliation` · `local` | la génération de pages à l'échelle suppose un catalogue, un corpus ou des zones |
 | 48-52 (branche `Discover`) | `media-affiliation` · `e-commerce` | surface de découverte éditoriale ; marginale en B2B et SaaS |
 | 72 `Revenu Par Page` | `e-commerce` · `media-affiliation` | le revenu s'attribue à une page quand la page vend ; ailleurs il s'attribue au lead |
@@ -180,7 +180,7 @@ apparaître. Elle est isolée sur une seule ligne pour être révisée sans touc
 | # | Nœud | Volet | Question d'audit | Source requise | Méthode | Critère de verdict | Statut |
 |---|---|---|---|---|---|---|---|
 | 43 | CTR SERP | ÉTAT | Le taux de clic en SERP est-il conforme à l'attendu par position ? | GSC (impressions, clics, position) | comparer le CTR observé au CTR médian du site pour la même tranche de position | écart négatif > 30 % vs médiane du site = titre/meta à retravailler | `EX` — **`NM` sinon : non observable de l'extérieur** (garde-fou 2) |
-| 44 | Trafic Référent | ÉTAT | Quelles sources externes envoient du trafic ? | GA (acquisition) | relevé des domaines référents par sessions | aucun — descriptif | `EX` — `NM` sinon |
+| 44 | Trafic Référent | ÉTAT | Quelles sources externes envoient du trafic ? | GA (acquisition) | relevé des domaines référents par sessions ; PART IA isolée (décision du 11/08/2026) : segmenter les référents des assistants génératifs (chatgpt.com, perplexity.ai, copilot.microsoft.com, gemini.google.com, claude.ai…) — liste à rafraîchir par vérification web datée au run | part IA du trafic référent relevée et datée ; le reste descriptif | `EX` — `NM` sinon |
 | 45 | Trafic Social | ÉTAT | Le contenu génère-t-il du trafic depuis les réseaux ? | GA (acquisition) | part des sessions d'origine sociale | aucun — descriptif. **La présence sociale est observable ; le trafic qu'elle génère ne l'est pas** | `EX` — `NM` sinon |
 | 46 | Comportement Post Clic | ÉTAT | Que font les visiteurs organiques après l'arrivée ? | GA (engagement, parcours) | taux d'engagement, pages par session et conversions sur le segment organique | à calibrer sur la médiane du site, jamais sur un standard sectoriel emprunté | `EX` — `NM` sinon |
 | 47 | Retours Utilisateurs | ÉTAT | Quels signaux qualitatifs publics existent sur le site ou la marque ? | avis publics, commentaires, forums | collecter et classer les retours par thème récurrent (produit, service, contenu, expérience) | ≥ 3 thèmes récurrents identifiés, avec verbatims cités | `SD` |
@@ -209,7 +209,8 @@ apparaître. Elle est isolée sur une seule ligne pour être révisée sans touc
 | 54 | Marque | TRANSVERSAL | La marque est-elle identifiable sans ambiguïté ? | recherche web | rechercher le nom de marque seul ; détecter les homonymies et les entités concurrentes qui captent la requête | le site occupe la première position sur son nom de marque, sans confusion d'entité | `SD` |
 | 55 | Citations | TRANSVERSAL | Le site est-il cité comme source sur ses sujets par des tiers ? | recherche web | rechercher les sujets propriétaires du site et relever qui est cité comme source | ≥ 3 citations comme source sur des sujets du site | `SD` partiel — exhaustivité `PY` |
 | 56 | Contenu Utile | TRANSVERSAL | Le contenu apporte-t-il une information non substituable ? | crawl + recherche web | échantillon de 10 pages : chercher au moins un élément introuvable ailleurs (donnée propre, expérience vécue, méthode, chiffre original) | ≥ 60 % des pages de l'échantillon portent un élément non substituable | `SD` |
-| 57 | Présence Dans Les Réponses IA | TRANSVERSAL | La marque ou le site apparaît-il dans les réponses des moteurs génératifs sur ses requêtes cibles ? | test manuel documenté + vérification web datée du protocole | **protocole à établir au run** : les surfaces et leur comportement changent. Tester N requêtes cibles, consigner la formulation exacte, la date, la surface interrogée, et si le site est cité | taux de citation sur les requêtes cibles, relevé et daté | `SD` — **résultat non reproductible et non stable : le déclarer explicitement, ne jamais présenter le taux comme une métrique de suivi fiable** |
+| 57 | Présence Dans Les Réponses IA | TRANSVERSAL | La marque ou le site apparaît-il dans les réponses des moteurs génératifs sur ses requêtes cibles ? | test manuel documenté + vérification web datée du protocole | **protocole à établir au run** : les surfaces et leur comportement changent. Tester N requêtes cibles, consigner la formulation exacte, la date, la surface interrogée, et si le site est cité | taux de citation sur les requêtes cibles, relevé et daté | `SD` — **résultat non reproductible et non stable : le déclarer explicitement, ne jamais présenter le taux comme une métrique de suivi fiable** |
+| 58 | Accès & Directives IA | TRANSVERSAL | Les agents des moteurs génératifs peuvent-ils accéder au site, et les directives IA sont-elles posées ? | crawl (robots.txt, llms.txt, en-têtes) + logs si fournis | vérifier robots.txt pour chaque agent IA de recherche (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended…) — posture par défaut : AUTORISÉ (décision du 11/08/2026), tout blocage est une décision consignée et datée du propriétaire ; distinguer agents d'entraînement et agents de recherche ; vérifier la présence de llms.txt et sa cohérence avec le sitemap (standard émergent ADOPTÉ par décision du 11/08/2026 — consommation par les moteurs à réévaluer par vérification web datée à chaque run) ; contrôler qu'aucun blocage CDN/WAF ne frappe ces UA quand les logs le montrent | aucun agent IA de recherche interdit sans décision consignée · llms.txt présent et cohérent avec le sitemap · zéro blocage CDN/WAF constaté sur les UA IA (si logs fournis) | `SD` partiel — logs `EX` |
 
 ---
 
@@ -221,11 +222,11 @@ est un résultat et non une dette d'instrumentation.*
 
 | # | Nœud | Volet | Question d'audit | Source requise | Méthode | Critère de verdict | Statut |
 |---|---|---|---|---|---|---|---|
-| 58 | Fiche D'Établissement | TRANSVERSAL | La fiche d'établissement existe-t-elle, est-elle complète et revendiquée ? | recherche web sur la marque + le lieu | relever la présence de la fiche, son exhaustivité (catégorie principale, horaires, description, photos, attributs) et l'existence d'un propriétaire déclaré | fiche revendiquée · catégorie principale exacte · horaires à jour · ≥ 5 photos | `SD` |
-| 59 | Cohérence NAP | TRANSVERSAL | Le nom, l'adresse et le téléphone sont-ils identiques partout ? | crawl du site + recherche web | comparer le triplet du site (mentions légales, contact, pied de page, balisage) à celui de la fiche d'établissement et des annuaires trouvés | 0 divergence sur les 3 champs, balisage d'établissement présent et cohérent | `SD` |
-| 60 | Citations Et Annuaires | TRANSVERSAL | La présence sur les annuaires locaux et sectoriels est-elle établie ? | recherche web | inventorier les annuaires du secteur et de la zone ; relever présence, exactitude et fraîcheur de chaque fiche | présence sur ≥ 60 % des annuaires de référence du secteur, sans donnée périmée | `SD` |
-| 61 | Avis Locaux | TRANSVERSAL | Quel est le volume, la note et la dynamique des avis, et sont-ils traités ? | avis publics | relever volume, note moyenne, rythme d'acquisition sur 12 mois et taux de réponse du gestionnaire | rythme régulier · taux de réponse ≥ 50 % · aucune période de 3 mois sans avis | `SD` |
-| 62 | Pages Par Zone | TRANSVERSAL | Existe-t-il une page par zone desservie, et portent-elles un contenu propre ? | crawl | repérer les pages géolocalisées ; mesurer la part de contenu unique hors gabarit et la présence d'éléments propres à la zone | 1 page par zone à enjeu · ≥ 40 % de contenu unique · 0 duplication entre zones | `SD` |
+| 59 | Fiche D'Établissement | TRANSVERSAL | La fiche d'établissement existe-t-elle, est-elle complète et revendiquée ? | recherche web sur la marque + le lieu | relever la présence de la fiche, son exhaustivité (catégorie principale, horaires, description, photos, attributs) et l'existence d'un propriétaire déclaré | fiche revendiquée · catégorie principale exacte · horaires à jour · ≥ 5 photos | `SD` |
+| 60 | Cohérence NAP | TRANSVERSAL | Le nom, l'adresse et le téléphone sont-ils identiques partout ? | crawl du site + recherche web | comparer le triplet du site (mentions légales, contact, pied de page, balisage) à celui de la fiche d'établissement et des annuaires trouvés | 0 divergence sur les 3 champs, balisage d'établissement présent et cohérent | `SD` |
+| 61 | Citations Et Annuaires | TRANSVERSAL | La présence sur les annuaires locaux et sectoriels est-elle établie ? | recherche web | inventorier les annuaires du secteur et de la zone ; relever présence, exactitude et fraîcheur de chaque fiche | présence sur ≥ 60 % des annuaires de référence du secteur, sans donnée périmée | `SD` |
+| 62 | Avis Locaux | TRANSVERSAL | Quel est le volume, la note et la dynamique des avis, et sont-ils traités ? | avis publics | relever volume, note moyenne, rythme d'acquisition sur 12 mois et taux de réponse du gestionnaire | rythme régulier · taux de réponse ≥ 50 % · aucune période de 3 mois sans avis | `SD` |
+| 63 | Pages Par Zone | TRANSVERSAL | Existe-t-il une page par zone desservie, et portent-elles un contenu propre ? | crawl | repérer les pages géolocalisées ; mesurer la part de contenu unique hors gabarit et la présence d'éléments propres à la zone | 1 page par zone à enjeu · ≥ 40 % de contenu unique · 0 duplication entre zones | `SD` |
 
 ---
 
@@ -235,11 +236,11 @@ est un résultat et non une dette d'instrumentation.*
 
 | # | Nœud | Volet | Question d'audit | Source requise | Méthode | Critère de verdict | Statut |
 |---|---|---|---|---|---|---|---|
-| 63 | Agents IA | TRANSVERSAL | Quelles tâches SEO sont déjà agentifiées chez le client ? | déclaratif client | inventaire des automatisations existantes et de leur périmètre | aucun — sert à calibrer le régime d'automatisation des actions | `SD` (déclaratif, à étiqueter `[T2]`) |
-| 64 | Audits Massifs | TRANSVERSAL | La capacité d'auditer N pages en série existe-t-elle ? | déclaratif + observation de l'outillage | vérifier l'existence d'un crawler, d'un accès aux données, d'un format de sortie exploitable | capacité présente ou absente, avec le coût de sa mise en place | `SD` |
-| 65 | Monitoring | TRANSVERSAL | Existe-t-il une surveillance des positions, de l'indexation et des erreurs ? | déclaratif | inventaire des alertes en place et de leur destinataire | alerte active sur : chute d'indexation, erreurs 5xx, chute de trafic organique | `SD` |
-| 66 | Génération De Pages | TRANSVERSAL | Des pages sont-elles générées à l'échelle, et avec quel contrôle qualité ? | crawl (nœud 25) + déclaratif | relier les motifs d'URL détectés au processus de génération déclaré ; identifier le point de contrôle qualité | tout gabarit génératif a un contrôle qualité nommé avant publication | `SD` |
-| 67 | Détection Opportunités | TRANSVERSAL | Existe-t-il un mécanisme de détection continue d'opportunités ? | déclaratif | vérifier l'existence d'une boucle : source de données → règle de détection → destinataire | mécanisme présent ou absent ; s'il est absent, candidat prioritaire au quadrant `IA + gratuit` | `SD` |
+| 64 | Agents IA | TRANSVERSAL | Quelles tâches SEO sont déjà agentifiées chez le client ? | déclaratif client | inventaire des automatisations existantes et de leur périmètre | aucun — sert à calibrer le régime d'automatisation des actions | `SD` (déclaratif, à étiqueter `[T2]`) |
+| 65 | Audits Massifs | TRANSVERSAL | La capacité d'auditer N pages en série existe-t-elle ? | déclaratif + observation de l'outillage | vérifier l'existence d'un crawler, d'un accès aux données, d'un format de sortie exploitable | capacité présente ou absente, avec le coût de sa mise en place | `SD` |
+| 66 | Monitoring | TRANSVERSAL | Existe-t-il une surveillance des positions, de l'indexation et des erreurs ? | déclaratif | inventaire des alertes en place et de leur destinataire | alerte active sur : chute d'indexation, erreurs 5xx, chute de trafic organique | `SD` |
+| 67 | Génération De Pages | TRANSVERSAL | Des pages sont-elles générées à l'échelle, et avec quel contrôle qualité ? | crawl (nœud 25) + déclaratif | relier les motifs d'URL détectés au processus de génération déclaré ; identifier le point de contrôle qualité | tout gabarit génératif a un contrôle qualité nommé avant publication | `SD` |
+| 68 | Détection Opportunités | TRANSVERSAL | Existe-t-il un mécanisme de détection continue d'opportunités ? | déclaratif | vérifier l'existence d'une boucle : source de données → règle de détection → destinataire | mécanisme présent ou absent ; s'il est absent, candidat prioritaire au quadrant `IA + gratuit` | `SD` |
 
 ---
 
@@ -247,11 +248,11 @@ est un résultat et non une dette d'instrumentation.*
 
 | # | Nœud | Volet | Question d'audit | Source requise | Méthode | Critère de verdict | Statut |
 |---|---|---|---|---|---|---|---|
-| 68 | Impressions | TRANSVERSAL | Quel volume d'impressions et quelle tendance ? | GSC | relevé 12 mois glissants, tendance et saisonnalité | aucun — baseline et KPI cible | `EX` — **`NM` sinon** (garde-fou 2) |
-| 69 | Clics | TRANSVERSAL | Quel volume de clics organiques et quelle tendance ? | GSC | relevé 12 mois glissants | aucun — baseline et KPI cible | `EX` — **`NM` sinon** (garde-fou 2) |
-| 70 | Positions | TRANSVERSAL | Quelles positions moyennes sur les requêtes cibles ? | GSC | position moyenne par requête cible, avec le volume d'impressions associé | aucun — baseline et KPI cible | `EX` — **`NM` sinon** (garde-fou 2) |
-| 71 | Leads | TRANSVERSAL | Combien de leads le canal organique génère-t-il ? | GA (conversions) + CRM | relevé des conversions attribuées à l'organique, avec le modèle d'attribution déclaré | aucun — baseline et KPI cible | `NM` — motif : exige GA **et** définition de conversion validée ; devient `EX` si fournis |
-| 72 | Revenu Par Page | TRANSVERSAL | Quelles pages génèrent du revenu, et combien ? | GA e-commerce ou CRM rapproché des pages d'entrée | croiser pages d'entrée organiques et revenu attribué | aucun — sert à pondérer le gain des actions en € | `NM` — motif : exige un back-office e-commerce ou un CRM rapprochable |
+| 69 | Impressions | TRANSVERSAL | Quel volume d'impressions et quelle tendance ? | GSC | relevé 12 mois glissants, tendance et saisonnalité | aucun — baseline et KPI cible | `EX` — **`NM` sinon** (garde-fou 2) |
+| 70 | Clics | TRANSVERSAL | Quel volume de clics organiques et quelle tendance ? | GSC | relevé 12 mois glissants | aucun — baseline et KPI cible | `EX` — **`NM` sinon** (garde-fou 2) |
+| 71 | Positions | TRANSVERSAL | Quelles positions moyennes sur les requêtes cibles ? | GSC | position moyenne par requête cible, avec le volume d'impressions associé | aucun — baseline et KPI cible | `EX` — **`NM` sinon** (garde-fou 2) |
+| 72 | Leads | TRANSVERSAL | Combien de leads le canal organique génère-t-il ? | GA (conversions) + CRM | relevé des conversions attribuées à l'organique, avec le modèle d'attribution déclaré | aucun — baseline et KPI cible | `NM` — motif : exige GA **et** définition de conversion validée ; devient `EX` si fournis |
+| 73 | Revenu Par Page | TRANSVERSAL | Quelles pages génèrent du revenu, et combien ? | GA e-commerce ou CRM rapproché des pages d'entrée | croiser pages d'entrée organiques et revenu attribué | aucun — sert à pondérer le gain des actions en € | `NM` — motif : exige un back-office e-commerce ou un CRM rapprochable |
 
 ---
 
@@ -259,11 +260,11 @@ est un résultat et non une dette d'instrumentation.*
 
 | # | Nœud | Volet | Question d'audit | Source requise | Méthode | Critère de verdict | Statut |
 |---|---|---|---|---|---|---|---|
-| 73 | Contenus À Renforcer | TRANSVERSAL | Quelles pages sont proches du seuil de performance ? | GSC (positions 5-20 à fort volume d'impressions) | trier par (impressions × gain de CTR attendu si passage en top 3) ; croiser avec la complétude du contenu | liste des 10 pages au plus fort potentiel de gain à effort faible | `EX` — dégradation `SD` : pages fines ou incomplètes détectables au crawl, sans hiérarchisation par potentiel |
-| 74 | Pages À Fusionner | TRANSVERSAL | Quelles pages se cannibalisent ? | crawl (similarité) ; GSC pour confirmation | détecter les pages de sujet proche visant la même intention ; confirmer par GSC (même requête servie par deux URLs) | 0 paire de pages en cannibalisation confirmée | `SD` partiel — `EX` pour la confirmation |
-| 75 | Pages À Supprimer | TRANSVERSAL | Quelles pages n'apportent rien (0 trafic, 0 lien, 0 conversion) ? | GSC + GA ; à défaut signaux structurels | croiser absence de clics sur 12 mois, absence de liens entrants et absence de conversion | candidates listées avec, pour chacune, l'arbitrage suppression / fusion / amélioration — **jamais de suppression recommandée sur la seule absence de trafic** | `EX` — dégradation `SD` : pages orphelines, dupliquées ou expirées détectables au crawl |
-| 76 | Tests SEO | TRANSVERSAL | Le site a-t-il la capacité de tester une hypothèse SEO ? | déclaratif + observation | vérifier l'existence de groupes de pages comparables et d'un moyen de mesurer l'écart | capacité présente ou absente, avec le prérequis manquant nommé | `SD` |
-| 77 | Boucles D'Amélioration | TRANSVERSAL | Existe-t-il un cycle mesurer → agir → remesurer documenté ? | déclaratif + historique des runs | vérifier l'existence d'un état de référence antérieur et d'une trace des actions passées | **c'est le nœud qu'instrumente le couple `snapshot` / `diff` de ce skill** : au premier run, le constat est « boucle absente, snapshot initial posé » | `SD` |
+| 74 | Contenus À Renforcer | TRANSVERSAL | Quelles pages sont proches du seuil de performance ? | GSC (positions 5-20 à fort volume d'impressions) | trier par (impressions × gain de CTR attendu si passage en top 3) ; croiser avec la complétude du contenu | liste des 10 pages au plus fort potentiel de gain à effort faible | `EX` — dégradation `SD` : pages fines ou incomplètes détectables au crawl, sans hiérarchisation par potentiel |
+| 75 | Pages À Fusionner | TRANSVERSAL | Quelles pages se cannibalisent ? | crawl (similarité) ; GSC pour confirmation | détecter les pages de sujet proche visant la même intention ; confirmer par GSC (même requête servie par deux URLs) | 0 paire de pages en cannibalisation confirmée | `SD` partiel — `EX` pour la confirmation |
+| 76 | Pages À Supprimer | TRANSVERSAL | Quelles pages n'apportent rien (0 trafic, 0 lien, 0 conversion) ? | GSC + GA ; à défaut signaux structurels | croiser absence de clics sur 12 mois, absence de liens entrants et absence de conversion | candidates listées avec, pour chacune, l'arbitrage suppression / fusion / amélioration — **jamais de suppression recommandée sur la seule absence de trafic** | `EX` — dégradation `SD` : pages orphelines, dupliquées ou expirées détectables au crawl |
+| 77 | Tests SEO | TRANSVERSAL | Le site a-t-il la capacité de tester une hypothèse SEO ? | déclaratif + observation | vérifier l'existence de groupes de pages comparables et d'un moyen de mesurer l'écart | capacité présente ou absente, avec le prérequis manquant nommé | `SD` |
+| 78 | Boucles D'Amélioration | TRANSVERSAL | Existe-t-il un cycle mesurer → agir → remesurer documenté ? | déclaratif + historique des runs | vérifier l'existence d'un état de référence antérieur et d'une trace des actions passées | **c'est le nœud qu'instrumente le couple `snapshot` / `diff` de ce skill** : au premier run, le constat est « boucle absente, snapshot initial posé » | `SD` |
 
 ---
 
@@ -271,11 +272,11 @@ est un résultat et non une dette d'instrumentation.*
 
 | # | Nœud | Volet | Question d'audit | Source requise | Méthode | Critère de verdict | Statut |
 |---|---|---|---|---|---|---|---|
-| 78 | Nouveaux Silos | STRATÉGIE | Quels territoires thématiques adjacents sont accessibles ? | nœuds 1, 4, 5, 20 + cadrage | identifier les thèmes adjacents où la SERP est attaquable et où le site a une légitimité démontrable | ≥ 2 silos candidats, chacun avec sa légitimité et sa SERP qualifiée | `SD` |
-| 79 | Nouveaux Sites | STRATÉGIE | Un site distinct est-il justifié, ou est-ce une fuite devant la difficulté ? | cadrage + nœuds 1 et 11 | poser la question à l'envers : qu'est-ce qui empêche de le faire sur le domaine existant ? | recommandé **uniquement** si le domaine existant est structurellement inadapté (marque, langue, modèle) — jamais pour contourner un problème d'autorité | `SD` |
-| 80 | Nouveaux Médias | STRATÉGIE | D'autres surfaces méritent-elles d'être investies (vidéo, podcast, place de marché) ? | cadrage + SERP | vérifier si les SERP cibles affichent des formats que le site ne produit pas | investissement justifié seulement si la SERP cible affiche déjà ce format | `SD` |
-| 81 | Partenariats | STRATÉGIE | Quels partenaires peuvent apporter autorité et audience ? | nœuds 41, 42, 51 + cadrage | identifier les acteurs déjà en relation ou déjà citants, et les opportunités de réciprocité | ≥ 5 partenaires nominatifs, avec l'angle d'approche | `SD` |
-| 82 | Actifs Qui Composent | STRATÉGIE | Quels actifs produisent un rendement cumulatif plutôt que ponctuel ? | ensemble de l'audit | distinguer les actions à effet unique (correction technique) des actifs à effet cumulé (pilier qui capte la traîne, outil gratuit qui attire des liens, données propriétaires) | ≥ 3 actifs cumulatifs identifiés dans la trajectoire | `SD` |
+| 79 | Nouveaux Silos | STRATÉGIE | Quels territoires thématiques adjacents sont accessibles ? | nœuds 1, 4, 5, 20 + cadrage | identifier les thèmes adjacents où la SERP est attaquable et où le site a une légitimité démontrable | ≥ 2 silos candidats, chacun avec sa légitimité et sa SERP qualifiée | `SD` |
+| 80 | Nouveaux Sites | STRATÉGIE | Un site distinct est-il justifié, ou est-ce une fuite devant la difficulté ? | cadrage + nœuds 1 et 11 | poser la question à l'envers : qu'est-ce qui empêche de le faire sur le domaine existant ? | recommandé **uniquement** si le domaine existant est structurellement inadapté (marque, langue, modèle) — jamais pour contourner un problème d'autorité | `SD` |
+| 81 | Nouveaux Médias | STRATÉGIE | D'autres surfaces méritent-elles d'être investies (vidéo, podcast, place de marché) ? | cadrage + SERP | vérifier si les SERP cibles affichent des formats que le site ne produit pas | investissement justifié seulement si la SERP cible affiche déjà ce format | `SD` |
+| 82 | Partenariats | STRATÉGIE | Quels partenaires peuvent apporter autorité et audience ? | nœuds 41, 42, 51 + cadrage | identifier les acteurs déjà en relation ou déjà citants, et les opportunités de réciprocité | ≥ 5 partenaires nominatifs, avec l'angle d'approche | `SD` |
+| 83 | Actifs Qui Composent | STRATÉGIE | Quels actifs produisent un rendement cumulatif plutôt que ponctuel ? | ensemble de l'audit | distinguer les actions à effet unique (correction technique) des actifs à effet cumulé (pilier qui capte la traîne, outil gratuit qui attire des liens, données propriétaires) | ≥ 3 actifs cumulatifs identifiés dans la trajectoire | `SD` |
 
 ---
 
@@ -285,11 +286,11 @@ est un résultat et non une dette d'instrumentation.*
 
 | # | Nœud | Volet | Question d'audit | Source requise | Méthode | Critère de verdict | Statut |
 |---|---|---|---|---|---|---|---|
-| 83 | Trafic Qualifié | CADRAGE | Quelle cible de trafic à intention à 12 et 24 mois ? | cadrage client + baseline | dériver de la baseline et du potentiel des requêtes cibles ; calcul visible, fourchette obligatoire | cible chiffrée, étiquetée `[T4]`, avec sa sensibilité | `CA` |
-| 84 | Leads Entrants | CADRAGE | Quelle cible de leads organiques ? | cadrage + nœuds 66 et 46 | appliquer le taux de conversion observé au trafic cible ; **si le taux n'est pas mesuré, la cible est non calculable et doit être déclarée telle** | cible chiffrée ou déclaration explicite de non-calculabilité | `CA` |
-| 85 | Ventes | CADRAGE | Quelle cible de chiffre d'affaires organique ? | cadrage + nœuds 8 et 67 | appliquer la valeur client aux leads cibles | cible chiffrée ou déclaration explicite de non-calculabilité | `CA` |
-| 86 | Autorité | CADRAGE | *(doublon du schéma)* | — | **renvoi vers la branche `Autorité`, nœuds 38-42** | ne pas auditer ici | `RV` |
-| 87 | Machine SEO | CADRAGE | Le dispositif est-il autonome et répétable, ou dépend-il d'une impulsion externe ? | synthèse des branches `Automatisation`, `Mesure`, `Optimisation` | scorer la maturité sur 5 : 1 = actions ponctuelles sans mesure · 3 = mesure en place, actions réactives · 5 = détection, action et remesure outillées et cadencées | score de maturité 1-5, justifié par les nœuds 58-62, 63-67 et 68-72 | `SD` |
+| 84 | Trafic Qualifié | CADRAGE | Quelle cible de trafic à intention à 12 et 24 mois ? | cadrage client + baseline | dériver de la baseline et du potentiel des requêtes cibles ; calcul visible, fourchette obligatoire | cible chiffrée, étiquetée `[T4]`, avec sa sensibilité | `CA` |
+| 85 | Leads Entrants | CADRAGE | Quelle cible de leads organiques ? | cadrage + nœuds 66 et 46 | appliquer le taux de conversion observé au trafic cible ; **si le taux n'est pas mesuré, la cible est non calculable et doit être déclarée telle** | cible chiffrée ou déclaration explicite de non-calculabilité | `CA` |
+| 86 | Ventes | CADRAGE | Quelle cible de chiffre d'affaires organique ? | cadrage + nœuds 8 et 67 | appliquer la valeur client aux leads cibles | cible chiffrée ou déclaration explicite de non-calculabilité | `CA` |
+| 87 | Autorité | CADRAGE | *(doublon du schéma)* | — | **renvoi vers la branche `Autorité`, nœuds 38-42** | ne pas auditer ici | `RV` |
+| 88 | Machine SEO | CADRAGE | Le dispositif est-il autonome et répétable, ou dépend-il d'une impulsion externe ? | synthèse des branches `Automatisation`, `Mesure`, `Optimisation` | scorer la maturité sur 5 : 1 = actions ponctuelles sans mesure · 3 = mesure en place, actions réactives · 5 = détection, action et remesure outillées et cadencées | score de maturité 1-5, justifié par les nœuds 58-62, 64-68 et 69-73 | `SD` |
 
 ---
 
@@ -307,13 +308,13 @@ est un résultat et non une dette d'instrumentation.*
 | Autorité | 5 | 38-42 |
 | Signaux | 5 | 43-47 |
 | Discover | 5 | 48-52 |
-| GEO | 5 | 53-57 |
+| GEO | 6 | 53-58 |
 | **Local** | **5** | **58-62** |
 | Automatisation | 5 | 63-67 |
 | Mesure | 5 | 68-72 |
-| Optimisation | 5 | 73-77 |
-| Croissance | 5 | 78-82 |
-| Objectif | 5 | 83-87 |
+| Optimisation | 5 | 74-78 |
+| Croissance | 5 | 79-83 |
+| Objectif | 5 | 84-88 |
 | **Total** | **87** | — |
 
 ### Par statut

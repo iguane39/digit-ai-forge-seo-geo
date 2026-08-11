@@ -4,8 +4,8 @@
   "avertissement": "Genere par scripts/scaffold.py depuis la grille. Ne pas editer a la main : validate.py detecte toute derive. Le fichier input/Schema SEO.MD n'est parse par aucun script (indentation cassee du bloc Objectif -- voir scripts/grille.py).",
   "comptes": {
     "branches": 17,
-    "noeuds": 87,
-    "dossiers": 104
+    "noeuds": 88,
+    "dossiers": 105
   },
   "branches": [
     {
@@ -150,7 +150,8 @@
         54,
         55,
         56,
-        57
+        57,
+        58
       ]
     },
     {
@@ -159,11 +160,11 @@
       "slug": "12-local",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        58,
         59,
         60,
         61,
-        62
+        62,
+        63
       ]
     },
     {
@@ -172,11 +173,11 @@
       "slug": "13-automatisation",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        63,
         64,
         65,
         66,
-        67
+        67,
+        68
       ]
     },
     {
@@ -185,11 +186,11 @@
       "slug": "14-mesure",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        68,
         69,
         70,
         71,
-        72
+        72,
+        73
       ]
     },
     {
@@ -198,11 +199,11 @@
       "slug": "15-optimisation",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        73,
         74,
         75,
         76,
-        77
+        77,
+        78
       ]
     },
     {
@@ -211,11 +212,11 @@
       "slug": "16-croissance",
       "volet_dominant": "STRATEGIE",
       "noeuds": [
-        78,
         79,
         80,
         81,
-        82
+        82,
+        83
       ]
     },
     {
@@ -224,11 +225,11 @@
       "slug": "17-objectif",
       "volet_dominant": "CADRAGE",
       "noeuds": [
-        83,
         84,
         85,
         86,
-        87
+        87,
+        88
       ]
     }
   ],
@@ -1188,8 +1189,8 @@
       "statut": "EX",
       "question_audit": "Quelles sources externes envoient du trafic ?",
       "source_requise": "GA (acquisition)",
-      "methode": "relevé des domaines référents par sessions",
-      "critere_verdict": "aucun — descriptif",
+      "methode": "relevé des domaines référents par sessions ; PART IA isolée (décision du 11/08/2026) : segmenter les référents des assistants génératifs (chatgpt.com, perplexity.ai, copilot.microsoft.com, gemini.google.com, claude.ai…) — liste à rafraîchir par vérification web datée au run",
+      "critere_verdict": "part IA du trafic référent relevée et datée ; le reste descriptif",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1472,6 +1473,28 @@
     },
     {
       "id": 58,
+      "branche": "GEO",
+      "slug_branche": "11-geo",
+      "noeud": "Accès & Directives IA",
+      "slug_noeud": "06-acces-directives-ia",
+      "chemin": "11-geo/06-acces-directives-ia",
+      "volet": "TRANSVERSAL",
+      "statut": "SD",
+      "question_audit": "Les agents des moteurs génératifs peuvent-ils accéder au site, et les directives IA sont-elles posées ?",
+      "source_requise": "crawl (robots.txt, llms.txt, en-têtes) + logs si fournis",
+      "methode": "vérifier robots.txt pour chaque agent IA de recherche (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended…) — posture par défaut : AUTORISÉ (décision du 11/08/2026), tout blocage est une décision consignée et datée du propriétaire ; distinguer agents d'entraînement et agents de recherche ; vérifier la présence de llms.txt et sa cohérence avec le sitemap (standard émergent ADOPTÉ par décision du 11/08/2026 — consommation par les moteurs à réévaluer par vérification web datée à chaque run) ; contrôler qu'aucun blocage CDN/WAF ne frappe ces UA quand les logs le montrent",
+      "critere_verdict": "aucun agent IA de recherche interdit sans décision consignée · llms.txt présent et cohérent avec le sitemap · zéro blocage CDN/WAF constaté sur les UA IA (si logs fournis)",
+      "doublon_de": null,
+      "modeles": [
+        "b2b-lead-gen",
+        "e-commerce",
+        "local",
+        "media-affiliation",
+        "saas"
+      ]
+    },
+    {
+      "id": 59,
       "branche": "Local",
       "slug_branche": "12-local",
       "noeud": "Fiche D'Établissement",
@@ -1489,7 +1512,7 @@
       ]
     },
     {
-      "id": 59,
+      "id": 60,
       "branche": "Local",
       "slug_branche": "12-local",
       "noeud": "Cohérence NAP",
@@ -1507,7 +1530,7 @@
       ]
     },
     {
-      "id": 60,
+      "id": 61,
       "branche": "Local",
       "slug_branche": "12-local",
       "noeud": "Citations Et Annuaires",
@@ -1525,7 +1548,7 @@
       ]
     },
     {
-      "id": 61,
+      "id": 62,
       "branche": "Local",
       "slug_branche": "12-local",
       "noeud": "Avis Locaux",
@@ -1543,7 +1566,7 @@
       ]
     },
     {
-      "id": 62,
+      "id": 63,
       "branche": "Local",
       "slug_branche": "12-local",
       "noeud": "Pages Par Zone",
@@ -1561,7 +1584,7 @@
       ]
     },
     {
-      "id": 63,
+      "id": 64,
       "branche": "Automatisation",
       "slug_branche": "13-automatisation",
       "noeud": "Agents IA",
@@ -1583,7 +1606,7 @@
       ]
     },
     {
-      "id": 64,
+      "id": 65,
       "branche": "Automatisation",
       "slug_branche": "13-automatisation",
       "noeud": "Audits Massifs",
@@ -1605,7 +1628,7 @@
       ]
     },
     {
-      "id": 65,
+      "id": 66,
       "branche": "Automatisation",
       "slug_branche": "13-automatisation",
       "noeud": "Monitoring",
@@ -1627,7 +1650,7 @@
       ]
     },
     {
-      "id": 66,
+      "id": 67,
       "branche": "Automatisation",
       "slug_branche": "13-automatisation",
       "noeud": "Génération De Pages",
@@ -1649,7 +1672,7 @@
       ]
     },
     {
-      "id": 67,
+      "id": 68,
       "branche": "Automatisation",
       "slug_branche": "13-automatisation",
       "noeud": "Détection Opportunités",
@@ -1671,7 +1694,7 @@
       ]
     },
     {
-      "id": 68,
+      "id": 69,
       "branche": "Mesure",
       "slug_branche": "14-mesure",
       "noeud": "Impressions",
@@ -1693,7 +1716,7 @@
       ]
     },
     {
-      "id": 69,
+      "id": 70,
       "branche": "Mesure",
       "slug_branche": "14-mesure",
       "noeud": "Clics",
@@ -1715,7 +1738,7 @@
       ]
     },
     {
-      "id": 70,
+      "id": 71,
       "branche": "Mesure",
       "slug_branche": "14-mesure",
       "noeud": "Positions",
@@ -1737,7 +1760,7 @@
       ]
     },
     {
-      "id": 71,
+      "id": 72,
       "branche": "Mesure",
       "slug_branche": "14-mesure",
       "noeud": "Leads",
@@ -1751,15 +1774,12 @@
       "critere_verdict": "aucun — baseline et KPI cible",
       "doublon_de": null,
       "modeles": [
-        "b2b-lead-gen",
         "e-commerce",
-        "local",
-        "media-affiliation",
-        "saas"
+        "media-affiliation"
       ]
     },
     {
-      "id": 72,
+      "id": 73,
       "branche": "Mesure",
       "slug_branche": "14-mesure",
       "noeud": "Revenu Par Page",
@@ -1773,12 +1793,15 @@
       "critere_verdict": "aucun — sert à pondérer le gain des actions en €",
       "doublon_de": null,
       "modeles": [
+        "b2b-lead-gen",
         "e-commerce",
-        "media-affiliation"
+        "local",
+        "media-affiliation",
+        "saas"
       ]
     },
     {
-      "id": 73,
+      "id": 74,
       "branche": "Optimisation",
       "slug_branche": "15-optimisation",
       "noeud": "Contenus À Renforcer",
@@ -1800,7 +1823,7 @@
       ]
     },
     {
-      "id": 74,
+      "id": 75,
       "branche": "Optimisation",
       "slug_branche": "15-optimisation",
       "noeud": "Pages À Fusionner",
@@ -1822,7 +1845,7 @@
       ]
     },
     {
-      "id": 75,
+      "id": 76,
       "branche": "Optimisation",
       "slug_branche": "15-optimisation",
       "noeud": "Pages À Supprimer",
@@ -1844,7 +1867,7 @@
       ]
     },
     {
-      "id": 76,
+      "id": 77,
       "branche": "Optimisation",
       "slug_branche": "15-optimisation",
       "noeud": "Tests SEO",
@@ -1866,7 +1889,7 @@
       ]
     },
     {
-      "id": 77,
+      "id": 78,
       "branche": "Optimisation",
       "slug_branche": "15-optimisation",
       "noeud": "Boucles D'Amélioration",
@@ -1888,7 +1911,7 @@
       ]
     },
     {
-      "id": 78,
+      "id": 79,
       "branche": "Croissance",
       "slug_branche": "16-croissance",
       "noeud": "Nouveaux Silos",
@@ -1910,7 +1933,7 @@
       ]
     },
     {
-      "id": 79,
+      "id": 80,
       "branche": "Croissance",
       "slug_branche": "16-croissance",
       "noeud": "Nouveaux Sites",
@@ -1932,7 +1955,7 @@
       ]
     },
     {
-      "id": 80,
+      "id": 81,
       "branche": "Croissance",
       "slug_branche": "16-croissance",
       "noeud": "Nouveaux Médias",
@@ -1954,7 +1977,7 @@
       ]
     },
     {
-      "id": 81,
+      "id": 82,
       "branche": "Croissance",
       "slug_branche": "16-croissance",
       "noeud": "Partenariats",
@@ -1976,7 +1999,7 @@
       ]
     },
     {
-      "id": 82,
+      "id": 83,
       "branche": "Croissance",
       "slug_branche": "16-croissance",
       "noeud": "Actifs Qui Composent",
@@ -1998,7 +2021,7 @@
       ]
     },
     {
-      "id": 83,
+      "id": 84,
       "branche": "Objectif",
       "slug_branche": "17-objectif",
       "noeud": "Trafic Qualifié",
@@ -2020,7 +2043,7 @@
       ]
     },
     {
-      "id": 84,
+      "id": 85,
       "branche": "Objectif",
       "slug_branche": "17-objectif",
       "noeud": "Leads Entrants",
@@ -2034,15 +2057,11 @@
       "critere_verdict": "cible chiffrée ou déclaration explicite de non-calculabilité",
       "doublon_de": null,
       "modeles": [
-        "b2b-lead-gen",
-        "e-commerce",
-        "local",
-        "media-affiliation",
-        "saas"
+        "e-commerce"
       ]
     },
     {
-      "id": 85,
+      "id": 86,
       "branche": "Objectif",
       "slug_branche": "17-objectif",
       "noeud": "Ventes",
@@ -2056,11 +2075,15 @@
       "critere_verdict": "cible chiffrée ou déclaration explicite de non-calculabilité",
       "doublon_de": null,
       "modeles": [
-        "e-commerce"
+        "b2b-lead-gen",
+        "e-commerce",
+        "local",
+        "media-affiliation",
+        "saas"
       ]
     },
     {
-      "id": 86,
+      "id": 87,
       "branche": "Objectif",
       "slug_branche": "17-objectif",
       "noeud": "Autorité",
@@ -2082,7 +2105,7 @@
       ]
     },
     {
-      "id": 87,
+      "id": 88,
       "branche": "Objectif",
       "slug_branche": "17-objectif",
       "noeud": "Machine SEO",
@@ -2093,7 +2116,7 @@
       "question_audit": "Le dispositif est-il autonome et répétable, ou dépend-il d'une impulsion externe ?",
       "source_requise": "synthèse des branches `Automatisation`, `Mesure`, `Optimisation`",
       "methode": "scorer la maturité sur 5 : 1 = actions ponctuelles sans mesure · 3 = mesure en place, actions réactives · 5 = détection, action et remesure outillées et cadencées",
-      "critere_verdict": "score de maturité 1-5, justifié par les nœuds 58-62, 63-67 et 68-72",
+      "critere_verdict": "score de maturité 1-5, justifié par les nœuds 58-62, 64-68 et 69-73",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",

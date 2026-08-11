@@ -48,7 +48,7 @@ Formulations à reprendre telles quelles dans le livrable.
 
 ### Sans export Google Analytics
 
-> Le comportement des visiteurs et l'origine du trafic hors recherche ne sont pas mesurables : trafic référent, trafic social, comportement post-clic, leads attribués à l'organique. La vitesse de monétisation reste inconnue.
+> Le comportement des visiteurs et l'origine du trafic hors recherche ne sont pas mesurables SANS export fourni : trafic référent, trafic social, comportement post-clic, leads attribués à l'organique. La vitesse de monétisation reste inconnue.
 >
 > Conséquence : aucun gain ne peut être exprimé en leads. Les gains restent exprimés en trafic qualifié, et la conversion en leads est signalée comme non calculable (nœud 84).
 
@@ -58,7 +58,12 @@ Formulations à reprendre telles quelles dans le livrable.
 
 ### Sans index de backlinks
 
-> Le profil de liens entrants n'est connu que par les liens détectables en recherche web — une fraction non quantifiable du profil réel. La difficulté SEO est estimée par un **proxy structurel** (force des marques présentes en top 10, ancienneté et profondeur des pages classées) et non par un score d'autorité. Ce proxy est un classement relatif, pas une mesure : ne jamais le présenter comme un score de difficulté d'outil.
+> Le profil de liens entrants n'est connu que par les liens détectables en recherche web — une fraction non quantifiable du profil réel.
+
+> **Part IA du trafic référent (décision du 11/08/2026, nœud 44)** : quand l'export GA
+> est fourni, les référents des assistants génératifs (chatgpt.com, perplexity.ai,
+> copilot.microsoft.com, gemini.google.com, claude.ai…) sont isolés et datés — la liste
+> des domaines se rafraîchit par vérification web datée à chaque run, jamais récitée. La difficulté SEO est estimée par un **proxy structurel** (force des marques présentes en top 10, ancienneté et profondeur des pages classées) et non par un score d'autorité. Ce proxy est un classement relatif, pas une mesure : ne jamais le présenter comme un score de difficulté d'outil.
 
 ### Sans logs serveur
 
