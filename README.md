@@ -47,10 +47,16 @@ python c:/dev/digit-ai-forge-seo/scripts/new_mission.py \
 python c:/dev/digit-ai-forge-seo/scripts/crawler.py --projet . --url https://acme.fr
 #    lit sitemap.xml (via robots.txt, index suivis) AVANT de suivre les liens :
 #    l'inventaire mesuré est celui du site, pas celui du graphe de navigation.
+#    --rendu-js exécute le JS côté client (Playwright/Chromium) sur un site SPA.
+#    Le JSON-LD (application/ld+json) est extrait automatiquement, sans option.
 
 # 3 bis. (optionnel, noeud 31) donnees de terrain CrUX -- gratuit, cle API requise
 CRUX_API_KEY=... python c:/dev/digit-ai-forge-seo/scripts/crux.py --projet . --url https://acme.fr
 #    cle gratuite (aucune facturation) : https://developer.chrome.com/docs/crux/api
+
+# 3 ter. (optionnel, noeuds 29/58, si logs serveur fournis) ventilation par agent IA nommé
+python c:/dev/digit-ai-forge-seo/scripts/agents_ia.py --projet . --logs seo/donnees/logs/access.log
+#    catalogue daté des agents (GPTBot, ClaudeBot, PerplexityBot…) dans referentiel/agents-ia.json
 
 # 4. ouvrir seo/METHODE.md — garde-fous, runbook, contrat de sortie. Constater et
 #    interpréter dans les fiches de seo/analyse/ : c'est la partie humaine.
@@ -123,11 +129,13 @@ forge-seo/
 │   ├── strategie-future.md      méthode du volet 12-24 mois
 │   ├── cadrage.template.md      formulaire d'entrée détaillé
 │   ├── snapshot.schema.json     contrat de l'état persistant, appliqué
-│   └── correspondances-grille.json  évolutions de la grille, ancien id → nouvel id
+│   ├── correspondances-grille.json  évolutions de la grille, ancien id → nouvel id
+│   └── agents-ia.json           catalogue daté des agents IA nommés (noeuds 29/58)
 ├── seo/                 arborescence canonique générée depuis referentiel/ — lecture seule
 ├── scripts/             grille · gabarits · scaffold · new_mission · validate
-│                        · schema · crawler · crux · livrables · gabarit_html · rapport_html
-│                        · oracle_interaction · remplir_fiches · autotest
+│                        · schema · crawler · crux · agents_ia · livrables
+│                        · gabarit_html · rapport_html · oracle_interaction
+│                        · remplir_fiches · autotest
 ├── assets/vendor/       composant de filtres, copie verbatim tracée
 ├── output/              décisions et veille (livrables de la forge)
 ├── prompts/             archives datées du chantier

@@ -1,0 +1,29 @@
+{
+  "_lisez_moi": "Catalogue des agents IA nommes reconnus dans les logs (noeuds 29/58, TF-0105). DONNEE, pas du code : un agent nomme se rajoute ici, jamais en dur dans agents_ia.py. Standard evolutif -- REVERIFIER a chaque campagne (garde-fou methode : verification web datee pour toute surface generative).",
+  "version": "1.0.0",
+  "date_verification": "2026-08-12",
+  "source": "WebSearch 12/08/2026 (anagram.ai « AI Crawlers Explained 2026 », openshadow.io « AI Bot User Agents List 2026 ») ; volumetrie citee au constat de TF-0105 : Cloudflare Radar 2026 (GPTBot 12%, ClaudeBot 9,2% du trafic bot mondial)",
+  "categories": {
+    "entrainement": "alimente l'entrainement d'un modele -- bloquer n'a aucun effet sur les citations IA",
+    "recherche": "alimente un index de recherche ou de reponse IA (ex. ChatGPT search, reponses Perplexity)",
+    "utilisateur": "declenche par un utilisateur humain dans un outil IA (page ouverte/lue a la demande), pas un crawl de fond",
+    "tiers": "agrege pour un service tiers (donnee, scoring), pas un moteur generatif directement"
+  },
+  "agents": [
+    {"agent": "GPTBot", "editeur": "OpenAI", "categorie": "entrainement", "motif_ua": "GPTBot"},
+    {"agent": "OAI-SearchBot", "editeur": "OpenAI", "categorie": "recherche", "motif_ua": "OAI-SearchBot"},
+    {"agent": "ChatGPT-User", "editeur": "OpenAI", "categorie": "utilisateur", "motif_ua": "ChatGPT-User"},
+    {"agent": "ClaudeBot", "editeur": "Anthropic", "categorie": "entrainement", "motif_ua": "ClaudeBot"},
+    {"agent": "Claude-SearchBot", "editeur": "Anthropic", "categorie": "recherche", "motif_ua": "Claude-SearchBot"},
+    {"agent": "Claude-User", "editeur": "Anthropic", "categorie": "utilisateur", "motif_ua": "Claude-User"},
+    {"agent": "PerplexityBot", "editeur": "Perplexity", "categorie": "recherche", "motif_ua": "PerplexityBot"},
+    {"agent": "Perplexity-User", "editeur": "Perplexity", "categorie": "utilisateur", "motif_ua": "Perplexity-User"},
+    {"agent": "Google-Extended", "editeur": "Google", "categorie": "entrainement", "motif_ua": "Google-Extended"},
+    {"agent": "Applebot-Extended", "editeur": "Apple", "categorie": "entrainement", "motif_ua": "Applebot-Extended"},
+    {"agent": "Bytespider", "editeur": "ByteDance", "categorie": "entrainement", "motif_ua": "Bytespider"},
+    {"agent": "CCBot", "editeur": "Common Crawl", "categorie": "entrainement", "motif_ua": "CCBot"},
+    {"agent": "Amazonbot", "editeur": "Amazon", "categorie": "recherche", "motif_ua": "Amazonbot"},
+    {"agent": "meta-externalagent", "editeur": "Meta", "categorie": "entrainement", "motif_ua": "meta-externalagent"},
+    {"agent": "Diffbot", "editeur": "Diffbot", "categorie": "tiers", "motif_ua": "Diffbot"}
+  ]
+}
