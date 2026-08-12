@@ -42,6 +42,7 @@ AGENT = "forge-seo/1.0 (audit SEO ; +contact via le commanditaire de l'audit)"
 PLAFOND = 200
 DELAI = 0.5
 TIMEOUT = 15
+TIMEOUT_JS_MS = 20_000
 
 # Heuristique de gabarit : l'URL dit souvent le type de page. Approximative et
 # declaree comme telle -- elle sert a stratifier l'echantillon, pas a conclure.
@@ -156,6 +157,35 @@ def recuperer(url: str, xml: bool = False) -> tuple[int, str, bytes, list[str]]:
         return 0, url, str(e).encode(), chaine
 
 
+def recuperer_rendu(page_pw, url: str) -> tuple[int, str, bytes, list[str]]:
+    """Meme contrat que recuperer(), le DOM apres execution du JavaScript (TF-0105).
+
+    `page_pw` est une page Playwright REUTILISEE d'une URL a l'autre : ouvrir un
+    navigateur par page couterait un ordre de grandeur en duree sur un crawl de
+    plusieurs centaines d'URL. `wait_until="networkidle"` attend que le site ait
+    fini ses appels XHR d'hydratation -- c'est precisement ce qu'un fetch HTTP nu
+    ne peut jamais voir (cf. la limite `rendu_javascript` declaree sans ce flag).
+    """
+    from playwright.sync_api import Error as ErreurPlaywright
+    from playwright.sync_api import TimeoutError as DelaiPlaywright
+
+    try:
+        reponse = page_pw.goto(url, wait_until="networkidle", timeout=TIMEOUT_JS_MS)
+    except DelaiPlaywright:
+        # Reseau jamais silencieux (SPA qui poll en continu, par exemple) : on
+        # degrade sur ce que le DOM contient AU MOMENT du timeout plutot que de
+        # perdre la page entiere -- une mesure partielle vaut mieux qu'une absence.
+        try:
+            return 0, page_pw.url, page_pw.content().encode("utf-8"), []
+        except ErreurPlaywright:
+            return 0, url, b"", []
+    except ErreurPlaywright as e:
+        return 0, url, str(e).encode(), []
+    if reponse is None:
+        return 0, url, b"", []
+    return reponse.status, page_pw.url, page_pw.content().encode("utf-8"), []
+
+
 RE_LOC = re.compile(r"<loc>\s*([^<\s]+)\s*</loc>", re.I)
 RE_SITEMAP_INDEX = re.compile(r"<sitemapindex", re.I)
 
@@ -213,9 +243,24 @@ def lire_sitemaps(depart: str, robots_txt: str, plafond_index: int = 25) -> dict
     }
 
 
-def crawler(racine: str, plafond: int, delai: float) -> dict:
+def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> dict:
     depart = normaliser(racine)
     hote = urllib.parse.urlsplit(depart).netloc
+
+    # Playwright est optionnel : robots.txt et les sitemaps restent lus par
+    # urllib (jamais de JS a y executer) ; seule la visite des pages HTML change.
+    pw_ctx, navigateur, page_pw = None, None, None
+    if rendu_js:
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError as e:
+            raise SystemExit(
+                "REFUS : --rendu-js demande Playwright, absent de cet environnement.\n"
+                "Installer : pip install playwright && python -m playwright install chromium"
+            ) from e
+        pw_ctx = sync_playwright().start()
+        navigateur = pw_ctx.chromium.launch()
+        page_pw = navigateur.new_page(user_agent=AGENT)
 
     rp = urllib.robotparser.RobotFileParser()
     rp.set_url(urllib.parse.urljoin(depart, "/robots.txt"))
@@ -256,7 +301,10 @@ def crawler(racine: str, plafond: int, delai: float) -> dict:
             visiter(url, prof)
 
     def visiter(url, prof):
-        code, finale, corps, chaine = recuperer(url)
+        if rendu_js:
+            code, finale, corps, chaine = recuperer_rendu(page_pw, url)
+        else:
+            code, finale, corps, chaine = recuperer(url)
         time.sleep(delai)
 
         p = Page()
@@ -309,13 +357,21 @@ def crawler(racine: str, plafond: int, delai: float) -> dict:
 
     declarees = set(sitemap["urls"])
 
-    # Phase 1 : parcours en largeur depuis l'accueil — profondeur de clic exacte.
-    vider_file()
-    # Phase 2 : les URL DECLAREES au sitemap qu'aucun lien n'a fait decouvrir. Sans
-    # cette phase le crawl mesure ce qu'on atteint en navigant, pas le site (TF-0043).
-    restantes = [u for u in sitemap["urls"] if u not in vues]
-    file.extend((u, None) for u in restantes)
-    vider_file()
+    try:
+        # Phase 1 : parcours en largeur depuis l'accueil — profondeur de clic exacte.
+        vider_file()
+        # Phase 2 : les URL DECLAREES au sitemap qu'aucun lien n'a fait decouvrir. Sans
+        # cette phase le crawl mesure ce qu'on atteint en navigant, pas le site (TF-0043).
+        restantes = [u for u in sitemap["urls"] if u not in vues]
+        file.extend((u, None) for u in restantes)
+        vider_file()
+    finally:
+        # Le navigateur se ferme meme si le crawl est interrompu (plafond, erreur) --
+        # un Chromium orphelin ne se remarque qu'au prochain « port deja utilise ».
+        if navigateur is not None:
+            navigateur.close()
+        if pw_ctx is not None:
+            pw_ctx.stop()
     non_visitees = [u for u in connus if u not in vues]
 
     for url, v in vues.items():
@@ -356,12 +412,19 @@ def crawler(racine: str, plafond: int, delai: float) -> dict:
             "delai_s": delai,
             "robots_txt_lu": robots_lu,
             "urls_bloquees_par_robots": bloquees,
-            "rendu_javascript": False,
+            "rendu_javascript": rendu_js,
             "sitemaps_lus": sitemap["fichiers"],
             "sitemaps_en_erreur": sitemap["erreurs"],
-            "limite": ("Sans rendu JavaScript : le contenu injecté côté client est "
-                       "invisible. Ne pas conclure à l'absence d'un contenu qui "
-                       "pourrait ne pas être dans le HTML initial."),
+            "limite": (
+                "Rendu JavaScript actif (Playwright / Chromium) : le DOM mesuré est "
+                "celui obtenu après exécution du JS côté client, réseau inactif "
+                "(networkidle) ou délai de 20 s atteint."
+                if rendu_js else
+                "Sans rendu JavaScript : le contenu injecté côté client est "
+                "invisible. Ne pas conclure à l'absence d'un contenu qui "
+                "pourrait ne pas être dans le HTML initial. Relancer avec "
+                "--rendu-js sur un site suspecté SPA."
+            ),
             "limite_orphelines": (
                 "Compte exact : toutes les URL déclarées ont été crawlées."
                 if couverture_complete else
@@ -397,6 +460,11 @@ def main() -> int:
     p.add_argument("--url", required=True, help="URL racine du site")
     p.add_argument("--max", type=int, default=PLAFOND, help=f"plafond de pages ({PLAFOND})")
     p.add_argument("--delai", type=float, default=DELAI, help=f"délai entre requêtes ({DELAI}s)")
+    p.add_argument(
+        "--rendu-js", action="store_true",
+        help="rend le JavaScript côté client avant de lire le DOM (Playwright/Chromium) "
+             "— pour les sites SPA, où le HTML brut mesure un contenu tronqué (TF-0105)",
+    )
     args = p.parse_args()
 
     dossier = Path(args.projet).resolve() / "seo" / "donnees" / "crawl"
@@ -405,9 +473,10 @@ def main() -> int:
         return 1
     dossier.mkdir(parents=True, exist_ok=True)
 
-    print(f"crawl de {args.url} — plafond {args.max} pages, délai {args.delai}s")
+    print(f"crawl de {args.url} — plafond {args.max} pages, délai {args.delai}s"
+          + (", rendu JS actif (Playwright)" if args.rendu_js else ""))
     debut = time.time()
-    res = crawler(args.url, args.max, args.delai)
+    res = crawler(args.url, args.max, args.delai, rendu_js=args.rendu_js)
     s = res["synthese"]
 
     # Le netloc peut porter un port (`localhost:8765`) : sous Windows, un `:` dans
