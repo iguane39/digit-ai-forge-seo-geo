@@ -93,7 +93,7 @@ Ne jamais présenter une liste que la capacité connue ne permet pas d'exécuter
 
 | Horizon | Délai avant effet mesurable | Nature |
 |---|---|---|
-| `quick win` | < 1 mois | correction, déblocage, optimisation d'existant |
+| `quick-win` | < 1 mois | correction, déblocage, optimisation d'existant |
 | `structurant` | 1 à 6 mois | production de contenu, restructuration, balisage à l'échelle |
 | `fondation` | > 6 mois | autorité, entité de marque, actif cumulatif, nouveau territoire |
 
