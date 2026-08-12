@@ -70,6 +70,14 @@ python c:/dev/digit-ai-forge-seo/scripts/remplir_fiches.py \
 # 5. assembler ce qui se déduit des fiches — snapshot, dette, compteurs
 python c:/dev/digit-ai-forge-seo/scripts/livrables.py --projet .
 
+# 5 bis. (étape 5 du pipeline : Actions) calculer le score des actions rédigées
+#        par la mission et écrire seo/livrables/actions-<domaine>-<jour>.csv
+python c:/dev/digit-ai-forge-seo/scripts/scorer_actions.py \
+       --projet . --contenu seo/actions.json
+#    la mission rédige libellé, gain/effort/confiance et la preuve du cran cité
+#    (referentiel/scoring.md) ; le script calcule score = (gain × confiance) /
+#    effort, trie, et écrit aux colonnes imposées par livrables.py (TF-0056).
+
 # 6. produire le rapport client
 python c:/dev/digit-ai-forge-seo/scripts/rapport_html.py --projet . --verifier
 
@@ -135,8 +143,8 @@ forge-seo/
 ├── seo/                 arborescence canonique générée depuis referentiel/ — lecture seule
 ├── scripts/             grille · gabarits · scaffold · new_mission · validate
 │                        · schema · crawler · crux · agents_ia · livrables
-│                        · gabarit_html · rapport_html · oracle_interaction
-│                        · remplir_fiches · autotest
+│                        · scorer_actions · gabarit_html · rapport_html
+│                        · oracle_interaction · remplir_fiches · autotest
 ├── assets/vendor/       composant de filtres, copie verbatim tracée
 ├── output/              décisions et veille (livrables de la forge)
 ├── prompts/             archives datées du chantier

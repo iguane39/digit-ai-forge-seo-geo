@@ -68,15 +68,20 @@ dans la forge.
 | 2 | **Constat** | ce qui est, mesuré, avec niveau de preuve | `seo/analyse/**/_fiche.md` § Constat | humain |
 | 3 | **Interprétation** | le mécanisme : ce que ça coûte et pourquoi | `seo/analyse/**/_fiche.md` § Interprétation | humain |
 | 4 | **Projection** | cible 12/24 mois, bornée, calcul visible | `seo/livrables/snapshot-*.json` | humain |
-| 5 | **Actions** | chiffrées, priorisées, dispatchées en 4 quadrants | `seo/livrables/actions-*.csv` | humain |
+| 5 | **Actions** | chiffrées, priorisées, dispatchées en 4 quadrants | `seo/livrables/actions-*.csv` | humain + `scorer_actions.py` |
 
 Constat et interprétation **doivent** rester humains : c'est le cœur du métier. Ce qui
 est outillé, c'est ce qui est mécanique — la collecte, l'assemblage du snapshot, les
-compteurs, la restitution.
+compteurs, la restitution, et depuis TF-0073 le calcul du score des actions (étape 5) :
+la mission rédige libellé, gain, effort, confiance et la preuve du cran cité
+(`referentiel/scoring.md`) ; `scorer_actions.py` calcule score = (gain × confiance) /
+effort, trie, et écrit le CSV. Le jugement reste entièrement humain, seul le calcul et
+l'écriture sont mécaniques.
 
 ```bash
 python <forge>/scripts/crawler.py   --projet . --url https://exemple.fr   # étape 1
 python <forge>/scripts/livrables.py --projet .                            # assemblage
+python <forge>/scripts/scorer_actions.py --projet . --contenu seo/actions.json  # étape 5
 python <forge>/scripts/rapport_html.py --projet . --verifier              # restitution
 python <forge>/scripts/validate.py  --mission .                           # contrôle
 ```
@@ -137,7 +142,7 @@ Un constat écrit en langue d'auditeur le reste jusqu'à sa ré-instruction.
 |---|---|---|
 | `donnees/crawl/crawl-<domaine>-<date>.json` | collecte brute, étape 1 | `crawler.py` |
 | `livrables/snapshot-<domaine>-<date>.json` | état mesuré, conforme au schéma | `livrables.py` |
-| `livrables/actions-<domaine>-<date>.csv` | colonnes de `referentiel/scoring.md` | en-tête généré, contenu humain |
+| `livrables/actions-<domaine>-<date>.csv` | colonnes de `referentiel/scoring.md` | en-tête : `livrables.py` ; rempli et scoré : `scorer_actions.py` depuis un contenu humain (libellé, gain, effort, confiance) |
 | `livrables/<Projet> - Audit SEO - AAAAMMJJ<i>.html` | **le livrable client** | `rapport_html.py` |
 
 Il n'y a **pas** de rapport Markdown séparé. Le rapport HTML porte les volets ÉTAT et
