@@ -70,6 +70,9 @@ class Page(HTMLParser):
         self._dans = None
         self._nav = 0          # profondeur dans nav/header/footer/aside
         self._script = 0
+        self.json_ld_bruts: list[str] = []  # un script application/ld+json = une entree
+        self._dans_ldjson = False
+        self._ldjson_buf: list[str] = []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -77,6 +80,9 @@ class Page(HTMLParser):
             self._nav += 1
         elif tag in ("script", "style"):
             self._script += 1
+            if tag == "script" and (a.get("type") or "").strip().lower() == "application/ld+json":
+                self._dans_ldjson = True
+                self._ldjson_buf = []
         elif tag == "title" and self.title is None:
             self._dans = "title"
         elif tag == "h1" and self.h1 is None:
@@ -93,11 +99,17 @@ class Page(HTMLParser):
             self._nav = max(0, self._nav - 1)
         elif tag in ("script", "style"):
             self._script = max(0, self._script - 1)
+            if tag == "script" and self._dans_ldjson:
+                self.json_ld_bruts.append("".join(self._ldjson_buf))
+                self._dans_ldjson = False
+                self._ldjson_buf = []
         elif tag in ("title", "h1"):
             self._dans = None
 
     def handle_data(self, data):
-        if self._dans == "title":
+        if self._dans_ldjson:
+            self._ldjson_buf.append(data)
+        elif self._dans == "title":
             self.title = (self.title or "") + data
         elif self._dans == "h1":
             self.h1 = (self.h1 or "") + data
@@ -322,6 +334,20 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
                 if normaliser(urllib.parse.urljoin(url, p.canonical)) != normaliser(url):
                     indexable = False
 
+        # Extraction JSON-LD (TF-0105, noeud 32) : chaque script application/ld+json
+        # est parse independamment -- un bloc invalide n'invalide pas les autres, et
+        # l'erreur est conservee plutot qu'avalee (une page mal balisee doit le rester
+        # dans le rapport, pas redevenir muette).
+        json_ld, json_ld_erreurs = [], []
+        for brut in p.json_ld_bruts:
+            brut = brut.strip()
+            if not brut:
+                continue
+            try:
+                json_ld.append(json.loads(brut))
+            except json.JSONDecodeError as e:
+                json_ld_erreurs.append(str(e))
+
         vues[url] = {
             "url": chemin,
             "type_gabarit": gabarit(chemin),
@@ -340,6 +366,8 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
             "liens_internes_entrants": 0,
             "poids_ko": round(len(corps) / 1024, 1) if corps else 0.0,
             "preuve": "T1",
+            "json_ld": json_ld,
+            "json_ld_erreurs": json_ld_erreurs,
             "_mots": p.mots,
             "_redirections": chaine,
         }
@@ -403,6 +431,23 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
         if p["title"]:
             titres[p["title"]] = titres.get(p["title"], 0) + 1
 
+    # Distribution des @type JSON-LD (noeud 32) : compte les entites d'un
+    # `@graph` individuellement -- motif courant des plugins SEO qui regroupent
+    # plusieurs entites (Organization, WebSite, BreadcrumbList...) dans un seul
+    # script. Un @type absent ou mal forme est ignore, pas compte comme erreur :
+    # json_ld_erreurs porte deja les blocs illisibles.
+    types_json_ld: dict[str, int] = {}
+    for p in pages:
+        for bloc in p["json_ld"]:
+            entites = bloc.get("@graph") if isinstance(bloc, dict) else None
+            entites = entites if isinstance(entites, list) else [bloc]
+            for entite in entites:
+                if not isinstance(entite, dict):
+                    continue
+                t = entite.get("@type")
+                for nom in (t if isinstance(t, list) else [t] if t else []):
+                    types_json_ld[str(nom)] = types_json_ld.get(str(nom), 0) + 1
+
     return {
         "collecte": {
             "outil": "forge-seo/crawler.py",
@@ -449,6 +494,10 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
             "titles_dupliques": sum(n for n in titres.values() if n > 1) -
                                 sum(1 for n in titres.values() if n > 1),
             "pages_fines_sous_300_mots": sum(1 for p in pages if 0 < p["_mots"] < 300),
+            "pages_avec_json_ld": sum(1 for p in pages if p["json_ld"]),
+            "pages_json_ld_en_erreur": sum(1 for p in pages if p["json_ld_erreurs"]),
+            "types_json_ld": dict(
+                sorted(types_json_ld.items(), key=lambda kv: (-kv[1], kv[0]))),
         },
         "pages": pages,
     }
@@ -500,6 +549,12 @@ def main() -> int:
           f"{'' if s['orphelines_compte_exact'] else ' (MAJORANT — plafond atteint)'}")
     print(f"  titles dupliqués    : {s['titles_dupliques']}")
     print(f"  pages < 300 mots    : {s['pages_fines_sous_300_mots']}")
+    print(f"  pages avec JSON-LD  : {s['pages_avec_json_ld']}"
+          + (f" — types : {', '.join(f'{t} ({n})' for t, n in s['types_json_ld'].items())}"
+             if s['types_json_ld'] else ""))
+    if s["pages_json_ld_en_erreur"]:
+        print(f"  JSON-LD illisible   : {s['pages_json_ld_en_erreur']} page(s) — "
+              "voir json_ld_erreurs dans le fichier de crawl")
     if not res["collecte"]["robots_txt_lu"]:
         print("  ATTENTION robots.txt illisible — crawl mené sans ses directives")
     if res["collecte"]["urls_bloquees_par_robots"]:
