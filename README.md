@@ -48,6 +48,10 @@ python c:/dev/digit-ai-forge-seo/scripts/crawler.py --projet . --url https://acm
 #    lit sitemap.xml (via robots.txt, index suivis) AVANT de suivre les liens :
 #    l'inventaire mesuré est celui du site, pas celui du graphe de navigation.
 
+# 3 bis. (optionnel, noeud 31) donnees de terrain CrUX -- gratuit, cle API requise
+CRUX_API_KEY=... python c:/dev/digit-ai-forge-seo/scripts/crux.py --projet . --url https://acme.fr
+#    cle gratuite (aucune facturation) : https://developer.chrome.com/docs/crux/api
+
 # 4. ouvrir seo/METHODE.md — garde-fous, runbook, contrat de sortie. Constater et
 #    interpréter dans les fiches de seo/analyse/ : c'est la partie humaine.
 
@@ -122,7 +126,7 @@ forge-seo/
 │   └── correspondances-grille.json  évolutions de la grille, ancien id → nouvel id
 ├── seo/                 arborescence canonique générée depuis referentiel/ — lecture seule
 ├── scripts/             grille · gabarits · scaffold · new_mission · validate
-│                        · schema · crawler · livrables · gabarit_html · rapport_html
+│                        · schema · crawler · crux · livrables · gabarit_html · rapport_html
 │                        · oracle_interaction · remplir_fiches · autotest
 ├── assets/vendor/       composant de filtres, copie verbatim tracée
 ├── output/              décisions et veille (livrables de la forge)
