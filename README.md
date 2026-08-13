@@ -147,7 +147,7 @@ forge-seo/
 │                        · scorer_actions · gabarit_html · rapport_html
 │                        · oracle_interaction · remplir_fiches · autotest
 ├── assets/vendor/       composant de filtres, copie verbatim tracée
-├── output/              décisions et veille (livrables de la forge)
+├── output/              livrables : 01-decisions/ et 02-veille/
 ├── prompts/             archives datées du chantier
 └── input/               le schéma d'origine, archivé
 ```
