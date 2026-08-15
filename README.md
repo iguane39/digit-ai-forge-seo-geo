@@ -190,14 +190,25 @@ grille, et rien ne le signalerait.
 
 ```bash
 python scripts/scaffold.py                      # régénère seo/ depuis referentiel/
-python scripts/validate.py                      # 12 contrôles, non-zéro si échec
-python scripts/validate.py --json               # même verdict, en objet machine
-python scripts/autotest.py                      # fixtures vertes ET rouges des contrôles
-python scripts/test_migrer_mission.py           # fixture rouge/verte de la migration de grille
-python scripts/test_balisage.py                 # détecteurs de balisage : les deux ordres d'attributs
-python scripts/test_crawl_plafond.py            # refus de mesure quand le plafond coupe le crawl
+python scripts/recette.py                       # TOUTE la suite en une commande — le point d'entrée
+python scripts/recette.py --liste               # ce qui serait joué, sans rien exécuter
+python scripts/recette.py --fixture             # preuve à double sens du runner lui-même
+python scripts/validate.py --json               # verdict des 12 contrôles, en objet machine
 python scripts/new_mission.py --liste           # registre local des études créées
 ```
+
+`recette.py` est le point d'entrée unique de la vérification (TF-0274) : il **découvre**
+toute `scripts/test_*.py` par son seul nom — déposer un test neuf suffit à le faire jouer,
+il n'y a aucune liste à tenir à jour — et joue en plus les deux vérifications antérieures à
+cette convention (`validate.py`, `autotest.py`). Chaque script reste lançable seul, à
+l'identique : le runner n'est qu'un chef d'orchestre. Une vérification dont la sortie ne
+porte pas de compte « N/M » est déclarée **muette** et fait échouer la recette, plutôt que
+d'être comptée 0 en silence. État courant : **10 vérifications, 147 cas**.
+
+`python -m pytest scripts/` ne collecte **rien** et c'est normal : ces vérifications sont
+des scripts à `main()`, pas des fonctions `test_*` (pytest sort alors en 5, « no tests ran » —
+il ne rend jamais un faux vert). Cinq d'entre elles étaient absentes de cette page jusqu'au
+15/08/2026, donc oubliées d'une campagne à l'autre : c'est ce que `recette.py` ferme.
 
 `autotest.py` existe parce qu'un contrôle qu'on n'a jamais vu **échouer** n'est pas un
 contrôle : c'est une ligne qui imprime OK. Chaque règle y porte une fixture verte qui
