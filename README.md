@@ -1,8 +1,11 @@
 # forge-seo
 
 Outil d'audit et de stratégie SEO. La forge porte **la méthode** — une grille de
-88 nœuds, un barème, des garde-fous — et chaque projet audité reçoit **son étude chez
-lui**, dans son propre dossier `seo/`.
+88 nœuds, un barème, des garde-fous. **L'objet audité est un site en ligne**, jamais un
+« produit » : chaque site audité reçoit **son étude dans le dossier du projet hôte**
+(`<projet>/seo/`) — le projet n'est que le lieu où l'étude s'accumule, pas l'objet
+de l'audit (un client SEO peut n'avoir aucun logiciel ; un produit n'a de SEO que par
+son site une fois en ligne).
 
 Là où un rapport se produit puis s'oublie, ce dispositif accumule : étude après étude,
 sur une grille stable, comparable et versionnée.
@@ -12,12 +15,12 @@ sur une grille stable, comparable et versionnée.
 ## Catalogue de services
 
 > Section proposée par la campagne « catalogues » du pilot (2026-08-13) — générée depuis
-> la source unique `catalogues/catalogue.jsonl` du pilot (v1.6.0, challengée état de
+> la source unique `catalogues/catalogue.jsonl` du pilot (v1.6.1, challengée état de
 > l'art le 12/08/2026). **prouvé** = preuve exécutée ; *déclaré* = méthode documentée seulement.
 
 | Service | Intention (« je veux… ») | Point d'entrée | Statut |
 |---|---|---|---|
-| **Créer une mission d'audit SEO** | ouvrir une étude SEO outillée chez mon produit | `python scripts\new_mission.py (CLI stdlib)` | prouvé (production) |
+| **Créer une mission d'audit SEO** | ouvrir une étude SEO outillée pour mon site — l'étude vit dans le dossier du projet hôte | `python scripts\new_mission.py (CLI stdlib)` | prouvé (production) |
 | **Dérouler l'audit 88 nœuds** | auditer mon site en ligne sur toute la grille, preuves à l'appui | `seo\METHODE.md déroulée en session (mandat humain requis — jamais de déclenchement automatique)` | prouvé (production) |
 | **Valider forge et mission** | vérifier mécaniquement l'intégrité de la forge et d'une mission | `python scripts\validate.py [--mission <chemin>]` | prouvé (production) |
 | **Rapport HTML vérifié** | recevoir un rapport d'audit autonome et contrôlé avant remise | `python scripts\rapport_html.py --verifier` | prouvé (production) |
@@ -31,7 +34,7 @@ Le catalogue consolidé des dix forges vit chez le pilot :
 
 ## Invoquer forge-seo depuis un projet extérieur
 
-C'est l'usage principal : tu travailles dans `c:\dev\mon-client`, tu veux une étude SEO.
+C'est l'usage principal : tu travailles dans `c:\dev\mon-client` (le dossier hôte), tu veux une étude SEO **du site de ce client**.
 
 **Rien ne se déclenche tout seul.** Il n'y a pas de skill, pas de mot-clé qui active
 l'audit sur une phrase. Un audit engage des heures de travail et un livrable facturé :
