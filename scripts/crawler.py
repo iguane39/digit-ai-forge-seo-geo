@@ -501,7 +501,21 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False,
             "pages_orphelines": motif,
             "pages_orphelines_exemples": motif,
             "pages_sans_lien_contextuel": motif,
+            "inventaire.pages_atteintes_par_liens": motif,
+            "inventaire.urls_seulement_par_sitemap": motif,
         }
+
+    # TF-0263 -- confronter les sources d'inventaire est un resultat, pas une
+    # deduction a faire en creusant. Le run du 15/08 au matin mesurait 79 pages en
+    # suivant les liens quand le sitemap en declarait 291 : toutes les proportions
+    # du rapport portaient sur 27 % du site sans que rien ne le dise. L'ecart entre
+    # « ce que le site declare » et « ce qu'on atteint en naviguant » passe donc en
+    # TETE de la synthese. Comme le compte d'orphelines, il suppose le parcours des
+    # liens ACHEVE : plafond atteint, il n'est pas ecrit non plus.
+    atteintes_par_liens = {u for u, v in vues.items() if v["profondeur_clic"] is not None}
+    seulement_sitemap = sorted(declarees - atteintes_par_liens)
+    part_sitemap = (round(100 * len(seulement_sitemap) / len(declarees))
+                    if declarees else 0)
     titres: dict[str, int] = {}
     for p in pages:
         if p["title"]:
@@ -557,6 +571,31 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False,
                 "n'est avancée, pas même un majorant."),
         },
         "synthese": {
+            # Premier indicateur de la synthese (TF-0263) : deux sources d'inventaire
+            # confrontees, et l'ecart NOMME. Un site dont la majorite des pages
+            # n'existe que dans le sitemap est un constat structurel majeur -- il ne
+            # doit pas se deduire en croisant deux compteurs plus bas dans le fichier.
+            "inventaire": {
+                "urls_declarees_sitemap": len(declarees),
+                "pages_atteintes_par_liens": (
+                    None if refus else len(atteintes_par_liens)),
+                "urls_seulement_par_sitemap": (
+                    None if refus else len(seulement_sitemap)),
+                "urls_seulement_par_sitemap_exemples": (
+                    None if refus else seulement_sitemap[:10]),
+                "lecture": (
+                    "NON MESURÉ — voir mesures_refusees : le parcours des liens n'a "
+                    "pas été mené à son terme, l'écart serait surévalué."
+                    if refus else
+                    f"{len(seulement_sitemap)} des {len(declarees)} URL déclarées au "
+                    f"sitemap ({part_sitemap} %) ne sont atteintes par AUCUN lien "
+                    "interne : le sitemap et la navigation ne décrivent pas le même "
+                    "site."
+                    if seulement_sitemap else
+                    f"les {len(declarees)} URL déclarées au sitemap sont toutes "
+                    "atteignables en suivant les liens : les deux inventaires "
+                    "concordent."),
+            },
             "pages_crawlees": len(pages),
             "urls_decouvertes": len(connus),
             "urls_declarees_sitemap": len(declarees),
@@ -658,6 +697,14 @@ def main() -> int:
     cible.write_text(json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     print(f"\nécrit : {cible.relative_to(Path(args.projet).resolve())}")
+    # TF-0263 : l'écart entre les deux inventaires ouvre la synthèse, il ne se
+    # déduit pas de deux compteurs qu'il faudrait aller chercher.
+    inv = s["inventaire"]
+    print(f"\n  INVENTAIRE — {inv['urls_declarees_sitemap']} URL déclarées au sitemap · "
+          + (f"{inv['pages_atteintes_par_liens']} atteintes par les liens · "
+             f"écart {inv['urls_seulement_par_sitemap']}"
+             if inv["urls_seulement_par_sitemap"] is not None else "écart NON MESURÉ"))
+    print(f"    {inv['lecture']}\n")
     print(f"  durée               : {round(time.time() - debut)} s")
     print(f"  pages crawlées      : {s['pages_crawlees']} / "
           f"{res['collecte']['plafond_effectif']}")

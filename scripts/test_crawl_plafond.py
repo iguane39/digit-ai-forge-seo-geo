@@ -1,4 +1,5 @@
-"""Preuve a double sens du refus de mesure quand le plafond coupe (TF-0261).
+"""Preuves a double sens du plafond de crawl (TF-0261) et de la confrontation des
+sources d'inventaire (TF-0263).
 
 Le 15/08, un crawl a 200 pages a rendu « pages orphelines : 89 (MAJORANT) »
 alors que le site en comptait 10 : la relance a --max 320 l'a montre. Le crawler
@@ -20,6 +21,12 @@ suivant les liens depuis l'accueil. Le compte d'orphelines EXACT vaut donc 8.
   ROUGE : --jusqu-a-epuisement sous une borne dure de 4 -- la borne ne fabrique
           pas une couverture complete : le refus revient, et son motif parle de
           la borne dure, pas de --max.
+
+TF-0263 : le meme site de fixture prouve la confrontation des inventaires. 12
+URL declarees, 4 atteintes par les liens, ecart de 8 -- l'indicateur ouvre la
+synthese et nomme l'ecart, au lieu de se deduire en croisant deux compteurs.
+Sous plafond, il n'est pas ecrit non plus : un parcours de liens inacheve
+surevaluerait l'ecart.
 
 Usage :
     python scripts/test_crawl_plafond.py
@@ -132,9 +139,11 @@ def main() -> int:
         b.attendu("ROUGE", "aucun compte de pages sans lien contextuel ecrit",
                   s["pages_sans_lien_contextuel"] is None,
                   repr(s["pages_sans_lien_contextuel"]))
-        b.attendu("ROUGE", "les trois compteurs de graphe sont nommes au refus",
+        b.attendu("ROUGE", "chaque compteur de graphe non ecrit est nomme au refus",
                   set(refus) == {"pages_orphelines", "pages_orphelines_exemples",
-                                 "pages_sans_lien_contextuel"},
+                                 "pages_sans_lien_contextuel",
+                                 "inventaire.pages_atteintes_par_liens",
+                                 "inventaire.urls_seulement_par_sitemap"},
                   f"{len(refus)} refus motive(s)")
         motif = refus.get("pages_orphelines", "")
         b.attendu("ROUGE", "le motif dit la relance exacte (--max >= URL connues)",
@@ -169,6 +178,33 @@ def main() -> int:
                   epuise["collecte"]["borne_dure"] is not None
                   and epuise["collecte"]["jusqu_a_epuisement"] is True,
                   f"borne dure {epuise['collecte']['borne_dure']}")
+
+        print("\nTF-0263 -- l'ecart entre sources d'inventaire ouvre la synthese")
+        cles = list(sc)
+        b.attendu("VERT ", "l'inventaire est le PREMIER indicateur de la synthese",
+                  cles[0] == "inventaire", f"premiere cle : {cles[0]}")
+        inv = sc["inventaire"]
+        b.attendu("VERT ", "les deux sources sont confrontees, pas juxtaposees",
+                  inv["urls_declarees_sitemap"] == len(TOUTES)
+                  and inv["pages_atteintes_par_liens"] == 1 + len(LIEES),
+                  f"{inv['urls_declarees_sitemap']} déclarées vs "
+                  f"{inv['pages_atteintes_par_liens']} atteintes par liens")
+        b.attendu("VERT ", "l'ecart est nomme et chiffre",
+                  inv["urls_seulement_par_sitemap"] == len(ORPHELINES),
+                  f"écart {inv['urls_seulement_par_sitemap']}")
+        b.attendu("VERT ", "la lecture dit le constat structurel en clair",
+                  "AUCUN lien interne" in inv["lecture"], inv["lecture"][:100])
+        b.attendu("VERT ", "des exemples sont cites, pas seulement un nombre",
+                  len(inv["urls_seulement_par_sitemap_exemples"]) > 0,
+                  str(inv["urls_seulement_par_sitemap_exemples"][:2]))
+        inv_tronque = tronque["synthese"]["inventaire"]
+        b.attendu("ROUGE", "sous plafond, l'ecart n'est pas ecrit non plus",
+                  inv_tronque["urls_seulement_par_sitemap"] is None
+                  and "NON MESURÉ" in inv_tronque["lecture"],
+                  inv_tronque["lecture"][:80])
+        b.attendu("ROUGE", "le nombre d'URL declarees, lui, reste exact sous plafond",
+                  inv_tronque["urls_declarees_sitemap"] == len(TOUTES),
+                  "le sitemap est lu en entier, il ne depend pas du plafond")
 
         print("\nTF-0261 -- la borne dure ne fabrique pas une couverture complete")
         borne = crawler(racine, plafond=999, delai=0, jusqu_a_epuisement=True,

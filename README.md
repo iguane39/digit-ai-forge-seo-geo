@@ -53,6 +53,8 @@ python c:/dev/digit-ai-forge-seo/scripts/new_mission.py \
 python c:/dev/digit-ai-forge-seo/scripts/crawler.py --projet . --url https://acme.fr
 #    lit sitemap.xml (via robots.txt, index suivis) AVANT de suivre les liens :
 #    l'inventaire mesuré est celui du site, pas celui du graphe de navigation.
+#    La synthèse OUVRE sur l'écart entre les deux sources — URL déclarées au
+#    sitemap vs pages atteintes par les liens — écart nommé et chiffré.
 #    --rendu-js exécute le JS côté client (Playwright/Chromium) sur un site SPA.
 #    Le JSON-LD (application/ld+json) est extrait automatiquement, sans option.
 #    Si le plafond coupe, les compteurs de graphe (orphelines, pages sans lien
