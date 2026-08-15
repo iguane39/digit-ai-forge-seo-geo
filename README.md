@@ -180,6 +180,7 @@ python scripts/validate.py                      # 12 contrôles, non-zéro si é
 python scripts/validate.py --json               # même verdict, en objet machine
 python scripts/autotest.py                      # fixtures vertes ET rouges des contrôles
 python scripts/test_migrer_mission.py           # fixture rouge/verte de la migration de grille
+python scripts/test_balisage.py                 # détecteurs de balisage : les deux ordres d'attributs
 python scripts/new_mission.py --liste           # registre local des études créées
 ```
 

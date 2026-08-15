@@ -56,6 +56,28 @@ GABARITS = [
 ]
 
 
+def jeton(attrs: dict, nom: str) -> str:
+    """Valeur d'un attribut normalisee pour COMPARAISON : minuscules, blancs reduits.
+
+    TF-0262 -- un detecteur de balisage ne doit JAMAIS dependre de l'ordre d'ecriture
+    des attributs. Le run du 15/08 a conclu « aucune balise canonique sur 79 pages »
+    et fonde une action dessus : l'outil cherchait `rel="canonical"` PUIS `href`, le
+    site ecrivait `href` en premier. Une absence etant indiscernable d'une
+    non-detection, rien ne pouvait l'attraper. On passe donc par les paires
+    d'attributs rendues par HTMLParser -- ou l'ordre n'existe plus -- et jamais par
+    une expression reguliere qui lit la balise de gauche a droite.
+    `scripts/test_balisage.py` le prouve a double sens : une fixture rouge portant
+    `href` avant `rel` fait echouer le detecteur naif et passer celui-ci.
+    """
+    return " ".join((attrs.get(nom) or "").split()).lower()
+
+
+def valeur(attrs: dict, nom: str) -> str | None:
+    """Valeur d'un attribut telle quelle (casse preservee : URL, contenu), ou None."""
+    v = (attrs.get(nom) or "").strip()
+    return v or None
+
+
 class Page(HTMLParser):
     """Extrait ce dont la grille a besoin, sans dependance."""
 
@@ -65,6 +87,8 @@ class Page(HTMLParser):
         self.h1 = None
         self.canonical = None
         self.robots = ""
+        self.hreflang: list[dict] = []      # noeud 30 : coherence canonical / hreflang
+        self.og: dict[str, str] = {}        # noeud 32 : balisage de partage
         self.liens: list[tuple[str, bool]] = []   # (href, contextuel)
         self.mots = 0
         self._dans = None
@@ -87,10 +111,27 @@ class Page(HTMLParser):
             self._dans = "title"
         elif tag == "h1" and self.h1 is None:
             self._dans = "h1"
-        elif tag == "link" and (a.get("rel") or "").lower() == "canonical":
-            self.canonical = a.get("href")
-        elif tag == "meta" and (a.get("name") or "").lower() == "robots":
-            self.robots = (a.get("content") or "").lower()
+        elif tag == "link":
+            # `rel` est une liste de jetons separes par des blancs (`rel="alternate
+            # canonical"` est licite) : on teste l'appartenance, jamais l'egalite.
+            rels = set(jeton(a, "rel").split())
+            if "canonical" in rels and valeur(a, "href") and self.canonical is None:
+                self.canonical = valeur(a, "href")
+            if "alternate" in rels and jeton(a, "hreflang"):
+                self.hreflang.append({
+                    "hreflang": jeton(a, "hreflang"),
+                    "href": valeur(a, "href"),
+                })
+        elif tag == "meta":
+            # Open Graph s'ecrit `property=`, quelques CMS emettent `name=` : les deux
+            # sont lus. Le couple (cle, contenu) se lit par nom d'attribut, donc
+            # independamment de l'ordre d'ecriture.
+            nom = jeton(a, "name")
+            if nom == "robots":
+                self.robots = jeton(a, "content")
+            cle = jeton(a, "property") or nom
+            if cle.startswith("og:") and valeur(a, "content"):
+                self.og.setdefault(cle, valeur(a, "content"))
         elif tag == "a" and a.get("href"):
             self.liens.append((a["href"], self._nav == 0))
 
@@ -362,6 +403,8 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
             "h1": (p.h1 or "").strip() or None,
             "canonical": (urllib.parse.urlsplit(
                 urllib.parse.urljoin(url, p.canonical)).path if p.canonical else None),
+            "hreflang": p.hreflang,
+            "og": p.og,
             "indexable": indexable,
             "liens_internes_entrants": 0,
             "poids_ko": round(len(corps) / 1024, 1) if corps else 0.0,
@@ -494,6 +537,16 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
             "titles_dupliques": sum(n for n in titres.values() if n > 1) -
                                 sum(1 for n in titres.values() if n > 1),
             "pages_fines_sous_300_mots": sum(1 for p in pages if 0 < p["_mots"] < 300),
+            # TF-0262 -- le compte de canoniques est produit ICI, par le detecteur
+            # indifferent a l'ordre des attributs, et non plus reconstitue a la main
+            # au moment de rediger : c'est la reconstitution qui avait rendu « aucune
+            # canonique sur 79 pages » sur un site qui en portait partout.
+            "pages_200_avec_canonical": sum(
+                1 for p in pages if p["code_http"] == 200 and p["canonical"]),
+            "pages_200_sans_canonical": sum(
+                1 for p in pages if p["code_http"] == 200 and not p["canonical"]),
+            "pages_avec_hreflang": sum(1 for p in pages if p["hreflang"]),
+            "pages_avec_og": sum(1 for p in pages if p["og"]),
             "pages_avec_json_ld": sum(1 for p in pages if p["json_ld"]),
             "pages_json_ld_en_erreur": sum(1 for p in pages if p["json_ld_erreurs"]),
             "types_json_ld": dict(
@@ -548,6 +601,10 @@ def main() -> int:
     print(f"  pages orphelines    : {s['pages_orphelines']}"
           f"{'' if s['orphelines_compte_exact'] else ' (MAJORANT — plafond atteint)'}")
     print(f"  titles dupliqués    : {s['titles_dupliques']}")
+    print(f"  canonical (HTTP 200): {s['pages_200_avec_canonical']} avec · "
+          f"{s['pages_200_sans_canonical']} sans"
+          + (f" · hreflang sur {s['pages_avec_hreflang']}" if s["pages_avec_hreflang"] else "")
+          + (f" · Open Graph sur {s['pages_avec_og']}" if s["pages_avec_og"] else ""))
     print(f"  pages < 300 mots    : {s['pages_fines_sous_300_mots']}")
     print(f"  pages avec JSON-LD  : {s['pages_avec_json_ld']}"
           + (f" — types : {', '.join(f'{t} ({n})' for t, n in s['types_json_ld'].items())}"
