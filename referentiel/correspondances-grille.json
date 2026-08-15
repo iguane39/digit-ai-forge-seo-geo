@@ -70,5 +70,62 @@
       "identifiants_nouveaux": []
     }
   ],
+  "historique_anterieur_au_registre": {
+    "objet": "Table de correspondance des identifiants pour les deux evolutions anterieures au registre (82 -> 87 -> 88), etablie par preuve git sur les TITRES de noeuds. Ne remplace pas `limite_connue` : les EMPREINTES d'epoque restent irreconstituables, mais les IDENTIFIANTS le sont, parce que les titres de noeuds sont conserves dans l'historique.",
+    "etabli_le": "2026-08-15",
+    "par": "campagne mandatee TF-0248",
+    "preuves": [
+      "54d25d0 `.claude/skills/seo-audit-strategie/references/grille-82-noeuds.md` — grille a 82 noeuds, telle qu'ecrite a l'init de la forge",
+      "278f37a — insertion de la branche Local (5 noeuds) ; le fichier est renomme grille-noeuds.md (R082)",
+      "7027351 `referentiel/grille-noeuds.md` — grille a 87 noeuds apres l'inversion skill -> projet",
+      "66d7ea4 — TF-0093, insertion du noeud 58 « Acces & Directives IA » en branche GEO ; grille a 88 noeuds"
+    ],
+    "decalages": [
+      {
+        "de": "grille 82",
+        "vers": "grille 87",
+        "cause": "insertion de la branche Local (5 noeuds) aux places 58 a 62",
+        "regle": "tout identifiant >= 58 recoit +5 ; les identifiants 1 a 57 sont inchanges"
+      },
+      {
+        "de": "grille 87",
+        "vers": "grille 88",
+        "cause": "insertion du noeud 58 « Acces & Directives IA » en branche GEO (TF-0093)",
+        "regle": "tout identifiant >= 58 recoit +1 ; deja declare dans `evolutions` (4c6e353fc86e -> a18e7e10aab6)"
+      }
+    ],
+    "cumul_82_vers_88": "tout identifiant >= 58 de la grille a 82 noeuds recoit +6 dans la grille a 88 noeuds ; les identifiants 1 a 57 sont inchanges.",
+    "table_verifiee_par_les_titres": {
+      "commentaire": "Verification faite titre a titre sur les trois branches que le noeud Machine SEO prend pour source. Aucun titre n'a change, aucun noeud n'a ete retire : le decalage est purement positionnel.",
+      "Automatisation": [
+        { "g82": 58, "g87": 63, "g88": 64, "titre": "Agents IA" },
+        { "g82": 59, "g87": 64, "g88": 65, "titre": "Audits Massifs" },
+        { "g82": 60, "g87": 65, "g88": 66, "titre": "Monitoring" },
+        { "g82": 61, "g87": 66, "g88": 67, "titre": "Generation De Pages" },
+        { "g82": 62, "g87": 67, "g88": 68, "titre": "Detection Opportunites" }
+      ],
+      "Mesure": [
+        { "g82": 63, "g87": 68, "g88": 69, "titre": "Impressions" },
+        { "g82": 64, "g87": 69, "g88": 70, "titre": "Clics" },
+        { "g82": 65, "g87": 70, "g88": 71, "titre": "Positions" },
+        { "g82": 66, "g87": 71, "g88": 72, "titre": "Leads" },
+        { "g82": 67, "g87": 72, "g88": 73, "titre": "Revenu Par Page" }
+      ],
+      "Optimisation": [
+        { "g82": 68, "g87": 73, "g88": 74, "titre": "Contenus A Renforcer" },
+        { "g82": 69, "g87": 74, "g88": 75, "titre": "Pages A Fusionner" },
+        { "g82": 70, "g87": 75, "g88": 76, "titre": "Pages A Supprimer" },
+        { "g82": 71, "g87": 76, "g88": 77, "titre": "Tests SEO" },
+        { "g82": 72, "g87": 77, "g88": 78, "titre": "Boucles D'Amelioration" }
+      ]
+    },
+    "arbitrage_noeud_mesure": {
+      "question_posee": "Une etude d'epoque (Produit-02, ouverte sur la numerotation a 82 noeuds) justifie le score du noeud Machine SEO en nommant sept noeuds : « 58 Agents IA, 59 Audits massifs, 60 Monitoring, 61 Mesure, 62 Detection d'opportunites, 71 Tests SEO, 72 Boucles d'amelioration ». Six titres se retrouvent dans la grille courante ; le septieme, « Mesure », n'a pas de contrepartie. Deux mandats successifs (TF-0240 puis TF-0247) ont laisse la citation non transposee, faute de pouvoir trancher entre « noeud perdu » et « capacite deplacee ».",
+      "verdict": "AUCUN NOEUD N'A ETE PERDU, et aucune capacite n'a ete deplacee. La grille a 82 noeuds ne contient, a aucune de ses versions, de noeud intitule « Mesure » dans la branche Automatisation. La place 61 y porte « Generation De Pages » (54d25d0, ligne 199) — exactement le titre qu'elle porte aujourd'hui a la place 67. « Mesure » est le nom d'une BRANCHE (les places 63 a 67 de la grille 82, 69 a 73 aujourd'hui), jamais celui d'un noeud.",
+      "diagnostic": "Erreur de plume d'epoque, non evolution de grille. L'auteur du constat, en enumerant la branche Automatisation, a etiquete la place 61 du nom de la branche voisine et y a porte une observation qui appartient a la branche Mesure (« aucun evenement de conversion GA4 » — c'est la substance du noeud Leads, place 66 en grille 82, 72 aujourd'hui, dont la fiche de la meme etude porte le meme constat).",
+      "consequence_sur_la_transposition": "La plage EST transposable, integralement et sans invention : « 58 a 62, 71 et 72 » devient « 64 a 68, 77 et 78 ». Six des sept titres cites confirment le decalage +6 un a un ; le septieme ne le contredit pas — il ne designe simplement pas ce que son etiquette annonce. L'objection retenue par TF-0247 (« transposer en bloc affirmerait que Generation De Pages a justifie le score, ce que le constat contredit ») tombe : Generation De Pages occupait deja cette place au moment ou le constat a ete ecrit. La transposition ne deplace donc aucun sens ; elle revele une etiquette fausse qui l'etait deja.",
+      "regle_qui_en_sort": "Une citation d'epoque se transpose sur les IDENTIFIANTS et se verifie sur les TITRES. Quand un titre cite ne correspond pas au noeud designe, c'est la citation qui est en defaut, pas la grille — le corriger exige de le DIRE dans le texte reecrit, jamais de le transposer en silence."
+    }
+  },
   "limite_connue": "Les évolutions antérieures à ce registre — dont le passage de 82 à 87 nœuds — n'y figurent pas : leurs empreintes de grille ne sont pas reconstituables de façon fiable (les fichiers sont stockés en LF et lus en CRLF sur poste Windows, l'empreinte diffère donc de celle qu'une étude de l'époque a figée). Le mécanisme commence ici ; il n'invente pas un passé qu'il ne peut pas prouver."
 }
