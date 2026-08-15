@@ -7,7 +7,7 @@
     "Un identifiant retiré ne se réaffecte JAMAIS à un autre nœud : il sort, il ne se recycle pas.",
     "Les évolutions se chaînent. Une étude qui a sauté plusieurs versions est récupérable tant qu'une suite d'entrées relie sa version à la version courante."
   ],
-  "version_courante": "a18e7e10aab6",
+  "version_courante": "0adef2177300",
   "evolutions": [
     {
       "de": "3d0af44aae9a",
@@ -59,6 +59,15 @@
       "identifiants_nouveaux": [
         58
       ]
+    },
+    {
+      "de": "a18e7e10aab6",
+      "vers": "0adef2177300",
+      "date": "2026-08-15",
+      "motif": "TF-0247 : citations inter-noeuds corrigees dans la grille. Trois cellules renvoyaient a des identifiants perimes, herites de numerotations anterieures et jamais transposees : noeud 25 `critere_verdict` « nœud 74 » -> 75 (Optimisation / Pages A Fusionner, la cible que le sens appelle pour une page programmatique sans contenu propre) ; noeud 85 `source_requise` « nœuds 66 et 46 » -> « 72 et 46 » (72 = Mesure / Leads, source attendue pour Leads Entrants — 66 designait Automatisation / Monitoring) ; noeud 86 `source_requise` « nœuds 8 et 67 » -> « 8 et 73 » (73 = Mesure / Revenu Par Page, source attendue pour Ventes — 67 designait Automatisation / Generation De Pages). AUCUN identifiant ne bouge : ni insertion, ni retrait, ni renumerotation. Seul le TEXTE de trois renvois change, donc l'empreinte de la grille change et toute etude ouverte sur a18e7e10aab6 doit passer par cette table pour rester validable. Les constats, verdicts et actions des etudes existantes restent valables tels quels.",
+      "correspondances": {},
+      "identifiants_retires": [],
+      "identifiants_nouveaux": []
     }
   ],
   "limite_connue": "Les évolutions antérieures à ce registre — dont le passage de 82 à 87 nœuds — n'y figurent pas : leurs empreintes de grille ne sont pas reconstituables de façon fiable (les fichiers sont stockés en LF et lus en CRLF sur poste Windows, l'empreinte diffère donc de celle qu'une étude de l'époque a figée). Le mécanisme commence ici ; il n'invente pas un passé qu'il ne peut pas prouver."

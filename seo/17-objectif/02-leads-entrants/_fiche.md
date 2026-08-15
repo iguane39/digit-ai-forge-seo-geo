@@ -4,7 +4,7 @@ branche: Objectif
 noeud: Leads Entrants
 volet: CADRAGE
 statut_instrumentation: CA
-source_requise: "cadrage + nœuds 66 et 46"
+source_requise: "cadrage + nœuds 72 et 46"
 doublon_de: null
 modeles: e-commerce
 # --- rempli pendant la mission ---
@@ -26,7 +26,7 @@ Quelle cible de leads organiques ?
 
 ## Source requise
 
-cadrage + nœuds 66 et 46
+cadrage + nœuds 72 et 46
 
 ## Methode
 

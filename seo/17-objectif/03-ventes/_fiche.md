@@ -4,7 +4,7 @@ branche: Objectif
 noeud: Ventes
 volet: CADRAGE
 statut_instrumentation: CA
-source_requise: "cadrage + nœuds 8 et 67"
+source_requise: "cadrage + nœuds 8 et 73"
 doublon_de: null
 modeles: b2b-lead-gen,e-commerce,local,media-affiliation,saas
 # --- rempli pendant la mission ---
@@ -26,7 +26,7 @@ Quelle cible de chiffre d'affaires organique ?
 
 ## Source requise
 
-cadrage + nœuds 8 et 67
+cadrage + nœuds 8 et 73
 
 ## Methode
 
