@@ -41,6 +41,69 @@ RE_COMBINED = re.compile(
 
 SEUIL_BLOCAGE = 0.5  # heuristique, pas un seuil du referentiel : signale, ne conclut pas seul
 
+# Noeuds que ce script instrumente, et donc qu'il laisse non mesures quand il ne
+# peut pas mesurer.
+NOEUDS = [29, 58]
+
+# TF-0260 -- l'acces aux journaux serveur est l'EXCEPTION, pas la regle :
+# hebergement mutualise, CDN sans export, client non administrateur. Le script
+# exigeait `--logs` et s'arretait net sans lui : un service annonce prouve n'etait
+# delivrable qu'aux deux tiers, et rien ne le disait. Il rend desormais un verdict
+# non mesurable MOTIVE, au vocabulaire de la methode (methode.md l.27 : « Non
+# mesurable en l'état — export requis : X » est une réponse valide et attendue).
+DONNEE_MANQUANTE = (
+    "journaux d'accès serveur ou CDN au Combined Log Format, sur une fenêtre d'au "
+    "moins 30 jours, couvrant l'ensemble du trafic (pas seulement les pages HTML)"
+)
+
+COMMENT_L_OBTENIR = [
+    "Serveur dédié ou VPS — /var/log/nginx/access.log* ou "
+    "/var/log/apache2/access.log*, déjà au Combined Log Format.",
+    "Hébergement mutualisé — cPanel › Raw Access Logs, ou Plesk › Logs, "
+    "téléchargement en .gz accepté tel quel par ce script.",
+    "Derrière Cloudflare — Logpush (offre Enterprise) ; à défaut, l'origine ne voit "
+    "que le trafic non servi par le cache et sous-compte les agents IA.",
+    "Aucun export possible — le volet « trafic réel des agents IA » reste non "
+    "mesurable, et le nœud 58 se juge alors sur robots.txt et llms.txt SEULS : "
+    "un agent autorisé par robots.txt peut rester bloqué par un WAF/CDN sans que "
+    "rien ne le montre. C'est une limite déclarée du livrable, pas un oubli.",
+]
+
+
+def verdict_non_mesurable(motif_source: str, aujourdhui: str) -> dict:
+    """Sortie du script quand la donnee d'entree n'existe pas.
+
+    Meme forme que la sortie mesuree -- un consommateur lit `mesurable` et sait
+    ou il en est --, et jamais de compteur a zero : « 0 hit d'agent IA » et
+    « aucun journal a lire » sont deux choses differentes, et les confondre
+    ferait conclure a l'absence de trafic IA sur un site qui n'a jamais ete
+    regarde.
+    """
+    return {
+        "collecte": {
+            "outil": "forge-seo/agents_ia.py",
+            "date": aujourdhui,
+            "fichiers_logs": [],
+            "catalogue_agents": {"chemin": "referentiel/agents-ia.json"},
+        },
+        "mesurable": False,
+        "verdict": "non-mesurable",
+        "noeuds_concernes": NOEUDS,
+        "motif": (
+            f"Non mesurable en l'état — {motif_source}. Donnée requise : "
+            f"{DONNEE_MANQUANTE}."
+        ),
+        "donnee_manquante": DONNEE_MANQUANTE,
+        "comment_l_obtenir": COMMENT_L_OBTENIR,
+        "synthese": {
+            # Explicitement nuls, jamais zero : voir la docstring.
+            "hits_agents_ia": None,
+            "par_categorie": None,
+            "agents_probablement_bloques": None,
+        },
+        "par_agent": None,
+    }
+
 
 def charger_catalogue() -> list[dict]:
     if not CATALOGUE.exists():
@@ -138,8 +201,10 @@ def main() -> int:
     )
     p.add_argument("--projet", required=True, help="chemin du projet audite")
     p.add_argument(
-        "--logs", action="append", required=True,
-        help="fichier de log au format Combined Log Format (repetable ; .gz accepte)",
+        "--logs", action="append",
+        help="fichier de log au format Combined Log Format (repetable ; .gz accepte) — "
+             "OPTIONNEL : sans lui le script rend un verdict « non mesurable » motive, "
+             "il ne s'arrete pas (TF-0260)",
     )
     args = p.parse_args()
 
@@ -148,11 +213,34 @@ def main() -> int:
         print(f"{base.parent.parent} absent — créer l'étude avec new_mission.py")
         return 1
     base.mkdir(parents=True, exist_ok=True)
+    aujourdhui = dt.date.today().isoformat()
+
+    # Cas NORMAL : aucun journal n'a ete fourni. On le declare, on dit ce qui manque
+    # et comment l'obtenir, et on ECRIT le resultat -- un verdict non mesurable est
+    # un resultat du pipeline, il doit laisser une trace horodatee comme les autres.
+    if not args.logs:
+        resultat = verdict_non_mesurable(
+            "aucun journal serveur ou CDN fourni (--logs absent)", aujourdhui)
+        cible = base / f"agents-ia-{aujourdhui}.json"
+        cible.write_text(json.dumps(resultat, indent=2, ensure_ascii=False) + "\n",
+                         encoding="utf-8")
+        print(f"NON MESURABLE — nœuds {', '.join(str(n) for n in NOEUDS)}")
+        print(f"  {resultat['motif']}")
+        print("  Comment l'obtenir :")
+        for piste in COMMENT_L_OBTENIR:
+            print(f"    · {piste}")
+        print(f"écrit : {cible.relative_to(Path(args.projet).resolve())}")
+        return 0
 
     fichiers = [Path(f) for f in args.logs]
     manquants = [str(f) for f in fichiers if not f.exists()]
     if manquants:
+        # Un chemin donne et introuvable est une FAUTE DE FRAPPE, pas une absence de
+        # donnee : la degrader en « non mesurable » ferait passer une coquille pour
+        # un constat d'audit. Refus maintenu, distinct du cas ci-dessus.
         print(f"REFUS : fichier(s) de log introuvable(s) : {manquants}")
+        print("  (ne pas passer --logs du tout rend un verdict « non mesurable » "
+              "motivé ; un chemin faux, lui, se corrige)")
         return 1
 
     catalogue = charger_catalogue()
@@ -160,8 +248,10 @@ def main() -> int:
           f"verifie {json.loads(CATALOGUE.read_text(encoding='utf-8'))['date_verification']})")
 
     resultat = ventiler(fichiers, catalogue)
-    aujourdhui = dt.date.today().isoformat()
     sortie = {
+        "mesurable": True,
+        "verdict": "mesure",
+        "noeuds_concernes": NOEUDS,
         "collecte": {
             "outil": "forge-seo/agents_ia.py",
             "date": aujourdhui,

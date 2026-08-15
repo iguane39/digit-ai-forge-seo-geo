@@ -65,9 +65,14 @@ python c:/dev/digit-ai-forge-seo/scripts/crawler.py --projet . --url https://acm
 CRUX_API_KEY=... python c:/dev/digit-ai-forge-seo/scripts/crux.py --projet . --url https://acme.fr
 #    cle gratuite (aucune facturation) : https://developer.chrome.com/docs/crux/api
 
-# 3 ter. (optionnel, noeuds 29/58, si logs serveur fournis) ventilation par agent IA nommé
+# 3 ter. (noeuds 29/58) ventilation par agent IA nommé
 python c:/dev/digit-ai-forge-seo/scripts/agents_ia.py --projet . --logs seo/donnees/logs/access.log
 #    catalogue daté des agents (GPTBot, ClaudeBot, PerplexityBot…) dans referentiel/agents-ia.json
+#    --logs est OPTIONNEL : sans lui — le cas normal, l'accès aux journaux étant
+#    l'exception — le script rend un verdict « non mesurable » motivé, écrit et
+#    horodaté, qui nomme la donnée manquante et comment l'obtenir. Il ne s'arrête
+#    plus net. Un chemin --logs faux, lui, reste un refus : une coquille n'est pas
+#    une absence de donnée.
 
 # 4. ouvrir seo/METHODE.md — garde-fous, runbook, contrat de sortie. Constater et
 #    interpréter dans les fiches de seo/analyse/ : c'est la partie humaine.

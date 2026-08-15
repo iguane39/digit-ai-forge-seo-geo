@@ -13,6 +13,16 @@ fichier temporaire du systeme.
           comptes comme un agent IA par erreur -- ils doivent apparaitre
           comme ignores/non rattaches, jamais silencieusement absorbes.
 
+TF-0260 -- degradation declaree quand les journaux manquent :
+
+  VERT  : le verdict « non-mesurable » est RENDU (le script ne s'arrete plus),
+          au vocabulaire de la methode, avec la donnee manquante nommee, le
+          moyen de l'obtenir, et les noeuds laisses non mesures.
+  ROUGE : aucun compteur a zero dans ce verdict. « 0 hit d'agent IA » et
+          « aucun journal a lire » sont deux constats differents, et les
+          confondre ferait conclure a l'absence de trafic IA sur un site que
+          personne n'a regarde.
+
 Usage :
     python scripts/test_agents_ia.py
 """
@@ -23,7 +33,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-from agents_ia import charger_catalogue, ventiler
+from agents_ia import (
+    COMMENT_L_OBTENIR,
+    NOEUDS,
+    charger_catalogue,
+    ventiler,
+    verdict_non_mesurable,
+)
 
 LIGNES = [
     # GPTBot : 2 hits, tous 200
@@ -96,10 +112,44 @@ def main() -> int:
                 and ok_exemple_conserve):
             echecs.append("non-rattachement du trafic non-IA / lignes mal formees")
 
+    # --- TF-0260 : sans journaux, le service degrade au lieu de s'arreter --------
+    #
+    # L'acces aux logs est l'EXCEPTION (mutualise, CDN sans export, client non
+    # administrateur). Le script exigeait --logs et s'arretait net : le volet
+    # « crawlers IA » de cat-seo-06 n'a pas ete delivre sur la mission du 15/08.
+    print("\nTF-0260 -- verdict non mesurable quand les journaux manquent")
+    v = verdict_non_mesurable("aucun journal serveur ou CDN fourni", "2026-08-15")
+    controles = [
+        ("VERT ", "le verdict est rendu, pas un arret",
+         v["verdict"] == "non-mesurable" and v["mesurable"] is False,
+         f"verdict={v['verdict']!r}"),
+        ("VERT ", "le motif emploie le vocabulaire de la methode",
+         v["motif"].startswith("Non mesurable en l'état —"), v["motif"][:60]),
+        ("VERT ", "la donnee manquante est nommee precisement",
+         "Combined Log Format" in v["donnee_manquante"], v["donnee_manquante"][:60]),
+        ("VERT ", "le moyen de l'obtenir est donne, pas seulement le manque",
+         len(v["comment_l_obtenir"]) == len(COMMENT_L_OBTENIR)
+         and any("cPanel" in p for p in v["comment_l_obtenir"]),
+         f"{len(v['comment_l_obtenir'])} piste(s)"),
+        ("VERT ", "les noeuds laisses non mesures sont nommes",
+         v["noeuds_concernes"] == NOEUDS, str(v["noeuds_concernes"])),
+        ("ROUGE", "AUCUN compteur a zero : « 0 hit » n'est pas « pas regarde »",
+         v["synthese"]["hits_agents_ia"] is None and v["par_agent"] is None,
+         "un 0 ici ferait conclure a l'absence de trafic IA sur un site jamais lu"),
+        ("ROUGE", "aucun agent inventorie sans donnee",
+         v["synthese"]["agents_probablement_bloques"] is None
+         and v["collecte"]["fichiers_logs"] == [],
+         "ni blocage suppose, ni fichier fantome"),
+    ]
+    for etiquette, nom, ok, detail in controles:
+        print(f"  [{'OK  ' if ok else 'ECHEC'}] {etiquette} {nom} -- {detail}")
+        if not ok:
+            echecs.append(nom)
+
     if echecs:
         print(f"\nECHECS : {echecs}")
         return 1
-    print("\n9/9 preuves conformes")
+    print("\n16/16 preuves conformes")
     return 0
 
 
