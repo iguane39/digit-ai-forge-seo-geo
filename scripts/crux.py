@@ -50,6 +50,20 @@ FACTEURS_FORME = ("PHONE", "DESKTOP", "TABLET", "ALL_FORM_FACTORS")
 DOSSIER_TERRAIN = ("donnees", "performance")
 MOTIF_SOURCE_TERRAIN = "crux"
 
+# Noeud que ce script instrumente, et donc qu'il laisse non mesure quand il ne peut
+# pas mesurer (meme convention qu'agents_ia.py, TF-0260).
+NOEUDS = [31]
+
+# TF-0273 -- symetrie avec agents_ia.py : un « non mesure » de terrain laisse une
+# TRACE, au meme endroit que la sortie mesuree et au meme vocabulaire. Sans cle, le
+# script sortait en 1 sans rien ecrire : l'etude ne gardait aucune preuve datee que
+# le noeud 31 n'avait pas ete mesure, et un run suivant ne pouvait pas distinguer
+# « jamais tente » de « tente sans la donnee requise ».
+DONNEE_MANQUANTE = (
+    "clé API CrUX (gratuite, sans facturation) — fournie par `--cle` ou la variable "
+    "d'environnement CRUX_API_KEY, jamais lue d'un .env par ce script"
+)
+
 # Le message que TOUT refus de mesure de terrain doit porter. Une cle CrUX est
 # gratuite et sans facturation : le run du 15/08 a conclu « conforme » sur 21 ms
 # de mediane serveur faute de l'avoir demandee, quand le terrain donnait 1 162 ms
@@ -61,6 +75,60 @@ OBTENIR_LA_CLE = (
     "  (ou en un clic : https://developer.chrome.com/docs/crux/api#getting_an_api_key)\n"
     "  Puis : python scripts/crux.py --projet <chemin> --url <site> --origine"
 )
+
+COMMENT_L_OBTENIR = [
+    "Compte Google Cloud — gcloud services enable chromeuxreport.googleapis.com "
+    'puis gcloud services api-keys create --display-name="CrUX forge-seo".',
+    "Sans gcloud — création de la clé en un clic : "
+    "https://developer.chrome.com/docs/crux/api#getting_an_api_key",
+    "Clé obtenue — la passer par `--cle` ou la variable CRUX_API_KEY, et relancer "
+    "ce script (ajouter `--origine` sur un site à faible trafic par page).",
+    "Aucune clé obtenable — le nœud 31 (Performance) reste NON MESURÉ : aucune "
+    "mesure de laboratoire ne s'y substitue (le 15/08, 21 ms de médiane serveur "
+    "ont valu « conforme » quand le terrain donnait 1 162 ms de TTFB p75). C'est "
+    "une limite déclarée du livrable, pas un oubli.",
+]
+
+
+def verdict_non_mesurable(motif_source: str, aujourdhui: str, cible: str, mode: str,
+                          facteur_forme: str) -> dict:
+    """Sortie du script quand la donnee d'entree n'existe pas (TF-0273).
+
+    Meme forme que la sortie mesuree -- un consommateur lit `mesurable` et sait ou
+    il en est --, et jamais de metrique fabriquee : `disponible: false` sans
+    `metriques` fait que terrain_disponible() ne prend JAMAIS cette trace pour un
+    releve exploitable. « Pas de donnees de terrain publiees » (404, un resultat
+    mesure) et « personne n'a interroge l'API » (ici) sont deux constats
+    differents : les confondre ferait juger le noeud 31 sur du vide.
+    """
+    return {
+        "collecte": {
+            "outil": "forge-seo/crux.py",
+            "date": aujourdhui,
+            "cible": cible,
+            "mode": mode,
+            "facteur_forme": facteur_forme,
+            "source": "aucune — l'API CrUX n'a pas été interrogée",
+        },
+        "mesurable": False,
+        "verdict": "non-mesurable",
+        "noeuds_concernes": NOEUDS,
+        "disponible": False,
+        "motif": (
+            f"Non mesurable en l'état — {motif_source}. Donnée requise : "
+            f"{DONNEE_MANQUANTE}."
+        ),
+        "motif_indisponible": (
+            f"non mesuré — {motif_source} (aucun appel à l'API CrUX ; distinct d'un "
+            "site sous le seuil de publication CrUX, qui est un résultat mesuré)"
+        ),
+        "donnee_manquante": DONNEE_MANQUANTE,
+        "comment_l_obtenir": COMMENT_L_OBTENIR,
+        # Explicitement nuls, jamais des dictionnaires vides : voir la docstring.
+        "metriques": None,
+        "cle_enregistrement": None,
+        "periode_collecte": None,
+    }
 
 
 def noeud_exige_terrain(source_requise: str | None) -> bool:
@@ -178,30 +246,47 @@ def main() -> int:
     )
     args = p.parse_args()
 
-    if not args.cle:
-        print(
-            "REFUS : aucune cle API CrUX fournie (--cle ou variable d'environnement "
-            "CRUX_API_KEY).\n"
-            "Sans elle, le noeud 31 (Performance) reste NON MESURE : il se juge sur "
-            "des donnees de terrain,\net aucune mesure de laboratoire ne s'y "
-            "substitue — le 15/08, 21 ms de mediane serveur\nont valu « conforme » "
-            "quand le terrain donnait 1 162 ms de TTFB p75.\n"
-            + OBTENIR_LA_CLE
-        )
-        return 1
-
     dossier = Path(args.projet).resolve() / "seo" / "donnees" / "performance"
     if not dossier.parent.parent.is_dir():
         print(f"{dossier.parent.parent} absent — créer l'étude avec new_mission.py")
         return 1
     dossier.mkdir(parents=True, exist_ok=True)
 
+    aujourdhui = dt.date.today().isoformat()
     mode = "origin" if args.origine else "url"
+
+    # TF-0273 -- sans cle, le refus reste un refus (la cle est gratuite et s'obtient
+    # en deux commandes : ce n'est pas une donnee hors de portee, sortie 1 conservee),
+    # mais il ECRIT desormais sa trace, au meme endroit et au meme vocabulaire que la
+    # sortie mesuree. Nom de fichier distinct de celui d'un releve : une absence de
+    # mesure n'ecrase jamais une mesure.
+    if not args.cle:
+        resultat = verdict_non_mesurable(
+            "aucune clé API CrUX fournie (--cle ou variable d'environnement "
+            "CRUX_API_KEY absente)", aujourdhui, args.url, mode, args.facteur_forme)
+        trace = dossier / f"crux-non-mesure-{nom_fichier(args.url)}-{aujourdhui}.json"
+        trace.write_text(
+            json.dumps(resultat, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        print(f"NON MESURABLE — nœud {', '.join(str(n) for n in NOEUDS)}")
+        print(f"  {resultat['motif']}")
+        print("  Comment l'obtenir :")
+        for piste in COMMENT_L_OBTENIR:
+            print(f"    · {piste}")
+        print(f"écrit : {trace.relative_to(Path(args.projet).resolve())}")
+        print(OBTENIR_LA_CLE)
+        return 1
+
     print(f"CrUX : interrogation de {mode}={args.url} ({args.facteur_forme})")
     code, corps = appeler_api(args.cle, args.url, mode, args.facteur_forme)
 
-    aujourdhui = dt.date.today().isoformat()
+    # `mesurable` vaut True des lors que l'API a repondu : un 404 CrUX (site sous le
+    # seuil de publication) est un RESULTAT mesure, pas une absence de mesure -- seul
+    # le cas « pas de cle » ci-dessus est non mesurable (TF-0273).
     resultat = {
+        "mesurable": True,
+        "verdict": "mesure",
+        "noeuds_concernes": NOEUDS,
         "collecte": {
             "outil": "forge-seo/crux.py",
             "date": aujourdhui,

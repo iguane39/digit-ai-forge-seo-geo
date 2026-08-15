@@ -64,6 +64,10 @@ python c:/dev/digit-ai-forge-seo/scripts/crawler.py --projet . --url https://acm
 # 3 bis. (optionnel, noeud 31) donnees de terrain CrUX -- gratuit, cle API requise
 CRUX_API_KEY=... python c:/dev/digit-ai-forge-seo/scripts/crux.py --projet . --url https://acme.fr
 #    cle gratuite (aucune facturation) : https://developer.chrome.com/docs/crux/api
+#    sans cle, le refus reste un refus (sortie 1 — la cle s'obtient en deux commandes),
+#    mais il ECRIT desormais sa trace horodatée « non mesurable » dans
+#    seo/donnees/performance/, au même endroit et au même vocabulaire que la sortie
+#    mesurée : une absence de mesure du nœud 31 laisse une preuve datée (TF-0273).
 
 # 3 ter. (noeuds 29/58) ventilation par agent IA nommé
 python c:/dev/digit-ai-forge-seo/scripts/agents_ia.py --projet . --logs seo/donnees/logs/access.log
