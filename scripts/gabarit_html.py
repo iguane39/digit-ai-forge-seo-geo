@@ -803,7 +803,12 @@ def tableau(
 # socle : le bareme existe DANS la page (il doit survivre au PDF, ou aucun `title`
 # ne subsiste) et chaque valeur y renvoie par aria-describedby.
 BAREMES = {
-    "maturite": ("Barème de maturité de la machine SEO (nœud 87)", [
+    # Le barème se designe par le NOM du noeud, pas par son numero : ce module est
+    # de la presentation pure, il n'a pas acces au manifeste, et un numero fige ici
+    # designe autre chose des la premiere evolution de grille -- « nœud 87 » a cesse
+    # d'etre la Machine SEO le 11/08/2026, en silence.
+    "maturite": ("Barème de maturité de la machine SEO (nœud « Machine SEO », "
+                 "branche Objectif)", [
         ("1", "aucun dispositif — le site ne produit ni ne mesure sa visibilité"),
         ("2", "dispositif partiel non instrumenté — on publie, on ne mesure pas"),
         ("3", "mesure en place sans boucle de correction — on constate, on ne corrige pas"),

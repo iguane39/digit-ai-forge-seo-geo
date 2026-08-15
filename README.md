@@ -18,12 +18,13 @@ sur une grille stable, comparable et versionnée.
 | Service | Intention (« je veux… ») | Point d'entrée | Statut |
 |---|---|---|---|
 | **Créer une mission d'audit SEO** | ouvrir une étude SEO outillée chez mon produit | `python scripts\new_mission.py (CLI stdlib)` | prouvé (production) |
-| **Dérouler l'audit 87 nœuds** | auditer mon site en ligne sur toute la grille, preuves à l'appui | `seo\METHODE.md déroulée en session (mandat humain requis — jamais de déclenchement automatique)` | prouvé (production) |
+| **Dérouler l'audit 88 nœuds** | auditer mon site en ligne sur toute la grille, preuves à l'appui | `seo\METHODE.md déroulée en session (mandat humain requis — jamais de déclenchement automatique)` | prouvé (production) |
 | **Valider forge et mission** | vérifier mécaniquement l'intégrité de la forge et d'une mission | `python scripts\validate.py [--mission <chemin>]` | prouvé (production) |
 | **Rapport HTML vérifié** | recevoir un rapport d'audit autonome et contrôlé avant remise | `python scripts\rapport_html.py --verifier` | prouvé (production) |
 | **Runs de suivi récurrents** | suivre l'évolution SEO d'un site entre deux audits | `méthode documentée (récurrence post-MEP)` | déclaré (experimental) |
 | **Instrumentation de crawl avancée** | mesurer aussi les sites JS, le balisage, les CWV terrain et les crawlers IA | `python scripts\{crawler.py --rendu-js, crux.py, agents_ia.py}` | prouvé (experimental) |
 | **Scorer et écrire le CSV d'actions** | transformer les actions rédigées de la mission en CSV scoré, trié et contrôlé | `python scripts\scorer_actions.py --mission <chemin>` | prouvé (experimental) |
+| **Migrer une étude vers la grille courante** | restituer une étude auditée sur une grille antérieure, sans figer la forge ni inventer de verdict | `python scripts\migrer_mission.py --projet <chemin> [--verifier]` | prouvé (production) |
 
 Le catalogue consolidé des dix forges vit chez le pilot :
 [digit-ai-forge-pilot/catalogues/CATALOGUES.md](https://github.com/iguane39/digit-ai-forge-pilot/blob/main/catalogues/CATALOGUES.md).
@@ -84,6 +85,10 @@ python c:/dev/digit-ai-forge-seo/scripts/rapport_html.py --projet . --verifier
 
 # à tout moment : contrôler l'étude
 python c:/dev/digit-ai-forge-seo/scripts/validate.py --mission .
+
+# si la grille a évolué depuis l'ouverture de l'étude : migrer, puis rejouer 6
+python c:/dev/digit-ai-forge-seo/scripts/migrer_mission.py --projet . --verifier
+python c:/dev/digit-ai-forge-seo/scripts/migrer_mission.py --projet .
 ```
 
 `--modele` prend `b2b-lead-gen`, `e-commerce`, `media-affiliation`, `local` ou `saas`.
@@ -171,6 +176,7 @@ python scripts/scaffold.py                      # régénère seo/ depuis refere
 python scripts/validate.py                      # 12 contrôles, non-zéro si échec
 python scripts/validate.py --json               # même verdict, en objet machine
 python scripts/autotest.py                      # fixtures vertes ET rouges des contrôles
+python scripts/test_migrer_mission.py           # fixture rouge/verte de la migration de grille
 python scripts/new_mission.py --liste           # registre local des études créées
 ```
 
@@ -323,6 +329,27 @@ deux contrôles la rendent opposable : le 12 du référentiel échoue tant que
 divergente **sans table applicable**. Les évolutions se chaînent : une étude qui a sauté
 plusieurs versions reste récupérable tant qu'une suite d'entrées relie sa version à la
 version courante. Un identifiant retiré ne se réaffecte jamais.
+
+**Et la table a désormais un outil qui l'applique.** Déclarer la transposition ne la
+faisait pas : une étude d'avant restait bloquée — `rapport_html.py` refuse de restituer
+une grille incomplète, à juste titre —, et le seul contournement praticable était
+d'épingler un worktree de la forge sur un ancien commit, ce qui fige l'étude sur une
+grille morte et produit un livrable que la forge courante ne sait plus reproduire.
+`migrer_mission.py` applique la chaîne, transpose les identifiants **partout où ils sont
+structurés** (front-matter des fiches, fiches de branche, colonne `noeuds_couverts` du
+CSV d'actions, `noeuds[].id` et `dette_instrumentation[].noeud_id` des snapshots),
+déplace l'empreinte de l'étude et journalise l'opération dans `.forge-seo.json` — qui,
+quand, d'où vers où, quels nœuds ajoutés. Les livrables d'origine sont copiés intacts
+sous `livrables/pre-migration-<empreinte>/`. Un nœud ajouté par l'évolution naît **non
+instruit** — `etat: a-faire`, `verdict: null` —, et le rapport le dit partout où il
+affiche la couverture : une étude qui gagne un nœud **perd** un point de couverture,
+c'est la vérité et c'est ce qui s'affiche. Ce que le script ne fait pas : réécrire la
+prose. Un constat qui cite « nœud 63 » en toutes lettres est **signalé**, jamais corrigé
+— la prose porte des plages (« nœuds 58-62, 63-67 »), et une plage se rejuge, elle ne se
+décale pas. `--verifier` est un blanc complet : le plan s'imprime, rien ne s'écrit. Et le
+script **refuse** plutôt que de perdre : table non injective sur les nœuds de l'étude,
+identifiant retiré dont la fiche est instruite, fiche dont l'identifiant transposé
+contredit le manifeste, trou qu'aucune évolution n'explique.
 
 **Actions ↔ grille — deux règles, pas une.** Rien ne reliait le CSV d'actions au
 manifeste : une action citant le nœud 92 sur une grille qui s'arrête à 87 ne produisait

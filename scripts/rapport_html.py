@@ -81,6 +81,28 @@ LIBELLE_VERDICT = {
     "non-mesure": "Non mesuré",
     "sans-objet": "Sans objet",
 }
+# Les etats de fiche sont des jetons de travail (`a-faire`, `hors-perimetre`). Les
+# afficher nus demande au lecteur de traduire -- regle L3(d) du socle. « a-faire »
+# est en outre trompeur dans un rapport de restitution : le lecteur y lit une tache
+# de l'auditeur, la ou le fait qui le concerne est que LA QUESTION N'A PAS ETE
+# INSTRUITE sur son site. Un noeud entre dans cet etat notamment quand une evolution
+# de grille l'ajoute a une etude deja auditee (voir migrer_mission.py) : le compter
+# comme instruit serait un verdict invente, le taire serait pire.
+LIBELLE_ETAT = {
+    "fait": "instruit",
+    "en-cours": "instruction en cours",
+    "a-faire": "non instruit",
+    "hors-perimetre": "hors périmètre",
+}
+MOTIF_NON_INSTRUIT = (
+    "non instruit — la question n'a pas été posée à ce site, aucun verdict rendu"
+)
+
+# Le noeud « Machine SEO » est cite par son numero dans deux definitions. Ce numero
+# BOUGE : la grille est passee de 87 a 88 noeuds le 11/08/2026 et « nœud 87 » s'est
+# mis a designer autre chose, sans qu'aucun controle ne le voie. Il se lit desormais
+# dans le manifeste, comme tout le reste.
+CHEMIN_MACHINE_SEO = "17-objectif/05-machine-seo"
 
 
 # ------------------------------------------------------------------- collecte
@@ -257,6 +279,33 @@ def champ_cadrage(cadrage: str, libelle: str) -> str:
             if val and not val.startswith("("):
                 return val
     return ""
+
+
+def id_noeud(d: dict, chemin: str) -> str:
+    """Identifiant COURANT du noeud designe par son chemin dans la grille.
+
+    Un numero de noeud ecrit en dur dans une phrase survit exactement jusqu'a la
+    prochaine evolution de grille, apres quoi il designe un autre noeud et le
+    rapport ment sans le savoir. Le chemin, lui, est stable.
+    """
+    for n in d["noeuds"]:
+        if n.get("chemin") == chemin:
+            return str(n["id"])
+    return "—"
+
+
+def non_instruits(noeuds: list[dict]) -> list[dict]:
+    """Noeuds de la grille sur lesquels AUCUNE mesure n'a ete prise.
+
+    Ni instruits, ni ecartes avec motif : la question leur reste posee. Ils
+    apparaissent typiquement quand une evolution de grille ajoute un noeud a une
+    etude deja auditee. Le rapport les nomme partout ou il affiche la couverture
+    -- les taire ferait passer le denominateur pour un total instruit.
+    """
+    return [
+        n for n in noeuds
+        if n.get("etat") not in ("fait", "hors-perimetre") and not hors_modele(n)
+    ]
 
 
 def hors_modele(n: dict) -> bool:
@@ -699,6 +748,7 @@ def vue1_kpis(d: dict, actions: list[dict], compte: dict) -> str:
     faits = sum(1 for n in noeuds if n.get("etat") == "fait")
     hors_mod = sum(1 for n in noeuds if hors_modele(n))
     hors = sum(1 for n in noeuds if n.get("etat") == "hors-perimetre") - hors_mod
+    restants = non_instruits(noeuds)
     maturite = (snap.get("maturite") or {}).get("score")
 
     cartes = [kpi(
@@ -708,6 +758,12 @@ def vue1_kpis(d: dict, actions: list[dict], compte: dict) -> str:
                    "sur ce site, verdict rendu et preuve à l'appui.",
         repere=(f"{hors} nœud(s) non mesurable(s) faute d'instrumentation"
                 + (f", {hors_mod} hors portée du modèle d'acquisition" if hors_mod else "")
+                # Un noeud non instruit manque au numerateur sans figurer nulle part
+                # ailleurs : ni dans les constats, ni dans la dette. Sans cette
+                # mention, l'ecart entre 67 et 88 paraissait entierement explique
+                # par des motifs, alors qu'une question restait ouverte.
+                + (f", {len(restants)} non instruit(s) — question restée posée, "
+                   "détail en vue 4" if restants else "")
                 + " — ce rapport dit aussi ce qu'il ne peut pas dire."),
         ident="kr-couverture",
         action=("→ Ce qui n'a pas pu être mesuré (vue 6)", "#dette"),
@@ -718,7 +774,8 @@ def vue1_kpis(d: dict, actions: list[dict], compte: dict) -> str:
             "Maturité « machine SEO »",
             barre(maturite, 5, "maturité", "maturite"), unite=f"{maturite} / 5",
             definition="Capacité du site à produire ET à mesurer sa visibilité "
-                       "sans impulsion externe (nœud 87).",
+                       "sans impulsion externe (nœud "
+                       f"{id_noeud(d, CHEMIN_MACHINE_SEO)}).",
             repere="Barème de 1 à 5 publié en vue 6 : le cran 1 ne décrit aucun "
                    "dispositif, le cran 5 un pilotage continu et chiffré. Chaque cran "
                    "gagné se constate, il ne se déclare pas.",
@@ -728,7 +785,8 @@ def vue1_kpis(d: dict, actions: list[dict], compte: dict) -> str:
     else:
         cartes.append(kpi(
             "Maturité « machine SEO »", badge_preuve("NM", compact=True), unite="non évaluée",
-            definition="Capacité du site à produire ET à mesurer sa visibilité (nœud 87).",
+            definition="Capacité du site à produire ET à mesurer sa visibilité "
+                       f"(nœud {id_noeud(d, CHEMIN_MACHINE_SEO)}).",
             repere="Le volet stratégie n'a pas produit de score de maturité : la valeur "
                    "est absente, elle n'est pas nulle.",
             ident="kr-maturite",
@@ -793,7 +851,9 @@ def vue1_graphiques(d: dict) -> tuple[str, list[str]]:
                 ("non mesurables", hors, "amber"),
                 ("hors portée du modèle", hors_mod, "faint")]
     if reste > 0:
-        segments.append(("non traités", reste, "danger"))
+        # « non traités » se lisait comme un reproche a l'auditeur. Le fait est plus
+        # simple et plus utile : la question n'a pas ete posee a ce site.
+        segments.append(("non instruits — question restée posée", reste, "danger"))
     figures = [figure_empilee(
         "Sur quoi ce rapport s'appuie-t-il ?",
         f"Les {len(noeuds)} nœuds de la grille et leur sort. Un nœud non mesurable "
@@ -849,13 +909,17 @@ def bloc_synthese(d: dict, actions: list[dict], compte: dict,
     """
     noeuds = d["noeuds"]
     faits = sum(1 for n in noeuds if n.get("etat") == "fait")
+    restants = non_instruits(noeuds)
 
     faibles = [n for n in noeuds if n.get("verdict") == "non-conforme"]
 
     verdict = ["<p><b>Le constat</b> — "]
     verdict.append(
         esc(f"{faits} nœuds instruits sur {len(noeuds)} ; "
-            f"{len(faibles)} verdicts non conformes.")
+            f"{len(faibles)} verdicts non conformes"
+            + (f" ; {len(restants)} nœud(s) non instruit(s), question restée posée"
+               if restants else "")
+            + ".")
         + "</p>"
     )
 
@@ -1346,19 +1410,34 @@ def bloc_couverture(d: dict) -> str:
     for n in d["noeuds"]:
         v = n.get("verdict") or ""
         motif = (n.get("motif_hors_perimetre") or "").strip('"')
+        etat = n.get("etat") or ""
+        # Un noeud ni instruit ni ecarte n'a pas de verdict a montrer, et « — » le
+        # ferait passer pour une case vide plutot que pour un fait. Il dit donc ce
+        # qu'il est : la question n'a pas ete posee a ce site.
+        defaut = MOTIF_NON_INSTRUIT if etat not in ("fait", "hors-perimetre") else "—"
         lignes.append([
             (f'<span class="num">{esc(n["id"])}</span>', n["id"]),
             esc(n["noeud"]),
             esc(n["branche"]),
             esc(LIBELLE_VOLET.get(n["volet"], n["volet"])),
             f'{esc(n["statut"])} — {esc(LIBELLE_STATUT.get(n["statut"], ""))}',
-            esc(n.get("etat")),
-            esc(LIBELLE_VERDICT.get(v, v)) or md(motif) or "—",
+            esc(LIBELLE_ETAT.get(etat, etat)),
+            esc(LIBELLE_VERDICT.get(v, v)) or md(motif) or esc(defaut),
         ])
+    restants = non_instruits(d["noeuds"])
     return (
         f"<p>Les {len(lignes)} nœuds de la grille, aucun omis. Un nœud hors périmètre "
         "avec motif est un résultat, pas une lacune — qu'il soit non mesurable faute de "
         "source, ou hors de la portée du modèle d'acquisition retenu.</p>"
+        + (
+            f"<p><b>{len(restants)} nœud(s) non instruit(s)</b> — "
+            + esc(", ".join(f'{n["noeud"]} (nœud {n["id"]})' for n in restants))
+            + " : la question leur reste posée. Aucune mesure n'a été prise sur ce "
+              "site pour y répondre, et ce rapport n'en tire donc aucun verdict. "
+              "Ils comptent au dénominateur de la couverture, pas au numérateur."
+              "</p>"
+            if restants else ""
+        )
         + tableau("t-couverture", colonnes, lignes, "Couverture de la grille",
                   groupes=[("Branche", 2), ("Volet", 3), ("État", 5),
                            ("Instrumentation", 4)],
@@ -1516,8 +1595,9 @@ VUES = [
      "l'action qui y répond — et ce qui a bougé depuis le run précédent.",
      ["existant", "diff"]),
     ("v4", "4", "Couverture de la grille", "le sort de chaque nœud d'audit",
-     "le sort de chacun des nœuds de la grille — instruit, non mesurable ou hors "
-     "portée — avec son verdict ou son motif : aucune question n'a été esquivée.",
+     "le sort de chacun des nœuds de la grille — instruit, non mesurable, hors "
+     "portée ou non instruit — avec son verdict ou son motif : aucune question "
+     "n'a été esquivée.",
      ["couverture"]),
     ("v5", "5", "Données analysées", "requêtes mesurées et pages inventoriées",
      "les requêtes instruites nœud par nœud et l'inventaire des pages mesurées, "
@@ -1640,11 +1720,13 @@ def construire(d: dict) -> str:
          f"Afficher l'inventaire des {npages} URL" if npages else ""),
         ("couverture", "Couverture de la grille",
          f"les {nnoeuds} nœuds de la grille et leur sort : instruit, hors périmètre avec "
-         "motif, ou non mesurable — la preuve qu'aucune question n'a été esquivée",
+         "motif, non mesurable, ou non instruit — la preuve qu'aucune question n'a été "
+         "esquivée",
          f"les {nnoeuds} nœuds et leur sort, aucun omis",
          bloc_couverture(d), str(nnoeuds),
-         "un nœud « hors-perimetre » avec motif est un résultat : la question a été posée "
-         "et la réponse est « pas ici », pas « pas regardé ».",
+         "un nœud « hors périmètre » avec motif est un résultat : la question a été posée "
+         "et la réponse est « pas ici », pas « pas regardé » ; un nœud « non instruit » "
+         "dit l'inverse, et le dit aussi.",
          f"Afficher les {nnoeuds} nœuds"),
         ("dette", "Dette d'instrumentation",
          "ce qui n'a pas pu être mesuré, pourquoi, et ce qu'il faut fournir pour le "
