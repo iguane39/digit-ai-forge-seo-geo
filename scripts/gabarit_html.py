@@ -61,6 +61,27 @@ PREUVES = {
 }
 
 
+# Un livrable client ne porte pas de pictogramme : l'icone se dessine, elle ne se
+# tape pas. La regle vaut aussi pour ce qui REMONTE des fiches de mission -- une
+# prose d'auditeur peut contenir une fleche decorative, et c'est le producteur du
+# livrable qui tient la charte, pas la source. Table explicite et courte : on ne
+# supprime jamais un caractere sans savoir par quoi il se lit.
+PICTOGRAMMES = {
+    "↔": " vs ",   # ↔ confrontation de deux sources
+    "↕": " vs ",   # ↕
+    "⚠": "",       # ⚠ le mot « attention » porte deja le sens
+    "✅": "oui",    # ✅
+    "❌": "non",    # ❌
+}
+
+
+def sans_pictogrammes(html: str) -> str:
+    """Retire les pictogrammes connus du HTML produit, en gardant leur sens."""
+    for glyphe, sens in PICTOGRAMMES.items():
+        html = html.replace(glyphe, sens)
+    return html
+
+
 def esc(valeur) -> str:
     """Echappement systematique. Les fiches peuvent contenir des extraits de pages
     crawlees : injecte tel quel, c'est du XSS dans un document envoye a un client."""
@@ -544,6 +565,159 @@ def sommaire(entrees: list[tuple[int, str, str, str, str]]) -> str:
     )
 
 
+# ------------------------------------------------- restitution lisible (RL)
+#
+# Referentiel : <forge-design>/REFERENTIEL-RESTITUTION.md, famille « rapport ».
+# Le rapport se lit par VUES : une question par vue, une navigation permanente,
+# des chiffres qui portent leur lecture. Les chapitres existants ne sont ni
+# resumes ni tronques -- ils changent de conteneur, rien de plus.
+
+
+def nav_vues(entrees: list[tuple[str, str, str, str]]) -> str:
+    """Navigation de vues. `entrees` = (ident, numero, titre, annonce).
+
+    Elle tient le role de sommaire du document (regle L6 du socle : chaque entree
+    porte une annonce d'au moins 12 caracteres) ET celui de navigation de vues du
+    referentiel de restitution (RL-1 : chaque entree porte `data-vue`).
+    """
+    li = "".join(
+        f'<li><a href="#{esc(i)}" data-vue="{esc(i)}" role="tab" '
+        f'aria-selected="{"true" if k == 0 else "false"}">'
+        f'<span class="toc-hd"><span class="toc-n">{esc(n)}</span>'
+        f'<span class="toc-t">{esc(t)}</span></span>'
+        f'<span class="toc-d">{esc(a)}</span></a></li>'
+        for k, (i, n, t, a) in enumerate(entrees)
+    )
+    return (
+        '<nav class="toc vues" aria-label="Sommaire" role="tablist">'
+        '<details open><summary>'
+        '<span class="toc-h">Sommaire — six vues, une question par vue</span>'
+        '<span class="toc-x" aria-hidden="true"></span></summary>'
+        f"<ol>{li}</ol></details></nav>"
+    )
+
+
+def vue(ident: str, titre: str, objectif: str, corps: str, active: bool = False) -> str:
+    """Une vue : son titre (lu par les technologies d'assistance), ce qu'elle
+    apprend au lecteur (regle L7 du socle, regle RL-2 du referentiel), son corps."""
+    return (
+        f'<section class="vue{" active" if active else ""}" id="{esc(ident)}" '
+        f'role="tabpanel" aria-label="{esc(titre)}">'
+        f'<h2 class="sr">{esc(titre)}</h2>'
+        f'<p class="objectif ch-apprend"><b>Ce que cette vue vous apprend</b> — '
+        f"{esc(objectif)}</p>{corps}</section>"
+    )
+
+
+def kpi(label: str, valeur: str, definition: str, repere: str,
+        ident: str, unite: str = "", action: tuple[str, str] | None = None) -> str:
+    """Composant RL-3 : un chiffre affiche porte sa valeur, sa definition, son
+    repere de lecture, et l'action qu'il appelle s'il en appelle une.
+
+    `valeur` et `unite` sont du HTML deja echappe par l'appelant (une valeur peut
+    porter un badge de preuve). `ident` sert d'ancre au repere : c'est lui que
+    `aria-describedby` designe, pour que le chiffre ne se lise jamais seul.
+    """
+    lien = ""
+    if action:
+        libelle, href = action
+        lien = f'<a class="k-action" href="{esc(href)}">{esc(libelle)}</a>'
+    return (
+        '<article class="kpi">'
+        f'<span class="k-label">{esc(label)}</span>'
+        f'<span class="k-valeur" aria-describedby="{esc(ident)}">{valeur}'
+        + (f" <small>{esc(unite)}</small>" if unite else "")
+        + "</span>"
+        f'<span class="kpi-d">{esc(definition)}</span>'
+        f'<span class="k-repere" id="{esc(ident)}">{esc(repere)}</span>'
+        f"{lien}</article>"
+    )
+
+
+def figure_barres(question: str, sous_titre: str,
+                  lignes: list[tuple[str, str, float, str]]) -> str:
+    """Graphique en barres horizontales (RL-4). `lignes` = (nom, valeur affichee,
+    part de 0 a 1, lecture accessible).
+
+    Un seul `rect` par `svg` : la piste est le FOND du svg, en CSS. Deux rects
+    superposes dans un meme svg sont un chevauchement au sens du controle V1-V7 du
+    socle, et le rendu le refuse -- a juste titre, rien ne dit lequel est devant.
+    """
+    corps = "".join(
+        f'<div class="g-ligne"><span class="g-nom">{esc(nom)}</span>'
+        f'<svg class="g-piste" viewBox="0 0 100 8" preserveAspectRatio="none" '
+        f'role="img" aria-label="{esc(aria)}">'
+        f'<rect x="0" y="0" width="{max(0.6, min(100.0, part * 100)):.1f}" height="8" '
+        f'rx="1" fill="var(--{"blue" if k == 0 else "teal"})"/></svg>'
+        f'<span class="g-val">{esc(val)}</span></div>'
+        for k, (nom, val, part, aria) in enumerate(lignes)
+    )
+    return (
+        '<figure class="graphe"><figcaption>' + esc(question) + "</figcaption>"
+        f'<p class="g-sous">{esc(sous_titre)}</p>{corps}</figure>'
+    )
+
+
+def figure_empilee(question: str, sous_titre: str,
+                   segments: list[tuple[str, int, str]]) -> str:
+    """Graphique en barre empilee (RL-4). `segments` = (libelle, valeur, jeton de
+    couleur). Les segments sont juxtaposes, jamais superposes.
+
+    La legende est en HTML et non dans le SVG : elle doit rester lisible quand le
+    graphique est reduit, et se chercher avec la recherche globale.
+    """
+    total = sum(max(0, v) for _, v, _ in segments)
+    if not total:
+        return ""
+    parts, x = [], 0.0
+    for libelle, valeur, jeton in segments:
+        w = 100.0 * max(0, valeur) / total
+        parts.append((libelle, valeur, jeton, x, w))
+        x += w
+    rects = "".join(
+        f'<rect x="{gx:.2f}" y="0" width="{max(0.0, gw):.2f}" height="8" '
+        f'fill="var(--{jeton})"/>'
+        for _, _, jeton, gx, gw in parts
+    )
+    aria = ", ".join(f"{libelle} : {valeur}" for libelle, valeur, _, _, _ in parts)
+    legende = "".join(
+        f'<li><span class="g-puce" style="background:var(--{jeton})" '
+        f'aria-hidden="true"></span><b>{valeur}</b> {esc(libelle)}</li>'
+        for libelle, valeur, jeton, _, _ in parts
+    )
+    return (
+        '<figure class="graphe"><figcaption>' + esc(question) + "</figcaption>"
+        f'<p class="g-sous">{esc(sous_titre)}</p>'
+        f'<svg class="g-empile" viewBox="0 0 100 8" preserveAspectRatio="none" '
+        f'role="img" aria-label="{esc(aria)}">{rects}</svg>'
+        f'<ul class="g-legende">{legende}</ul></figure>'
+    )
+
+
+def chemins(entrees: list[tuple[str, str]]) -> str:
+    """« Vous etes X, commencez ici » (RL-9). `entrees` = (lecteur, conduite).
+
+    La conduite est du HTML : elle porte les liens vers les vues.
+    """
+    li = "".join(
+        f'<li class="chemin"><b>{esc(qui)}</b>{quoi}</li>' for qui, quoi in entrees
+    )
+    return ('<h3>Par où commencer, selon qui vous êtes</h3>'
+            f'<ul class="chemins">{li}</ul>')
+
+
+def manifeste_ecarts(ecarts: list[str]) -> str:
+    """Manifeste d'ecarts (RL-10). Un ecart se declare ; « aucun ecart » aussi."""
+    items = ecarts or ["Aucun écart déclaré : les règles RL-1 à RL-10 sont tenues "
+                       "sur les données de cette mission."]
+    return (
+        '<footer class="ecarts"><h2>Ce que ce rapport ne fait pas — manifeste '
+        "d'écarts</h2><ul>"
+        + "".join(f"<li>{esc(x)}</li>" for x in items)
+        + "</ul></footer>"
+    )
+
+
 def recherche_globale() -> str:
     return (
         '<div class="find"><label class="sr" for="q">Rechercher dans le document</label>'
@@ -774,7 +948,7 @@ body{margin:0}
 
 :root{
   --blue:#2563EB; --blue-fill:#EFF4FE; --blue-line:#C9DBFC;
-  --bg:#FAFBFF; --surface:#FFFFFF; --card:#FFFFFF;
+  --bg:#FAFBFF; --surface:#FDFDFF; --card:#FDFDFF;
   --ink:#0F172A; --muted:#475569; --faint:#64748B; --line:#E6EAF2;
   --amber:#B45309; --amber-fill:#FFFBEB; --amber-line:#FDE9C8;
   --teal:#0E7490;  --teal-fill:#EFFDFB;  --teal-line:#C7F0EA;
@@ -805,9 +979,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);
 .wrap{max-width:var(--w);margin:0 auto;padding:20px 20px 64px}
 h1,h2,h3,h4{font-family:var(--head);line-height:1.22;margin:0 0 .45em}
 h1{font-size:1.85rem;letter-spacing:-.01em}
-h2{font-size:1.15rem;margin:0 0 .6em;display:flex;align-items:baseline;gap:10px}
+h2{font-size:1.15rem;margin:0 0 .6em;display:flex;align-items:baseline;gap:8px}
 h3{font-size:.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;
-  margin:18px 0 8px}
+  margin:16px 0 8px}
 p{margin:0 0 .7em}
 /* Colonne de mesure explicite, a poser sur un CONTENEUR quand un bloc de
    prose merite des lignes courtes. Jamais sur le paragraphe lui-meme. */
@@ -820,7 +994,7 @@ code,.mono{font-family:var(--mono);font-size:.88em}
    Regle L5 du socle : surlignage inline, sans espacement ni changement de boite. */
 mark.find{background:var(--mark);color:inherit;padding:0;margin:0;border-radius:0;
   display:inline;font:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone}
-.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:0px;overflow:hidden;
   clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
 /* --- bandeau --- */
@@ -830,81 +1004,86 @@ mark.find{background:var(--mark);color:inherit;padding:0;margin:0;border-radius:
   text-transform:uppercase;color:var(--faint);margin:0 0 4px}
 .band h1{max-width:none}
 .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-  gap:8px 18px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+  gap:8px 16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 .meta div{min-width:0}
 .meta dt{font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}
-.meta dd{margin:1px 0 0;font-weight:600;overflow-wrap:anywhere;font-size:.9rem}
+.meta dd{margin:4px 0 0;font-weight:600;overflow-wrap:anywhere;font-size:.9rem}
 
-/* --- barre collante : sommaire + recherche --- */
-.sticky{position:sticky;top:0;z-index:40;background:var(--bg);padding:8px 0;
+/* --- barre collante : sommaire + recherche ---
+   Les insets d'ecran (encoche, indicateur de home) sont pris en compte : une barre
+   collee a un bord passe sinon SOUS le materiel sur telephone. Ils valent 0 partout
+   ailleurs, la regle est donc sans effet hors mobile. */
+.sticky{position:sticky;top:0;z-index:40;background:var(--bg);
+  padding:calc(8px + env(safe-area-inset-top)) env(safe-area-inset-right) 8px
+    env(safe-area-inset-left);
   margin-bottom:12px;border-bottom:1px solid var(--line)}
 .sticky-in{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
 .toc{flex:1 1 460px;min-width:0}
 .toc details{background:var(--surface);border:1px solid var(--line);
   border-radius:var(--r-sm)}
-.toc summary{list-style:none;cursor:pointer;padding:7px 12px;display:flex;
-  align-items:center;justify-content:space-between;gap:10px}
+.toc summary{list-style:none;cursor:pointer;padding:8px 12px;display:flex;
+  align-items:center;justify-content:space-between;gap:8px}
 .toc summary::-webkit-details-marker{display:none}
 .toc-h{font-family:var(--head);font-size:.72rem;text-transform:uppercase;
   letter-spacing:.08em;color:var(--muted);min-width:0;overflow-wrap:anywhere}
-.toc-x{flex:0 0 8px;width:8px;height:8px;border-right:2px solid var(--faint);
-  border-bottom:2px solid var(--faint);transform:rotate(45deg)}
+.toc-x{flex:0 0 8px;width:8px;height:8px;border-right:1px solid var(--faint);
+  border-bottom:1px solid var(--faint);transform:rotate(45deg)}
 .toc details[open] .toc-x{transform:rotate(-135deg)}
 .toc ol{list-style:none;margin:0;padding:0 8px 8px;display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:3px}
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:4px}
 .toc li{max-width:none}
 .toc a{display:block;text-decoration:none;color:var(--ink);
   font-size:.78rem;padding:4px 8px;border-radius:var(--r-sm);border:1px solid transparent}
 .toc a:hover{background:var(--blue-fill);border-color:var(--blue-line)}
-.toc-hd{display:flex;align-items:center;gap:5px}
+.toc-hd{display:flex;align-items:center;gap:4px}
 .toc-n{font-family:var(--mono);font-size:.68rem;color:var(--faint);min-width:1.1em}
 .toc-t{font-weight:600}
 .toc-c{font-family:var(--mono);font-size:.66rem;color:var(--faint);margin-left:auto}
-.toc-d{display:block;font-size:.7rem;color:var(--muted);line-height:1.35;margin-top:1px}
-.find{flex:0 1 320px;display:flex;flex-direction:column;gap:2px}
-.find input{width:100%;padding:7px 10px;border:1px solid var(--line);
+.toc-d{display:block;font-size:.7rem;color:var(--muted);line-height:1.35;margin-top:4px}
+.find{flex:0 1 320px;display:flex;flex-direction:column;gap:4px}
+.find input{width:100%;padding:8px 8px;border:1px solid var(--line);
   border-radius:var(--r-sm);font:inherit;font-size:.85rem;background:var(--surface)}
-.find-n{font-size:.7rem;color:var(--muted);min-height:1em;padding-left:2px}
+.find-n{font-size:.7rem;color:var(--muted);min-height:1em;padding-left:4px}
 .find-n.zero{color:var(--danger)}
 
 /* --- chapitres --- */
 section.ch{background:var(--surface);border:1px solid var(--line);
   border-radius:var(--r);padding:16px 20px;margin-bottom:12px;scroll-margin-top:90px}
-section.ch>h2{border-left:3px solid var(--accent);padding-left:10px}
+section.ch>h2{border-left:1px solid var(--accent);padding-left:8px}
 .ch-n{font-family:var(--mono);font-size:.8rem;color:var(--faint)}
 .ch-st{color:var(--muted);font-size:.86rem;margin:-4px 0 12px}
 /* L7 : ce que le chapitre apprend, avant toute donnee. L10 : comment lire une
    ligne. Deux blocs courts qui evitent au lecteur d'ouvrir pour savoir. */
-.ch-apprend{color:var(--ink);font-size:.88rem;margin:-2px 0 10px;padding:8px 12px;
-  background:var(--blue-fill);border-left:3px solid var(--blue-line);
+.ch-apprend{color:var(--ink);font-size:.88rem;margin:0px 0 8px;padding:8px 12px;
+  background:var(--blue-fill);border-left:1px solid var(--blue-line);
   border-radius:var(--r-sm)}
-.exemple-lecture{color:var(--muted);font-size:.82rem;margin:0 0 10px;padding:7px 12px;
+.exemple-lecture{color:var(--muted);font-size:.82rem;margin:0 0 8px;padding:8px 12px;
   background:var(--bg);border:1px dashed var(--line);border-radius:var(--r-sm)}
 .ch-apprend b,.exemple-lecture b{font-family:var(--head);color:var(--ink)}
 
 /* --- baremes : un score sans bareme n'informe pas (L3) --- */
 details.baremes{margin:12px 0 0}
 details.baremes>summary{list-style:none;cursor:pointer;font-family:var(--head);
-  font-size:.76rem;color:var(--accent);display:inline-flex;align-items:center;gap:6px;
-  padding:4px 11px;border:1px solid var(--blue-line);border-radius:var(--r-sm);
+  font-size:.76rem;color:var(--accent);display:inline-flex;align-items:center;gap:8px;
+  padding:4px 12px;border:1px solid var(--blue-line);border-radius:var(--r-sm);
   background:var(--blue-fill)}
 details.baremes>summary::-webkit-details-marker{display:none}
 details.baremes>summary::before{content:"+";font-family:var(--mono);font-weight:700}
 details.baremes[open]>summary::before{content:"−"}
 .baremes-c{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-  gap:10px;margin-top:10px}
-.bareme{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 13px;
+  gap:8px;margin-top:8px}
+.bareme{border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 12px;
   background:var(--surface);font-size:.8rem;break-inside:avoid}
-.bareme>b{font-family:var(--head);display:block;margin-bottom:5px}
+.bareme>b{font-family:var(--head);display:block;margin-bottom:4px}
 .bareme-l{margin:0;padding-left:1.1em;color:var(--muted)}
-.bareme-l li{max-width:none;margin-bottom:3px}
+.bareme-l li{max-width:none;margin-bottom:4px}
 .bareme.large{grid-column:1/-1}
 .bareme.large .bareme-l{list-style:none;padding-left:0}
 .bareme-l b{font-family:var(--mono);color:var(--ink)}
 
 /* --- verdict en langage courant, en tete de fiche --- */
-.clair{background:var(--blue-fill);border-left:3px solid var(--accent);
-  border-radius:var(--r-sm);padding:9px 13px;margin:0 0 9px}
+.clair{background:var(--blue-fill);border-left:1px solid var(--accent);
+  border-radius:var(--r-sm);padding:8px 12px;margin:0 0 8px}
 .clair-l{margin:0 0 .4em;font-size:.88rem;color:var(--ink)}
 .clair-l:last-child{margin:0}
 .clair-l>b{font-family:var(--head);font-size:.68rem;text-transform:uppercase;
@@ -919,7 +1098,7 @@ details.baremes[open]>summary::before{content:"−"}
 .lecture{font-size:.8rem;color:var(--muted);margin:.5em 0 .3em;font-style:italic}
 
 /* --- pied de bloc : ce qui ne merite pas un depliant (L9c) --- */
-.meta-pied{margin-top:7px;padding-top:6px;border-top:1px dashed var(--line)}
+.meta-pied{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
 .meta-pied .champ{font-size:.74rem;color:var(--muted);margin:0 0 .25em}
 .meta-pied .champ>b{font-size:.64rem}
 .meta-id{font-family:var(--mono);color:var(--faint)}
@@ -933,13 +1112,13 @@ details.baremes[open]>summary::before{content:"−"}
 
 /* --- markdown rendu des fiches (TF-0046) --- */
 .md-l{margin:4px 0;padding-left:1.1em}
-table.mini{width:100%;margin:5px 0;font-size:.78rem;border:1px solid var(--line);
+table.mini{width:100%;margin:4px 0;font-size:.78rem;border:1px solid var(--line);
   border-radius:var(--r-sm);table-layout:auto}
 table.mini th{background:var(--bg);font-size:.66rem}
-table.mini th,table.mini td{padding:4px 7px}
+table.mini th,table.mini td{padding:4px 8px}
 details.annexe>summary{list-style:none;cursor:pointer;font-family:var(--head);
-  font-size:.78rem;color:var(--accent);display:inline-flex;align-items:center;gap:6px;
-  padding:5px 12px;border:1px solid var(--blue-line);border-radius:var(--r-sm);
+  font-size:.78rem;color:var(--accent);display:inline-flex;align-items:center;gap:8px;
+  padding:4px 12px;border:1px solid var(--blue-line);border-radius:var(--r-sm);
   background:var(--blue-fill)}
 details.annexe>summary::-webkit-details-marker{display:none}
 details.annexe>summary::before{content:"+";font-family:var(--mono);font-weight:700}
@@ -947,10 +1126,10 @@ details.annexe[open]>summary::before{content:"−"}
 .annexe-c{margin-top:12px}
 
 /* --- niveaux de preuve --- */
-.pv{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);
-  font-size:.66rem;font-weight:700;padding:0 5px;border-radius:var(--r-sm);
+.pv{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);
+  font-size:.66rem;font-weight:700;padding:0 4px;border-radius:var(--r-sm);
   vertical-align:baseline;white-space:nowrap}
-.pv-c{padding:0 3px}
+.pv-c{padding:0 4px}
 .pv-g{font-size:.8em;line-height:1}
 .pv-t1{color:var(--green);background:var(--green-fill);border:2px solid var(--green)}
 .pv-t2{color:var(--teal);background:var(--teal-fill);border:1px solid var(--teal)}
@@ -959,62 +1138,66 @@ details.annexe[open]>summary::before{content:"−"}
 .pv-nm{color:var(--faint);background:var(--surface);border:1px dashed var(--faint);
   font-style:italic}
 .pv-legend{list-style:none;padding:0;margin:8px 0 0;display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:5px 18px}
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:4px 16px}
 .pv-legend li{font-size:.8rem;color:var(--muted);max-width:none}
 .legende{background:var(--blue-fill);border:1px solid var(--blue-line);
-  border-radius:var(--r-sm);padding:12px 16px;margin:14px 0 0}
+  border-radius:var(--r-sm);padding:12px 16px;margin:16px 0 0}
 .legende h3{margin:0 0 4px;color:var(--ink)}
 .legende p{margin:0;font-size:.84rem;color:var(--muted)}
 
-.repart{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0;padding:0;list-style:none}
-.repart li{border:1px solid var(--line);border-radius:var(--r-sm);padding:4px 9px;
+.repart{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0;padding:0;list-style:none}
+.repart li{border:1px solid var(--line);border-radius:var(--r-sm);padding:4px 8px;
   font-size:.76rem;background:var(--bg);max-width:none}
 .repart b{font-family:var(--mono)}
 
 /* --- cartes --- */
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  padding:12px 14px;break-inside:avoid}
+  padding:12px 16px;break-inside:avoid}
 .card h3{margin:0 0 4px}
 .card p{max-width:none}
-.kpi{font-family:var(--head);font-size:1.4rem;font-weight:700;line-height:1.1;margin:0}
-.kpi small{display:block;font-size:.7rem;font-weight:400;color:var(--faint);
-  text-transform:none;letter-spacing:0;margin-top:3px;line-height:1.4}
+/* `.chiffre` : le chiffre nu d'une carte. Il s'appelait `.kpi` — nom repris depuis
+   par le composant complet du referentiel de restitution (valeur + definition +
+   repere), qui n'est PAS la meme chose. Deux composants sous un meme nom rendaient
+   l'oracle RL-3 rouge sur des cartes qui ne pretendaient rien de tel. */
+.chiffre{font-family:var(--head);font-size:1.4rem;font-weight:700;line-height:1.1;margin:0}
+.chiffre small{display:block;font-size:.7rem;font-weight:400;color:var(--faint);
+  text-transform:none;letter-spacing:0;margin-top:4px;line-height:1.4}
 
 /* --- synthese --- */
 .verdict{background:var(--blue-fill);border:1px solid var(--blue-line);
-  border-left:3px solid var(--accent);border-radius:var(--r-sm);padding:12px 16px;
-  margin:0 0 14px}
+  border-left:1px solid var(--accent);border-radius:var(--r-sm);padding:12px 16px;
+  margin:0 0 16px}
 .verdict p{margin:0 0 .4em}
 .verdict p:last-child{margin:0}
-.bl-n{display:block;font-weight:600;font-family:var(--head);margin:2px 0 3px}
+.bl-n{display:block;font-weight:600;font-family:var(--head);margin:4px 0 4px}
 .bl-t p{margin:0 0 .5em}
 .bl-t p:last-child{margin:0 0 .6em}
 .bl-c{font-size:.8rem;color:var(--muted)}
 .top3{list-style:none;padding:0;margin:0;display:grid;
   grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px}
-.top3 li{border:1px solid var(--line);border-left:3px solid var(--accent);
-  border-radius:var(--r-sm);padding:9px 12px;background:var(--bg);max-width:none}
-.top3 .t{font-weight:600;font-size:.88rem;display:block;margin-bottom:3px}
+.top3 li{border:1px solid var(--line);border-left:1px solid var(--accent);
+  border-radius:var(--r-sm);padding:8px 12px;background:var(--bg);max-width:none}
+.top3 .t{font-weight:600;font-size:.88rem;display:block;margin-bottom:4px}
 .top3 .m{font-size:.72rem;color:var(--muted);font-family:var(--mono);
-  display:flex;flex-wrap:wrap;align-items:center;gap:2px 7px}
+  display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
 
 /* --- constats --- */
 .constats{list-style:none;padding:0;margin:0}
-.constats>li{border:1px solid var(--line);border-left:3px solid var(--line);
-  border-radius:var(--r-sm);padding:9px 12px;margin-bottom:7px;break-inside:avoid;
+.constats>li{border:1px solid var(--line);border-left:1px solid var(--line);
+  border-radius:var(--r-sm);padding:8px 12px;margin-bottom:8px;break-inside:avoid;
   max-width:none}
 .constats>li.fort{border-left-color:var(--green)}
 .constats>li.faible{border-left-color:var(--danger)}
-.constats .t{font-weight:600;margin:0 0 3px;display:flex;gap:6px;align-items:baseline;
+.constats .t{font-weight:600;margin:0 0 4px;display:flex;gap:8px;align-items:baseline;
   flex-wrap:wrap}
 /* DEFAUT 4 : « L'existant » etait verbeux et sans suite. Chaque constat porte
    desormais sa chaine complete -- ce qu'on observe, ce que ca coute, ce qu'on fait,
    ce qu'on en attend -- sur quatre lignes etiquetees. */
-.chaine{display:grid;gap:3px;margin:6px 0 0;font-size:.82rem}
-.chaine>div{display:grid;grid-template-columns:minmax(72px,10%) minmax(0,1fr);gap:9px}
+.chaine{display:grid;gap:4px;margin:8px 0 0;font-size:.82rem}
+.chaine>div{display:grid;grid-template-columns:minmax(72px,10%) minmax(0,1fr);gap:8px}
 .chaine dt,.chaine .et{font-family:var(--head);font-size:.64rem;text-transform:uppercase;
-  letter-spacing:.05em;color:var(--faint);padding-top:2px}
+  letter-spacing:.05em;color:var(--faint);padding-top:4px}
 .chaine .va{color:var(--ink);min-width:0}
 .chaine .vide{color:var(--faint);font-style:italic}
 .trace{font-size:.68rem;color:var(--faint);font-family:var(--mono)}
@@ -1025,7 +1208,7 @@ details.annexe[open]>summary::before{content:"−"}
 details.n2{margin-top:4px}
 details.n2>summary{list-style:none;cursor:pointer;font-size:.72rem;color:var(--accent);
   font-family:var(--head);letter-spacing:.02em;display:inline-flex;align-items:center;
-  gap:4px;padding:1px 6px;border:1px solid var(--blue-line);border-radius:var(--r-sm);
+  gap:4px;padding:4px 8px;border:1px solid var(--blue-line);border-radius:var(--r-sm);
   background:var(--blue-fill)}
 details.n2>summary::-webkit-details-marker{display:none}
 details.n2>summary::before{content:"+";font-family:var(--mono);font-weight:700}
@@ -1035,7 +1218,7 @@ details.n2[open]>summary::before{content:"−"}
    1215) et tassait le contenu dans le reste -- « un tiers d'informations
    supplementaires, aucun interet ». L2 au rendu ne l'attrapait pas : chaque colonne
    remplissait bien SA case. L'angle mort etait la grille elle-meme. */
-.n2-c{margin:7px 0 2px}
+.n2-c{margin:8px 0 4px}
 .champ{margin:0 0 .5em;font-size:.82rem;color:var(--ink);overflow-wrap:anywhere}
 .champ:last-child{margin:0}
 .champ>b{font-family:var(--head);font-size:.7rem;text-transform:uppercase;
@@ -1049,16 +1232,16 @@ details.n2[open]>summary::before{content:"−"}
 .chaine .va .md-l{margin:.2em 0 .4em}
 /* --muted et non --faint : sur le fond bleu du summary, --faint rend 4,32:1,
    sous le seuil WCAG AA de 4,5:1 a cette taille. Mesure V2. */
-.n2-s{color:var(--muted);font-family:var(--mono);font-size:.92em;margin-left:2px}
+.n2-s{color:var(--muted);font-family:var(--mono);font-size:.92em;margin-left:4px}
 
 /* --- barre d'outils de tableau --- */
-.tb{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 0 6px;
-  padding:7px 10px;background:var(--bg);border:1px solid var(--line);
+.tb{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:0 0 8px;
+  padding:8px 8px;background:var(--bg);border:1px solid var(--line);
   border-radius:var(--r-sm)}
 .tb input[type=search],.tb select{padding:4px 8px;border:1px solid var(--line);
   border-radius:var(--r-sm);font:inherit;font-size:.8rem;background:var(--surface)}
 .tb-q input{min-width:190px}
-.tb-g{font-size:.76rem;color:var(--muted);display:flex;align-items:center;gap:5px}
+.tb-g{font-size:.76rem;color:var(--muted);display:flex;align-items:center;gap:4px}
 .tb-aide{font-size:.68rem;color:var(--faint);margin-left:auto}
 .tf-count{font-size:.72rem;color:var(--muted);font-family:var(--mono)}
 .tf-count.zero{color:var(--danger)}
@@ -1067,7 +1250,7 @@ details.n2[open]>summary::before{content:"−"}
 .tw{border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
 table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:.83rem;
   background:var(--surface)}
-th,td{text-align:left;padding:6px 9px;border-bottom:1px solid var(--line);
+th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);
   vertical-align:top;overflow-wrap:break-word}
 td .mono{overflow-wrap:anywhere}
 td p{max-width:none}
@@ -1075,17 +1258,17 @@ thead th{position:relative;background:var(--bg);font-family:var(--head);
   font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
 thead th[data-tri]{cursor:pointer;user-select:none}
 thead th[data-tri]:hover{color:var(--accent)}
-thead th[data-tri]::after{content:"↕";font-size:.85em;opacity:.35;margin-left:3px}
+thead th[data-tri]::after{content:"↕";font-size:.85em;opacity:.35;margin-left:4px}
 thead th[data-sens="1"]::after{content:"↑";opacity:1;color:var(--accent)}
 thead th[data-sens="-1"]::after{content:"↓";opacity:1;color:var(--accent)}
 tbody tr:last-child td{border-bottom:0}
 tbody tr:hover{background:var(--bg)}
 /* Etiquette de groupe posee sur la 1re cellule du 1er element de chaque groupe :
    inserer une <tr> casserait le composant de filtres, qui itere les rows. */
-td[data-grp]::before{content:attr(data-grp);display:block;margin:2px 0 6px;
+td[data-grp]::before{content:attr(data-grp);display:block;margin:4px 0 8px;
   font-family:var(--head);font-size:.68rem;text-transform:uppercase;
   letter-spacing:.06em;color:var(--accent);border-top:2px solid var(--blue-line);
-  padding-top:5px}
+  padding-top:4px}
 .num{font-family:var(--mono);white-space:nowrap}
 .sc{font-family:var(--mono);letter-spacing:-1px;white-space:nowrap}
 .sc-na{color:var(--faint);letter-spacing:0}
@@ -1093,8 +1276,8 @@ td[data-grp]::before{content:attr(data-grp);display:block;margin:2px 0 6px;
 /* --- filtres du socle : affordance rendue visible, sans forker le composant --- */
 .tf-btn{border:1px solid var(--line);background:var(--surface);cursor:pointer;
   font:inherit;font-family:var(--head);font-size:.6rem;text-transform:uppercase;
-  letter-spacing:.05em;color:var(--muted);padding:1px 5px;border-radius:4px;
-  margin-left:5px;white-space:nowrap}
+  letter-spacing:.05em;color:var(--muted);padding:4px 4px;border-radius:4px;
+  margin-left:4px;white-space:nowrap}
 .tf-btn::after{content:" filtrer"}
 .tf-btn:hover{border-color:var(--accent);color:var(--accent)}
 .tf-btn[aria-expanded="true"],.tf-btn.tf-on{color:var(--surface);
@@ -1105,21 +1288,21 @@ td[data-grp]::before{content:attr(data-grp);display:block;margin:2px 0 6px;
 .tf-panel[hidden]{display:none}
 .tf-opts{max-height:220px;overflow-y:auto;font-size:.78rem;text-transform:none;
   letter-spacing:0}
-.tf-opts label{display:block;padding:2px 0;font-weight:400;color:var(--ink)}
-.tf-panel input[type=search]{width:100%;margin-bottom:6px;padding:4px 6px;
+.tf-opts label{display:block;padding:4px 0;font-weight:400;color:var(--ink)}
+.tf-panel input[type=search]{width:100%;margin-bottom:8px;padding:4px 8px;
   border:1px solid var(--line);border-radius:var(--r-sm);font:inherit;font-size:.78rem}
 
 /* --- matrice gain x effort --- */
-.mx{display:grid;gap:3px;margin-top:8px;font-size:.7rem}
+.mx{display:grid;gap:4px;margin-top:8px;font-size:.7rem}
 .mx .axl{font-family:var(--head);font-size:.64rem;text-transform:uppercase;
   letter-spacing:.05em;color:var(--faint);display:flex;align-items:center;
-  justify-content:center;padding:2px;text-align:center}
+  justify-content:center;padding:4px;text-align:center}
 .mx .cell{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm);
-  min-height:44px;padding:3px;display:flex;flex-direction:column;gap:2px}
+  min-height:44px;padding:4px;display:flex;flex-direction:column;gap:4px}
 .mx .cell.hot{background:var(--green-fill);border-color:var(--green-line)}
 .mx .cell.cold{background:var(--danger-fill);border-color:var(--danger-line)}
 .mx .chip{display:block;width:100%;min-width:0;max-width:100%;text-align:left;background:var(--surface);
-  border:1px solid var(--line);border-radius:4px;padding:2px 5px;font:inherit;
+  border:1px solid var(--line);border-radius:4px;padding:4px 4px;font:inherit;
   font-size:.66rem;cursor:pointer;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;color:var(--ink)}
 .mx .chip:hover{border-color:var(--accent);color:var(--accent)}
@@ -1127,40 +1310,119 @@ td[data-grp]::before{content:attr(data-grp);display:block;margin:2px 0 6px;
 .axis-y{writing-mode:vertical-rl;transform:rotate(180deg)}
 
 /* --- quadrants : compteurs ; la liste vit dans la table --- */
-.quads{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:10px}
-.quad{border:1px solid var(--line);border-radius:var(--r);padding:11px 14px;
+.quads{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:8px}
+.quad{border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;
   background:var(--card);break-inside:avoid}
-.quad h3{margin:0 0 5px;color:var(--ink)}
+.quad h3{margin:0 0 4px;color:var(--ink)}
 .quad .q-n{font-family:var(--head);font-size:1.5rem;font-weight:700;line-height:1}
-.quad .q-d{font-size:.72rem;color:var(--muted);margin:3px 0 6px}
+.quad .q-d{font-size:.72rem;color:var(--muted);margin:4px 0 8px}
 .quad .q-a{font-size:.74rem;color:var(--faint)}
-.quad button{margin-top:7px;background:var(--surface);border:1px solid var(--line);
-  border-radius:var(--r-sm);padding:3px 9px;font:inherit;font-size:.72rem;
+.quad button{margin-top:8px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:4px 8px;font:inherit;font-size:.72rem;
   cursor:pointer;color:var(--accent)}
 .quad button:hover{border-color:var(--accent)}
 .warn{background:var(--amber-fill);border:1px solid var(--amber-line);
-  border-left:3px solid var(--amber);border-radius:var(--r-sm);padding:11px 14px;
-  margin-top:11px;font-size:.85rem}
-.warn p{margin:0 0 6px}
+  border-left:1px solid var(--amber);border-radius:var(--r-sm);padding:12px 16px;
+  margin-top:12px;font-size:.85rem}
+.warn p{margin:0 0 8px}
 .warn p:last-child{margin:0}
 .warn-t{font-family:var(--head);font-weight:700;color:var(--amber)}
 
 /* --- absence declaree --- */
 .absence{background:var(--bg);border:1px dashed var(--faint);border-radius:var(--r-sm);
-  padding:12px 15px;margin:6px 0}
-.absence .abs-t{font-weight:600;margin:0 0 5px;display:flex;align-items:center;gap:6px}
-.absence p{font-size:.85rem;color:var(--muted);margin:0 0 5px}
+  padding:12px 16px;margin:8px 0}
+.absence .abs-t{font-weight:600;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.absence p{font-size:.85rem;color:var(--muted);margin:0 0 4px}
 .absence .abs-c,.absence .abs-r{color:var(--ink)}
 .absence .abs-r{margin:0}
 
 footer.doc{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);
   font-size:.76rem;color:var(--faint)}
 .conf{background:var(--danger-fill);border:1px solid var(--danger-line);
-  border-radius:var(--r-sm);padding:9px 13px;font-size:.78rem;margin-top:12px}
-.haut{position:fixed;right:16px;bottom:16px;z-index:50;background:var(--surface);
-  border:1px solid var(--line);border-radius:var(--r);padding:6px 11px;font:inherit;
+  border-radius:var(--r-sm);padding:8px 12px;font-size:.78rem;margin-top:12px}
+.haut{position:fixed;right:calc(16px + env(safe-area-inset-right));
+  bottom:calc(16px + env(safe-area-inset-bottom));z-index:50;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;font:inherit;
   font-size:.74rem;cursor:pointer;color:var(--accent);
   box-shadow:0 3px 12px rgba(15,23,42,.10)}
+
+/* ================= restitution lisible (REFERENTIEL-RESTITUTION.md) =========
+   Le rapport s'organise en VUES naviguees, une question par vue. Les chapitres ne
+   bougent pas : ils changent de conteneur. Rien n'est resume, rien ne disparait. */
+
+nav.vues ol{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+/* 44 px : cible tactile minimale du socle mobile. */
+nav.vues a{min-height:44px;display:flex;flex-direction:column;justify-content:center}
+nav.vues a[aria-selected="true"]{background:var(--blue-fill);
+  border-color:var(--blue-line);font-weight:600}
+/* Sur le fond teinte de la vue courante, `--faint` tombe a 4,32:1 — sous le seuil
+   AA de 4,5:1 mesure au rendu. Le numero passe donc au ton au-dessus. */
+nav.vues a[aria-selected="true"] .toc-n{color:var(--muted)}
+
+section.vue{display:none;scroll-margin-top:90px}
+section.vue.active{display:block}
+/* Une recherche globale porte sur TOUT le rapport : masquer les autres vues
+   pendant qu'on cherche rendrait des occurrences comptees mais introuvables. */
+.wrap.toutes-vues section.vue{display:block}
+.objectif{color:var(--ink);font-size:.9rem;margin:0 0 12px;padding:8px 12px;
+  background:var(--blue-fill);border-left:1px solid var(--accent);
+  border-radius:var(--r-sm)}
+.objectif b{font-family:var(--head)}
+
+/* --- KPI complet (RL-3) : valeur, definition, repere de lecture, action --- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));
+  gap:8px;margin:0 0 16px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:12px 16px;display:flex;flex-direction:column;gap:8px;break-inside:avoid}
+.k-label{font-family:var(--head);font-size:.66rem;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--faint)}
+.k-valeur{font-family:var(--head);font-size:1.45rem;font-weight:700;line-height:1.15;
+  overflow-wrap:anywhere}
+.k-valeur small{font-size:.78rem;font-weight:400;color:var(--muted)}
+.kpi-d{font-size:.8rem;color:var(--muted)}
+.k-repere{font-size:.78rem;color:var(--ink);background:var(--blue-fill);
+  border-radius:var(--r-sm);padding:8px 8px}
+.k-action{font-size:.78rem;margin-top:auto}
+
+/* --- graphiques (RL-4) : la question est le titre, jamais l'inverse --- */
+.graphes{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:8px;margin:0 0 16px}
+figure.graphe{background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:12px 16px;margin:0;min-width:0;break-inside:avoid}
+figure.graphe figcaption{font-family:var(--head);font-weight:700;font-size:.95rem;
+  margin-bottom:4px}
+.g-sous{font-size:.78rem;color:var(--muted);margin:0 0 8px}
+.g-ligne{display:grid;grid-template-columns:96px 1fr 64px;gap:8px;
+  align-items:center;margin-bottom:8px}
+.g-nom{font-size:.78rem;color:var(--muted);text-align:right;min-width:0;
+  overflow-wrap:anywhere}
+/* La PISTE est le fond CSS du <svg> ; le <svg> ne porte qu'UNE forme, celle de la
+   valeur. Deux rects superposes seraient un chevauchement au sens de V4. */
+.g-piste{display:block;width:100%;height:16px;background:var(--line);
+  border-radius:4px}
+.g-val{font-size:.8rem;font-weight:700;font-family:var(--mono);white-space:nowrap;
+  text-align:right}
+.g-empile{display:block;width:100%;height:26px;border-radius:4px;background:var(--line)}
+.g-legende{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0 0;padding:0;
+  list-style:none;font-size:.78rem;color:var(--muted)}
+.g-legende li{max-width:none}
+.g-legende b{font-family:var(--mono);color:var(--ink)}
+.g-puce{display:inline-block;width:10px;height:10px;border-radius:3px;
+  margin-right:4px;vertical-align:-1px}
+
+/* --- chemins d'entree par lecteur (RL-9) --- */
+.chemins{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:8px;margin:0 0 16px;padding:0;list-style:none}
+.chemin{font-size:.84rem;padding:8px 12px;background:var(--blue-fill);
+  border:1px solid var(--blue-line);border-radius:var(--r-sm);max-width:none}
+.chemin b{display:block;font-family:var(--head);margin-bottom:4px}
+
+/* --- manifeste d'ecarts (RL-10) --- */
+footer.ecarts{margin-top:16px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r);padding:12px 20px;font-size:.8rem;color:var(--muted)}
+footer.ecarts h2{font-size:.9rem;color:var(--ink);margin:0 0 8px;display:block}
+footer.ecarts ul{margin:0;padding-left:1.1em}
+footer.ecarts li{max-width:none;margin-bottom:4px}
 
 @media (max-width:900px){
   .tw{border:0}
@@ -1169,9 +1431,9 @@ footer.doc{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);
   thead tr,thead th{display:block;width:1px !important;height:1px;overflow:hidden;
     padding:0;border:0;white-space:nowrap}
   tbody,tr,td{display:block;width:auto}
-  tr{border:1px solid var(--line);border-radius:var(--r-sm);margin-bottom:7px;
-    padding:3px 0;background:var(--surface)}
-  td{display:flex;gap:9px;border:0;padding:3px 11px}
+  tr{border:1px solid var(--line);border-radius:var(--r-sm);margin-bottom:8px;
+    padding:4px 0;background:var(--surface)}
+  td{display:flex;gap:8px;border:0;padding:4px 12px}
   td>.st,td>*{flex:1 1 0;min-width:0;max-width:100%}
   td::before{content:attr(data-l);flex:0 0 36%;color:var(--faint);
     font-family:var(--head);font-size:.66rem;text-transform:uppercase;
@@ -1180,22 +1442,39 @@ footer.doc{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);
   td:empty{display:none}
 }
 @media (max-width:640px){
-  .wrap{padding:12px 10px 40px}
+  .wrap{padding:12px 8px 40px}
   .chaine>div{grid-template-columns:1fr;gap:0}
-  .chaine .et{padding-top:5px}
+  .chaine .et{padding-top:4px}
   h1{font-size:1.4rem}
   .mx{font-size:.6rem}
   .mx .cell{min-height:38px}
   .pv-legend{grid-template-columns:1fr}
   .toc ol{max-height:34vh;overflow-y:auto}
   .tb-aide{display:none}
+  .g-ligne{grid-template-columns:74px 1fr 56px;gap:8px}
+}
+/* Le reflow des tables est deja actif a 900px ; il est REAFFIRME sous 768px, la
+   borne du contrat mobile. Le dire a la borne du contrat rend la promesse
+   verifiable au lieu d'etre deduite d'un breakpoint voisin. */
+@media (max-width:768px){
+  table,tbody,tr,td{display:block}
+  thead tr{display:block}
+}
+/* Paysage sur telephone : la hauteur utile fond, la barre collante mangerait la
+   moitie de l'ecran. Elle rend la main au contenu et redevient un simple bandeau. */
+@media (orientation:landscape) and (max-height:520px){
+  .sticky{position:static}
+  .toc ol{max-height:40vh;overflow-y:auto}
 }
 
 @media print{
-  body{background:#fff}
+  body{background:var(--surface)}
   .wrap{max-width:none;padding:0}
   .sticky,.find,.tb,.haut,.quad button{display:none !important}
-  section.ch,.band,.legende,.card,.quad{break-inside:avoid;box-shadow:none}
+  /* Le papier n'a pas d'onglets : toutes les vues a plat, dans l'ordre. */
+  section.vue{display:block !important}
+  section.ch,.band,.legende,.card,.quad,.kpi,figure.graphe{break-inside:avoid;
+    box-shadow:none}
   details{display:block}
   details.n2>summary,details.annexe>summary,details.baremes>summary{display:none}
   .baremes-c{display:block}
@@ -1209,15 +1488,15 @@ footer.doc{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);
   table{display:table;table-layout:auto}
   thead{position:static;width:auto;height:auto;overflow:visible;clip:auto}
   thead tr{display:table-row}
-  thead th{display:table-cell;width:auto !important;height:auto;padding:5px 7px;
+  thead th{display:table-cell;width:auto !important;height:auto;padding:4px 8px;
     white-space:normal}
   tbody{display:table-row-group}
   tr{display:table-row;border:0;margin:0;padding:0}
-  td{display:table-cell;padding:5px 7px;border-bottom:1px solid var(--line)}
+  td{display:table-cell;padding:4px 8px;border-bottom:1px solid var(--line)}
   td::before{content:none}
   td[data-grp]::before{content:attr(data-grp);display:block}
   td:empty{display:table-cell}
-  a[href^="http"]::after{content:" (" attr(href) ")";font-size:.7em;color:#555}
+  a[href^="http"]::after{content:" (" attr(href) ")";font-size:.7em;color:var(--muted)}
 }
 """
 
@@ -1381,9 +1660,66 @@ JS_OUTILS = r"""
   });
 })();
 
-/* Sommaire : chapitre courant surligne. */
+/* Vues : routeur a ancres. Toute ancre interne qui pointe DANS une vue masquee
+   active cette vue avant d'y defiler -- sans quoi la moitie des renvois du rapport
+   (« voir le chapitre Couverture ») seraient des affordances mortes. */
 (function () {
-  var liens = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var vues = Array.prototype.slice.call(document.querySelectorAll('section.vue'));
+  if (!vues.length) return;
+  var onglets = Array.prototype.slice.call(document.querySelectorAll('nav.vues a[data-vue]'));
+
+  function vueDe(el) {
+    while (el && el !== document.body) {
+      if (el.classList && el.classList.contains('vue')) return el;
+      el = el.parentNode;
+    }
+    return null;
+  }
+
+  function montre(id, cible) {
+    vues.forEach(function (s) { s.classList.toggle('active', s.id === id); });
+    onglets.forEach(function (a) {
+      a.setAttribute('aria-selected', String(a.getAttribute('data-vue') === id));
+    });
+    if (cible && cible.id !== id) cible.scrollIntoView({ block: 'start' });
+    else window.scrollTo({ top: 0 });
+  }
+
+  document.addEventListener('click', function (ev) {
+    var a = ev.target && ev.target.closest ? ev.target.closest('a[href^="#"]') : null;
+    if (!a) return;
+    var href = a.getAttribute('href') || '';
+    if (href.length < 2) return;
+    var cible = document.getElementById(decodeURIComponent(href.slice(1)));
+    if (!cible) return;
+    var v = vueDe(cible);
+    if (!v) return;
+    ev.preventDefault();
+    if (history.replaceState) history.replaceState(null, '', href);
+    montre(v.id, cible);
+  });
+
+  /* Un lien partage pointe une ancre precise : on ouvre la vue qui la contient. */
+  if (location.hash.length > 1) {
+    var dep = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    var v0 = dep ? vueDe(dep) : null;
+    if (v0) montre(v0.id, dep);
+  }
+
+  /* La recherche globale porte sur TOUT le rapport : pendant qu'on cherche, les
+     vues s'ouvrent toutes, sinon le compteur annonce des occurrences invisibles. */
+  var champ = document.getElementById('q'), zone = document.querySelector('.wrap');
+  if (champ && zone) {
+    champ.addEventListener('input', function () {
+      zone.classList.toggle('toutes-vues', champ.value.trim().length > 0);
+    });
+  }
+})();
+
+/* Sommaire : chapitre courant surligne. Inerte sur la navigation de vues, qui
+   marque la vue courante par aria-selected et non par un fond inline. */
+(function () {
+  var liens = Array.prototype.slice.call(document.querySelectorAll('.toc:not(.vues) a'));
   if (!liens.length || !('IntersectionObserver' in window)) return;
   var secs = liens.map(function (a) { return document.querySelector(a.getAttribute('href')); });
   var io = new IntersectionObserver(function (ents) {
@@ -1398,8 +1734,13 @@ JS_OUTILS = r"""
 """
 
 
-def page(titre: str, blocs: list[str], pied: str) -> str:
-    """Squelette complet. Un seul <h1>, lang fr, viewport, tout inline."""
+def page(titre: str, blocs: list[str], pied: str, restitution: str = "") -> str:
+    """Squelette complet. Un seul <h1>, lang fr, viewport, tout inline.
+
+    `restitution` declare la famille du livrable au sens du referentiel de
+    restitution (`rapport`, `suivi`, `registre`). Sans elle, l'oracle rend un SKIP
+    motive : le perimetre est declaratif, jamais devine.
+    """
     filtres, _ = source_filtres()
     recherche = _asset("find-in-page.js")
     init = ("\nDigitAITableFilters.initAll(document);" if filtres else "") + (
@@ -1411,13 +1752,18 @@ def page(titre: str, blocs: list[str], pied: str) -> str:
     # parse comme du HTML et ne s'execute jamais. Le rendu paraissait correct et
     # aucune interaction ne marchait.
     js = js.replace("</script", "<\\/script")
-    return (
+    return sans_pictogrammes(
         "<!doctype html>\n"
         '<html lang="fr"><head><meta charset="UTF-8">\n'
-        '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+        # `viewport-fit=cover` : sans lui les env(safe-area-inset-*) de la feuille
+        # de style valent 0 et la barre collante repasse sous l'encoche.
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0, '
+        'viewport-fit=cover">\n'
         f"<title>{esc(titre)}</title>\n"
         f"<style>{CSS}</style>\n"
-        "</head>\n<body>\n"
+        "</head>\n<body"
+        + (f' data-restitution="{esc(restitution)}"' if restitution else "")
+        + ">\n"
         f'<main class="wrap">\n{"".join(blocs)}\n{pied}\n</main>\n'
         '<button class="haut" onclick="window.scrollTo({top:0,behavior:\'smooth\'})">'
         "↑ Haut</button>\n"

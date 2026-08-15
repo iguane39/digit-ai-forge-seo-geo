@@ -29,18 +29,24 @@ from gabarit_html import (
     baremes,
     barre,
     chapitre,
+    chemins,
     esc,
+    figure_barres,
+    figure_empilee,
+    kpi,
     legende_preuves,
     legende_valeur,
+    manifeste_ecarts,
     md,
     md_bloc,
+    nav_vues,
     refs_actions,
     page,
     recherche_globale,
-    sommaire,
     strate,
     tableau,
     tete,
+    vue,
     Vocabulaire,
 )
 from gabarits import MOTIF_MODELE, front_matter
@@ -622,13 +628,227 @@ def pese_blocage(faibles: list[dict], actions: list[dict]):
     return tete_n, cites, gain
 
 
-def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
-    """Un lecteur qui ne lit que ce chapitre doit pouvoir décider."""
+def horizon_clics(d: dict) -> dict:
+    """Le premier horizon de cible exprime en clics, s'il existe. Sinon rien.
+
+    Sert la figure de trajectoire : sans lui, elle ne se dessine pas et l'ecart se
+    declare au manifeste. Aucune borne n'est reconstituee ni supposee.
+    """
+    for h in ((d["snapshot"].get("cible") or {}).get("horizons") or []):
+        if "clic" in str(h.get("indicateur") or "").lower():
+            try:
+                float(h.get("borne_basse"))
+                float(h.get("borne_haute"))
+            except (TypeError, ValueError):
+                continue
+            return h
+    return {}
+
+
+def clics_annuels(d: dict) -> int | None:
+    """Le constate, ramene a l'annee, pour se comparer aux bornes de la cible.
+
+    La baseline est mesuree sur une PERIODE (487 jours ici) tandis que la cible
+    s'exprime par an : les afficher cote a cote sans les ramener a la meme duree
+    ferait mentir le graphique. Le facteur est l'annee julienne moyenne (365,25 j),
+    celle qu'emploie deja le calcul de la cible au snapshot. Rien n'est extrapole :
+    on change d'unite, pas de valeur.
+    """
+    base = d["snapshot"].get("baseline") or {}
+    for m in base.get("metriques") or []:
+        if "clic" not in str(m.get("cle") or "").lower():
+            continue
+        try:
+            valeur = float(m.get("valeur"))
+        except (TypeError, ValueError):
+            return None
+        jours = 0
+        unite = str(m.get("unite") or "")
+        trouve = re.search(r"(\d+)\s*jour", unite)
+        if trouve:
+            jours = int(trouve.group(1))
+        else:
+            per = base.get("periode") or {}
+            try:
+                jours = (dt.date.fromisoformat(per["fin"])
+                         - dt.date.fromisoformat(per["debut"])).days
+            except (KeyError, TypeError, ValueError):
+                return None
+        if jours <= 0:
+            return None
+        return round(valeur * 365.25 / jours)
+    return None
+
+
+def nombre_fr(valeur) -> str:
+    """Espace insecable fine comme separateur de milliers — un client francais."""
+    try:
+        return f"{int(round(float(valeur))):,}".replace(",", " ")
+    except (TypeError, ValueError):
+        return "—"
+
+
+def vue1_kpis(d: dict, actions: list[dict], compte: dict) -> str:
+    """Les quatre chiffres de premiere lecture, au composant complet (RL-3).
+
+    Ce sont les memes que les cartes de synthese d'avant : couverture, maturite,
+    volume d'actions, cible. Chacun gagne ce qui lui manquait — une definition, un
+    repere de lecture, et le lien vers l'endroit ou l'on agit dessus.
+    """
     snap, noeuds = d["snapshot"], d["noeuds"]
     faits = sum(1 for n in noeuds if n.get("etat") == "fait")
     hors_mod = sum(1 for n in noeuds if hors_modele(n))
     hors = sum(1 for n in noeuds if n.get("etat") == "hors-perimetre") - hors_mod
     maturite = (snap.get("maturite") or {}).get("score")
+
+    cartes = [kpi(
+        "Couverture de l'audit",
+        esc(faits), unite=f"/ {len(noeuds)} nœuds",
+        definition="Part des questions d'audit de la grille effectivement instruites "
+                   "sur ce site, verdict rendu et preuve à l'appui.",
+        repere=(f"{hors} nœud(s) non mesurable(s) faute d'instrumentation"
+                + (f", {hors_mod} hors portée du modèle d'acquisition" if hors_mod else "")
+                + " — ce rapport dit aussi ce qu'il ne peut pas dire."),
+        ident="kr-couverture",
+        action=("→ Ce qui n'a pas pu être mesuré (vue 6)", "#dette"),
+    )]
+
+    if maturite:
+        cartes.append(kpi(
+            "Maturité « machine SEO »",
+            barre(maturite, 5, "maturité", "maturite"), unite=f"{maturite} / 5",
+            definition="Capacité du site à produire ET à mesurer sa visibilité "
+                       "sans impulsion externe (nœud 87).",
+            repere="Barème de 1 à 5 publié en vue 6 : le cran 1 ne décrit aucun "
+                   "dispositif, le cran 5 un pilotage continu et chiffré. Chaque cran "
+                   "gagné se constate, il ne se déclare pas.",
+            ident="kr-maturite",
+            action=("→ Le barème des cinq crans (vue 6)", "#baremes-scores"),
+        ))
+    else:
+        cartes.append(kpi(
+            "Maturité « machine SEO »", badge_preuve("NM", compact=True), unite="non évaluée",
+            definition="Capacité du site à produire ET à mesurer sa visibilité (nœud 87).",
+            repere="Le volet stratégie n'a pas produit de score de maturité : la valeur "
+                   "est absente, elle n'est pas nulle.",
+            ident="kr-maturite",
+        ))
+
+    cartes.append(kpi(
+        "Plan d'action", esc(len(actions)), unite="actions chiffrées",
+        definition="Actions retenues, chacune chiffrée en gain, effort, confiance "
+                   "et coût, et rattachée aux nœuds qu'elle traite.",
+        repere=("Elles sont ordonnées par score de priorité — (gain × confiance) ÷ "
+                "effort — et non par ordre d'apparition dans l'audit."
+                if actions else
+                "Aucune action n'a encore été produite : le plan est vide, ce n'est pas "
+                "un plan tenu en trois lignes."),
+        ident="kr-actions",
+        action=("→ Les actions, triables et filtrables (vue 2)", "#actions"),
+    ))
+
+    cible = snap.get("cible") or {}
+    h = horizon_clics(d) or (
+        (cible.get("horizons") or [{}])[0] if cible.get("calculable") else {})
+    if h:
+        cartes.append(kpi(
+            f'Cible {esc(h.get("echeance_mois"))} mois',
+            f'{nombre_fr(h.get("borne_basse"))}–{nombre_fr(h.get("borne_haute"))} '
+            + badge_preuve("T4", compact=True),
+            unite=esc(h.get("unite") or h.get("indicateur") or ""),
+            definition=" ".join(str(h.get("indicateur") or "").split())
+                       + " visé, encadré par deux bornes de travail.",
+            repere="Ces bornes ne sont pas une prévision : le calcul qui les produit "
+                   "est écrit en toutes lettres en vue 2, avec ses entrées mesurées et "
+                   "ses conventions assumées.",
+            ident="kr-cible",
+            action=("→ Le calcul et ce qui le casse (vue 2)", "#trajectoire"),
+        ))
+    else:
+        cartes.append(kpi(
+            "Cible 12 mois", badge_preuve("NM", compact=True), unite="non calculable",
+            definition="Trajectoire chiffrée à 12 mois, quand la baseline permet "
+                       "de la calculer.",
+            repere="Motif déclaré : "
+                   + (cible.get("motif_non_calculable") or "baseline absente")
+                   + ". Une cible non calculable s'affiche, elle ne se devine pas.",
+            ident="kr-cible",
+        ))
+    return f'<div class="kpis">{"".join(cartes)}</div>'
+
+
+def vue1_graphiques(d: dict) -> tuple[str, list[str]]:
+    """Les deux figures de la vue d'ensemble, et les écarts qu'elles déclarent.
+
+    Aucune valeur n'est fabriquee : une figure dont la donnee manque ne se dessine
+    pas, et son absence part au manifeste d'ecarts (RL-10).
+    """
+    noeuds = d["noeuds"]
+    faits = sum(1 for n in noeuds if n.get("etat") == "fait")
+    hors_mod = sum(1 for n in noeuds if hors_modele(n))
+    hors = sum(1 for n in noeuds if n.get("etat") == "hors-perimetre") - hors_mod
+    reste = len(noeuds) - faits - hors - hors_mod
+
+    segments = [("nœuds instruits", faits, "blue"),
+                ("non mesurables", hors, "amber"),
+                ("hors portée du modèle", hors_mod, "faint")]
+    if reste > 0:
+        segments.append(("non traités", reste, "danger"))
+    figures = [figure_empilee(
+        "Sur quoi ce rapport s'appuie-t-il ?",
+        f"Les {len(noeuds)} nœuds de la grille et leur sort. Un nœud non mesurable "
+        "est un résultat déclaré, pas une question esquivée.",
+        segments,
+    )]
+
+    ecarts = []
+    h, actuel = horizon_clics(d), clics_annuels(d)
+    if h and actuel:
+        bb, bh = float(h["borne_basse"]), float(h["borne_haute"])
+        maxi = max(bh, float(actuel))
+        figures.append(figure_barres(
+            "Où peut aller le trafic organique ?",
+            f'{esc(h.get("indicateur"))} à {esc(h.get("echeance_mois"))} mois — le '
+            "constaté ramené à l'année, puis les deux bornes de travail de la cible "
+            "(elles encadrent un effet attendu, elles ne le prédisent pas).",
+            [("Constaté", nombre_fr(actuel), actuel / maxi,
+              f"constaté : {nombre_fr(actuel)} {h.get('unite') or 'clics'} par an"),
+             ("Borne basse", nombre_fr(bb), bb / maxi,
+              f"borne basse de la cible : {nombre_fr(bb)}"),
+             ("Borne haute", nombre_fr(bh), bh / maxi,
+              f"borne haute de la cible : {nombre_fr(bh)}")],
+        ))
+    else:
+        ecarts.append(
+            "Graphique de trajectoire non produit : "
+            + ("aucun horizon de cible exprimé en clics dans le snapshot"
+               if not h else "aucune mesure de clics annualisable dans la baseline")
+            + " — la vue d'ensemble ne porte qu'un graphique au lieu de deux.")
+    return f'<div class="graphes">{"".join(figures)}</div>', ecarts
+
+
+CHEMINS_LECTEURS = [
+    ("Propriétaire du site",
+     'Restez sur cette vue : le verdict, quatre chiffres et trois gestes. Puis '
+     '<a href="#actions">le plan d\'action</a> pour décider ce que vous engagez.'),
+    ("Webmaster ou agence",
+     'Allez droit au <a href="#actions">plan d\'action</a>, puis aux '
+     '<a href="#existant">constats</a> pour le détail technique de chacun.'),
+    ("Consultant SEO",
+     '<a href="#methode">La méthode</a> d\'abord — barèmes, sources et limites —, '
+     'puis <a href="#couverture">la couverture de la grille</a> et ses preuves.'),
+]
+
+
+def bloc_synthese(d: dict, actions: list[dict], compte: dict,
+                  ecarts: list[str]) -> str:
+    """Un lecteur qui ne lit que ce chapitre doit pouvoir décider.
+
+    `ecarts` est alimente en place : ce que la vue d'ensemble n'a pas pu produire
+    faute de donnee se declare au manifeste, jamais par omission (RL-10).
+    """
+    noeuds = d["noeuds"]
+    faits = sum(1 for n in noeuds if n.get("etat") == "fait")
 
     faibles = [n for n in noeuds if n.get("verdict") == "non-conforme"]
 
@@ -680,38 +900,6 @@ def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
             "<p><b>Ce qu'il faut fournir</b> — " + esc(", ".join(manquants)) + ".</p>"
         )
 
-    cartes = [
-        f'<div class="card"><h3>Couverture</h3><p class="kpi">{faits}'
-        f'<span class="mono"> / {len(noeuds)}</span>'
-        f"<small>nœuds instruits — {hors} non mesurables"
-        + (f", {hors_mod} hors portée du modèle" if hors_mod else "")
-        + "</small></p></div>",
-        '<div class="card"><h3>Maturité</h3><p class="kpi">'
-        + (barre(maturite, 5, "maturité", "maturite") if maturite else "n/d")
-        + "<small>« Machine SEO » — nœud 87. Les cinq crans sont détaillés dans "
-          "« Barèmes » ci-dessous.</small></p></div>",
-        f'<div class="card"><h3>Actions</h3><p class="kpi">{len(actions)}'
-        "<small>chiffrées, priorisées, dispatchées</small></p></div>",
-    ]
-    cible = snap.get("cible") or {}
-    if cible.get("calculable") and cible.get("horizons"):
-        h = cible["horizons"][0]
-        cartes.append(
-            f'<div class="card"><h3>Cible {esc(h.get("echeance_mois"))} mois</h3>'
-            f'<p class="kpi">{esc(h.get("borne_basse"))}–{esc(h.get("borne_haute"))} '
-            f'{badge_preuve("T4", compact=True)}'
-            f'<small>{esc(h.get("indicateur"))} — {esc(h.get("calcul"))}</small>'
-            "</p></div>"
-        )
-    else:
-        cartes.append(
-            '<div class="card"><h3>Cible 12 mois</h3><p class="kpi">'
-            + badge_preuve("NM", compact=True)
-            + "<small>non calculable — "
-            + esc(cible.get("motif_non_calculable") or "baseline absente")
-            + "</small></p></div>"
-        )
-
     top = ""
     if actions:
         # FIGÉES : les trois premières par score, pas « les trois du tri courant ».
@@ -732,10 +920,17 @@ def bloc_synthese(d: dict, actions: list[dict], compte: dict) -> str:
                'œuvre">au chapitre 3, Actions à mettre en œuvre</a>.</p>'
                f'<ul class="top3">{li}</ul>')
 
+    # Ordre de lecture de la vue d'ensemble : ce qu'il faut retenir (verdict), les
+    # chiffres qui le portent (KPI), la forme qu'ils prennent (figures), ce qu'on
+    # fait demain (top 3), et par ou entrer selon qui l'on est (chemins).
+    graphes, ecarts_graphes = vue1_graphiques(d)
+    ecarts.extend(ecarts_graphes)
     return (
         f'<div class="verdict">{"".join(verdict)}</div>'
-        f'<div class="cards">{"".join(cartes)}</div>{top}{legende_preuves()}'
-        + baremes(["noeud", "score", "maturite", "gain", "effort", "confiance", "regime"])
+        + vue1_kpis(d, actions, compte)
+        + graphes
+        + top
+        + chemins(CHEMINS_LECTEURS)
     )
 
 
@@ -1076,7 +1271,7 @@ def bloc_trajectoire(d: dict) -> str:
         )
     cartes = [
         f'<div class="card"><h3>{esc(h.get("echeance_mois"))} mois — '
-        f'{esc(h.get("indicateur"))}</h3><p class="kpi">'
+        f'{esc(h.get("indicateur"))}</h3><p class="chiffre stat">'
         f'{esc(h.get("borne_basse"))} – {esc(h.get("borne_haute"))} '
         f'{esc(h.get("unite", ""))} {badge_preuve("T4", compact=True)}'
         f'<small>{md(h.get("calcul"))}</small></p></div>'
@@ -1119,7 +1314,7 @@ def bloc_trajectoire(d: dict) -> str:
     if sens:
         li = "".join(
             "<li>"
-            + f'<b>{"⚠ variable la plus fragile — " if s.get("plus_fragile") else ""}'
+            + f'<b>{"Variable la plus fragile — " if s.get("plus_fragile") else ""}'
             + f'{md(s.get("hypothese"))}</b> — {md(s.get("effet_si_fausse"))}</li>'
             for s in sens
         )
@@ -1301,11 +1496,91 @@ def libelles_actions(actions: list[dict]) -> dict:
     }
 
 
+# Architecture de restitution : 6 vues, une question par vue (REFERENTIEL-
+# RESTITUTION.md, famille « rapport »). La carte ci-dessous dit quel CHAPITRE va
+# dans quelle VUE. Elle est iso-contenu : les onze chapitres y figurent tous, aucun
+# n'est resume ni scinde -- ils changent de conteneur, rien de plus. Toute evolution
+# du plan doit se retrouver ici, sinon le chapitre nouveau n'aurait pas de vue et le
+# controle d'assemblage le refuserait.
+VUES = [
+    ("v1", "1", "Synthèse", "l'état du site et les gestes qui comptent",
+     "l'état réel du site, ce qu'il vous coûte, et les trois gestes qui comptent — "
+     "de quoi décider sans lire la suite.",
+     ["synthese"]),
+    ("v2", "2", "Plan d'action", "les actions chiffrées, triées comme vous travaillez",
+     "les actions retenues, ce que chacune rapporte et coûte, par où les prendre, "
+     "et où le site peut aller si le plan est exécuté.",
+     ["actions", "gains", "trajectoire"]),
+    ("v3", "3", "Constats", "ce qui a été trouvé, et ce que ça change",
+     "ce qui a été observé sur le site, ce que chaque constat change pour vous, "
+     "l'action qui y répond — et ce qui a bougé depuis le run précédent.",
+     ["existant", "diff"]),
+    ("v4", "4", "Couverture de la grille", "le sort de chaque nœud d'audit",
+     "le sort de chacun des nœuds de la grille — instruit, non mesurable ou hors "
+     "portée — avec son verdict ou son motif : aucune question n'a été esquivée.",
+     ["couverture"]),
+    ("v5", "5", "Données analysées", "requêtes mesurées et pages inventoriées",
+     "les requêtes instruites nœud par nœud et l'inventaire des pages mesurées, "
+     "avec les limites de la donnée affichées à côté de la donnée.",
+     ["requetes", "pages"]),
+    ("v6", "6", "Méthode et traçabilité", "barèmes, sources, limites et dette",
+     "comment ce rapport juge — vocabulaire, barèmes, formule de score, sources — "
+     "et ce qu'il ne peut pas dire, dette d'instrumentation comprise.",
+     ["methode", "dette"]),
+]
+
+
+def ecarts_declares(d: dict, actions: list[dict], deja: list[str]) -> list[str]:
+    """Ce que CE rapport ne fait pas, sur CES donnees (regle RL-10).
+
+    Le manifeste n'est pas une clause de style : il se calcule sur l'etat reel de la
+    mission. Un composant que la donnee ne permet pas de servir s'y declare ; les
+    regles que le generateur ne peut pas trancher seul s'y declarent aussi, avec le
+    nom de qui les tranche. « Aucun ecart » est un verdict, pas un silence.
+    """
+    ecarts = list(deja)
+    snap = d["snapshot"]
+
+    if not actions:
+        ecarts.append(
+            "Vue 2 sans plan d'action : aucun fichier actions-*.csv n'a été trouvé "
+            "dans la mission — le tableau des actions et les trois gestes de la vue 1 "
+            "sont absents, ils ne sont pas vides.")
+    if not d["precedent"]:
+        ecarts.append(
+            "Vue 3 sans encart de progression : c'est le premier run chaîné pour ce "
+            "domaine, il n'y a aucun run précédent auquel se comparer.")
+    dette = snap.get("dette_instrumentation") or []
+    if dette:
+        ecarts.append(
+            f"{len(dette)} nœud(s) non mesurable(s) : les verdicts correspondants sont "
+            "marqués « non mesuré » et non « conforme ». Le détail et ce qu'il faut "
+            "fournir sont en vue 6.")
+    manquants = manque_a_fournir(d)
+    if manquants:
+        ecarts.append(
+            "Sources absentes de la mission : " + ", ".join(manquants)
+            + ". Ce que le rapport ne peut donc pas affirmer est énuméré en vue 6.")
+
+    # Les regles RL que le generateur ne DECIDE pas : les taire donnerait a croire
+    # qu'elles sont tenues par construction.
+    ecarts.append(
+        "Règles RL-6 (effet matériel de chaque interaction) et RL-7 (texte ancré "
+        "constat → impact → action) : jugées au rendu et en revue de design, pas par "
+        "ce générateur.")
+    ecarts.append(
+        "Règle RL-8 (iso-contenu) : le générateur garantit qu'aucun chapitre n'est "
+        "sans vue de destination et refuse de produire sinon ; la comparaison ligne à "
+        "ligne avec le rapport précédent reste un contrôle de campagne.")
+    return ecarts
+
+
 def construire(d: dict) -> str:
     repart, compte = repartition(d["noeuds"])
     actions = enrichir_actions(d)
     libelles = libelles_actions(actions)
     domaine = d["etat"].get("domaine") or "site"
+    ecarts: list[str] = []
 
     npages = len(d["snapshot"].get("pages") or [])
     nact = len(actions)
@@ -1322,7 +1597,8 @@ def construire(d: dict) -> str:
          "l'état du site, le blocage dont tout dépend, et les trois actions qui comptent — "
          "de quoi décider sans lire la suite",
          "ce qui a été mesuré, ce qui bloque, et ce qu'il faut décider",
-         refs_actions(bloc_synthese(d, actions, compte), libelles), "", "", ""),
+         refs_actions(bloc_synthese(d, actions, compte, ecarts), libelles),
+         "", "", ""),
         ("existant", "L'existant",
          "pour chaque constat : ce qui est observé, ce que ça coûte, quelle action y "
          "répond et quel gain en attendre — la chaîne entière sur une seule fiche",
@@ -1399,33 +1675,70 @@ def construire(d: dict) -> str:
             "se mesure sur plusieurs semaines, la colonne le dit quand c'est le cas.",
             ""))
 
-    chapitres, entrees = [], []
-    for num, (ident, titre, apprend, annonce, corps, compt, exemple, annexe) in \
-            enumerate(plan, start=1):
+    # Le contenu GENERIQUE — comment se lit un niveau de preuve, ce que valent les
+    # crans d'un barème — vit une fois, en vue 6, et le reste du rapport y renvoie
+    # par ancre (règle RL-7). Il ouvrait la synthèse : le lecteur pressé y butait
+    # avant d'avoir vu un seul constat. Il est posé en TETE de vue et non dans un
+    # chapitre replié, sinon les renvois « → le barème des cinq crans » tomberaient
+    # sur un dépliant fermé.
+    entetes = {
+        "v6": legende_preuves()
+        + baremes(["noeud", "score", "maturite", "gain", "effort", "confiance",
+                   "regime"]),
+    }
+
+    par_ident = {}
+    for ident, titre, apprend, annonce, corps, compt, exemple, annexe in plan:
         # Toute reference d'action porte son libelle, dans TOUS les chapitres de
-        # prose. Le chapitre 3 est exclu : sa premiere colonne EST l'identifiant et
-        # la suivante le libelle -- l'y injecter une seconde fois n'aiderait
-        # personne. La regex ignore de toute facon ce qui est deja suivi de « · ».
+        # prose. Le chapitre des actions est exclu : sa premiere colonne EST
+        # l'identifiant et la suivante le libelle -- l'y injecter une seconde fois
+        # n'aiderait personne. La regex ignore de toute facon ce qui est deja suivi
+        # de « · ».
         if ident != "actions":
             corps = refs_actions(corps, libelles)
-        chapitres.append(chapitre(num, ident, titre, corps, apprend, exemple, annexe))
-        entrees.append((num, ident, titre, annonce, compt))
+        par_ident[ident] = (titre, apprend, corps, exemple, annexe)
+
+    # Assemblage des vues. Un chapitre du plan qui n'a pas de vue est un chapitre
+    # perdu pour le lecteur : on refuse plutot que de le laisser tomber en silence.
+    places = {i for _, _, _, _, _, idents in VUES for i in idents}
+    orphelins = [i for i in par_ident if i not in places]
+    if orphelins:
+        raise SystemExit(
+            f"REFUS : chapitre(s) sans vue de destination — {', '.join(orphelins)}.\n"
+            "La carte VUES de rapport_html.py doit dire où va chaque chapitre "
+            "(règle RL-8, iso-contenu source → cible)."
+        )
+
+    sections, entrees, num = [], [], 0
+    for rang, (vid, vnum, vtitre, vannonce, vobjectif, idents) in enumerate(VUES):
+        corps_vue = [entetes.get(vid, "")]
+        for ident in idents:
+            if ident not in par_ident:
+                continue
+            num += 1
+            titre, apprend, corps, exemple, annexe = par_ident[ident]
+            corps_vue.append(
+                chapitre(num, ident, titre, corps, apprend, exemple, annexe))
+        sections.append(
+            vue(vid, vtitre, vobjectif, "".join(corps_vue), active=(rang == 0)))
+        entrees.append((vid, vnum, vtitre, vannonce))
 
     blocs = [
         bloc_bandeau(d, repart),
-        f'<div class="sticky"><div class="sticky-in">{sommaire(entrees)}'
+        f'<div class="sticky"><div class="sticky-in">{nav_vues(entrees)}'
         f"{recherche_globale()}</div></div>",
-        *chapitres,
+        *sections,
     ]
     pied = (
         '<div class="conf"><b>Confidentiel.</b> Ce document contient des données '
         "d'audience, de conversion et de chiffre d'affaires. Il ne doit pas être déposé "
         "sur un hébergement public ni transmis hors du périmètre convenu.</div>"
-        f'<footer class="doc">Digit-AI — {esc(d["etat"].get("client") or "client")} · '
+        + manifeste_ecarts(ecarts_declares(d, actions, ecarts))
+        + f'<footer class="doc">Digit-AI — {esc(d["etat"].get("client") or "client")} · '
         f"{esc(domaine)} · rapport généré par forge-seo, fichier autonome sans appel "
         "réseau.</footer>"
     )
-    return page(f"Étude SEO — {domaine}", blocs, pied)
+    return page(f"Étude SEO — {domaine}", blocs, pied, restitution="rapport")
 
 
 # ----------------------------------------------------------------- ecriture
