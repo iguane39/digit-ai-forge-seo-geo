@@ -55,6 +55,9 @@ python c:/dev/digit-ai-forge-seo/scripts/crawler.py --projet . --url https://acm
 #    l'inventaire mesuré est celui du site, pas celui du graphe de navigation.
 #    --rendu-js exécute le JS côté client (Playwright/Chromium) sur un site SPA.
 #    Le JSON-LD (application/ld+json) est extrait automatiquement, sans option.
+#    Si le plafond coupe, les compteurs de graphe (orphelines, pages sans lien
+#    contextuel) NE SONT PAS ÉCRITS : un refus motivé les remplace, qui dit la
+#    relance exacte. --jusqu-a-epuisement vide la file sous une borne dure.
 
 # 3 bis. (optionnel, noeud 31) donnees de terrain CrUX -- gratuit, cle API requise
 CRUX_API_KEY=... python c:/dev/digit-ai-forge-seo/scripts/crux.py --projet . --url https://acme.fr
@@ -181,6 +184,7 @@ python scripts/validate.py --json               # même verdict, en objet machin
 python scripts/autotest.py                      # fixtures vertes ET rouges des contrôles
 python scripts/test_migrer_mission.py           # fixture rouge/verte de la migration de grille
 python scripts/test_balisage.py                 # détecteurs de balisage : les deux ordres d'attributs
+python scripts/test_crawl_plafond.py            # refus de mesure quand le plafond coupe le crawl
 python scripts/new_mission.py --liste           # registre local des études créées
 ```
 

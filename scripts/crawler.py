@@ -40,6 +40,12 @@ from pathlib import Path
 
 AGENT = "forge-seo/1.0 (audit SEO ; +contact via le commanditaire de l'audit)"
 PLAFOND = 200
+# Borne DURE de `--jusqu-a-epuisement` : « jusqu'a epuisement » ne veut pas dire
+# « sans limite ». Un site a pagination infinie ou a parametres combinatoires
+# engendre une file qui ne se vide jamais ; la borne est declaree au resultat,
+# et si elle est atteinte le crawl retombe dans le cas « couverture incomplete »,
+# donc dans le refus motive -- jamais dans un chiffre qu'on croirait complet.
+BORNE_DURE = 2000
 DELAI = 0.5
 TIMEOUT = 15
 TIMEOUT_JS_MS = 20_000
@@ -296,9 +302,13 @@ def lire_sitemaps(depart: str, robots_txt: str, plafond_index: int = 25) -> dict
     }
 
 
-def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> dict:
+def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False,
+            jusqu_a_epuisement: bool = False, borne_dure: int = BORNE_DURE) -> dict:
     depart = normaliser(racine)
     hote = urllib.parse.urlsplit(depart).netloc
+    # Option assumee (TF-0261) : plutot que de rendre un compte tronque, on releve
+    # le plafond jusqu'a vider la file -- sous une borne dure, declaree au resultat.
+    plafond_effectif = borne_dure if jusqu_a_epuisement else plafond
 
     # Playwright est optionnel : robots.txt et les sitemaps restent lus par
     # urllib (jamais de JS a y executer) ; seule la visite des pages HTML change.
@@ -344,7 +354,7 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
 
     def vider_file():
         nonlocal bloquees
-        while file and len(vues) < plafond:
+        while file and len(vues) < plafond_effectif:
             url, prof = file.popleft()
             if url in vues:
                 continue
@@ -422,7 +432,7 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
             entrants_tous[cible] = entrants_tous.get(cible, 0) + 1
             if contextuel:
                 entrants[cible] = entrants.get(cible, 0) + 1
-            if cible not in vues and len(connus) < plafond * 5:
+            if cible not in vues and len(connus) < plafond_effectif * 5:
                 connus.add(cible)
                 file.append((cible, None if prof is None else prof + 1))
 
@@ -465,10 +475,33 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
         u for u in declarees
         if entrants_tous.get(u, 0) == 0 and u != depart
     )
-    # Honnetete de la mesure : les liens entrants ne sont connus que des pages
-    # effectivement crawlees. Si le plafond a coupe, le compte d'orphelines est un
-    # MAJORANT, et le resultat le declare plutot que de l'affirmer.
+    # TF-0261 -- un chiffre marque « MAJORANT » reste un chiffre qu'on cite. Le
+    # 15/08, « orphelines 89 (MAJORANT) » est parti tel quel dans un rapport ; la
+    # relance a --max 320 en donnait 10, un ordre de grandeur d'ecart. Et le crawler
+    # SAVAIT : urls_decouvertes valait 289 pour un plafond de 200. Quand la
+    # couverture est incomplete, les compteurs qui dependent du graphe de liens
+    # COMPLET ne s'ecrivent donc plus du tout -- un refus motive les remplace, qui
+    # dit quoi relancer. On ne peut pas citer un nombre qui n'existe pas.
     couverture_complete = not non_visitees
+    refus: dict[str, str] = {}
+    if not couverture_complete:
+        relance = (
+            f"relancer avec --max ≥ {len(connus)} (ou --jusqu-a-epuisement)"
+            if not jusqu_a_epuisement else
+            f"borne dure de {borne_dure} pages atteinte sans vider la file : "
+            "relancer avec --borne-dure supérieure, après avoir vérifié que le site "
+            "n'engendre pas d'URL à l'infini (pagination, paramètres combinatoires)"
+        )
+        motif = (
+            f"plafond atteint : {len(vues)} page(s) crawlée(s) sur {len(connus)} URL "
+            f"connues (plafond effectif {plafond_effectif}). Ce compteur exige le "
+            f"graphe de liens COMPLET — {relance}."
+        )
+        refus = {
+            "pages_orphelines": motif,
+            "pages_orphelines_exemples": motif,
+            "pages_sans_lien_contextuel": motif,
+        }
     titres: dict[str, int] = {}
     for p in pages:
         if p["title"]:
@@ -497,6 +530,9 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
             "date": dt.date.today().isoformat(),
             "racine": depart,
             "plafond": plafond,
+            "plafond_effectif": plafond_effectif,
+            "jusqu_a_epuisement": jusqu_a_epuisement,
+            "borne_dure": borne_dure if jusqu_a_epuisement else None,
             "delai_s": delai,
             "robots_txt_lu": robots_lu,
             "urls_bloquees_par_robots": bloquees,
@@ -514,12 +550,11 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
                 "--rendu-js sur un site suspecté SPA."
             ),
             "limite_orphelines": (
-                "Compte exact : toutes les URL déclarées ont été crawlées."
+                "Compte exact : toutes les URL connues ont été crawlées."
                 if couverture_complete else
-                f"MAJORANT : {len(vues)} URL crawlées sur {len(connus)} connues "
-                f"(plafond {plafond}). Les liens sortants des pages non crawlées ne "
-                "sont pas comptés — une page ici dite orpheline peut être citée par "
-                "l'une d'elles. Relancer avec --max supérieur pour un compte exact."),
+                "Compteurs de graphe NON MESURÉS — voir mesures_refusees. Les liens "
+                "sortants des pages non crawlées ne sont pas connus : aucune valeur "
+                "n'est avancée, pas même un majorant."),
         },
         "synthese": {
             "pages_crawlees": len(pages),
@@ -529,10 +564,13 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
             "profondeur_max": max((p["profondeur_clic"] or 0 for p in pages), default=0),
             "erreurs_4xx_5xx": sum(1 for p in pages if p["code_http"] >= 400),
             "non_indexables": sum(1 for p in pages if p["indexable"] is False),
-            "pages_orphelines": len(orphelines),
-            "pages_orphelines_exemples": orphelines[:10],
-            "orphelines_compte_exact": couverture_complete,
-            "pages_sans_lien_contextuel": sum(
+            "pages_orphelines": None if refus else len(orphelines),
+            "pages_orphelines_exemples": None if refus else orphelines[:10],
+            # Renomme (TF-0261) : « orphelines_compte_exact » qualifiait un compte
+            # qui n'existe plus quand il est faux. Le drapeau porte desormais ce
+            # qu'il dit vraiment -- la file a-t-elle ete videe.
+            "couverture_complete": couverture_complete,
+            "pages_sans_lien_contextuel": None if refus else sum(
                 1 for p in pages if p["liens_internes_entrants"] == 0),
             "titles_dupliques": sum(n for n in titres.values() if n > 1) -
                                 sum(1 for n in titres.values() if n > 1),
@@ -551,7 +589,21 @@ def crawler(racine: str, plafond: int, delai: float, rendu_js: bool = False) -> 
             "pages_json_ld_en_erreur": sum(1 for p in pages if p["json_ld_erreurs"]),
             "types_json_ld": dict(
                 sorted(types_json_ld.items(), key=lambda kv: (-kv[1], kv[0]))),
+            # Les compteurs ci-dessus autres que ceux du graphe restent EXACTS, mais
+            # sur l'echantillon crawle et non sur le site : leur denominateur est dit
+            # ici pour qu'aucune proportion ne se calcule sur le mauvais total (le
+            # rapport du 15/08 annoncait « 39 % de pages minces » sur 27 % du site).
+            "base_des_proportions": (
+                f"{len(pages)} page(s) crawlée(s) — couverture complète, "
+                "toute proportion porte sur le site entier."
+                if couverture_complete else
+                f"{len(pages)} page(s) crawlée(s) sur {len(connus)} URL connues : "
+                "toute proportion calculée sur ces compteurs porte sur l'échantillon, "
+                "PAS sur le site."),
         },
+        # Vide quand la couverture est complete. Non vide, il nomme chaque compteur
+        # non ecrit et dit comment l'obtenir : un refus motive, pas un blanc.
+        "mesures_refusees": refus,
         "pages": pages,
     }
 
@@ -562,6 +614,17 @@ def main() -> int:
     p.add_argument("--url", required=True, help="URL racine du site")
     p.add_argument("--max", type=int, default=PLAFOND, help=f"plafond de pages ({PLAFOND})")
     p.add_argument("--delai", type=float, default=DELAI, help=f"délai entre requêtes ({DELAI}s)")
+    p.add_argument(
+        "--jusqu-a-epuisement", action="store_true",
+        help="ignore --max et crawle jusqu'à ce que la file soit vide, sous la borne "
+             f"dure de --borne-dure ({BORNE_DURE}) — seule façon d'obtenir les "
+             "compteurs de graphe (orphelines) sur un site plus grand que le plafond",
+    )
+    p.add_argument(
+        "--borne-dure", type=int, default=BORNE_DURE,
+        help=f"borne dure de --jusqu-a-epuisement ({BORNE_DURE} pages) ; atteinte, "
+             "elle laisse le crawl en couverture incomplète, donc en refus motivé",
+    )
     p.add_argument(
         "--rendu-js", action="store_true",
         help="rend le JavaScript côté client avant de lire le DOM (Playwright/Chromium) "
@@ -575,10 +638,15 @@ def main() -> int:
         return 1
     dossier.mkdir(parents=True, exist_ok=True)
 
-    print(f"crawl de {args.url} — plafond {args.max} pages, délai {args.delai}s"
+    print(f"crawl de {args.url} — "
+          + (f"jusqu'à épuisement (borne dure {args.borne_dure} pages)"
+             if args.jusqu_a_epuisement else f"plafond {args.max} pages")
+          + f", délai {args.delai}s"
           + (", rendu JS actif (Playwright)" if args.rendu_js else ""))
     debut = time.time()
-    res = crawler(args.url, args.max, args.delai, rendu_js=args.rendu_js)
+    res = crawler(args.url, args.max, args.delai, rendu_js=args.rendu_js,
+                  jusqu_a_epuisement=args.jusqu_a_epuisement,
+                  borne_dure=args.borne_dure)
     s = res["synthese"]
 
     # Le netloc peut porter un port (`localhost:8765`) : sous Windows, un `:` dans
@@ -591,15 +659,21 @@ def main() -> int:
 
     print(f"\nécrit : {cible.relative_to(Path(args.projet).resolve())}")
     print(f"  durée               : {round(time.time() - debut)} s")
-    print(f"  pages crawlées      : {s['pages_crawlees']} / {res['collecte']['plafond']}")
+    print(f"  pages crawlées      : {s['pages_crawlees']} / "
+          f"{res['collecte']['plafond_effectif']}")
     print(f"  URLs découvertes    : {s['urls_decouvertes']}")
     print(f"  déclarées au sitemap: {s['urls_declarees_sitemap']} "
           f"({len(res['collecte']['sitemaps_lus'])} fichier(s) lu(s))")
     print(f"  profondeur max      : {s['profondeur_max']} clics")
     print(f"  erreurs 4xx/5xx     : {s['erreurs_4xx_5xx']}")
     print(f"  non indexables      : {s['non_indexables']}")
-    print(f"  pages orphelines    : {s['pages_orphelines']}"
-          f"{'' if s['orphelines_compte_exact'] else ' (MAJORANT — plafond atteint)'}")
+    if res["mesures_refusees"]:
+        # TF-0261 : pas de nombre, pas de « majorant » — le refus et sa relance.
+        print("  pages orphelines    : NON MESURÉ")
+        print("  pages sans lien ctx : NON MESURÉ")
+        print(f"    motif : {res['mesures_refusees']['pages_orphelines']}")
+    else:
+        print(f"  pages orphelines    : {s['pages_orphelines']}")
     print(f"  titles dupliqués    : {s['titles_dupliques']}")
     print(f"  canonical (HTTP 200): {s['pages_200_avec_canonical']} avec · "
           f"{s['pages_200_sans_canonical']} sans"
