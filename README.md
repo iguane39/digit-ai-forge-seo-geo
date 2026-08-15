@@ -15,7 +15,7 @@ sur une grille stable, comparable et versionnée.
 ## Catalogue de services
 
 > Section proposée par la campagne « catalogues » du pilot (2026-08-13) — générée depuis
-> la source unique `catalogues/catalogue.jsonl` du pilot (v1.6.1, challengée état de
+> la source unique `catalogues/catalogue.jsonl` du pilot (v1.6.2, challengée état de
 > l'art le 12/08/2026). **prouvé** = preuve exécutée ; *déclaré* = méthode documentée seulement.
 
 | Service | Intention (« je veux… ») | Point d'entrée | Statut |
@@ -25,7 +25,7 @@ sur une grille stable, comparable et versionnée.
 | **Valider forge et mission** | vérifier mécaniquement l'intégrité de la forge et d'une mission | `python scripts\validate.py [--mission <chemin>]` | prouvé (production) |
 | **Rapport HTML vérifié** | recevoir un rapport d'audit autonome et contrôlé avant remise | `python scripts\rapport_html.py --verifier` | prouvé (production) |
 | **Runs de suivi récurrents** | suivre l'évolution SEO d'un site entre deux audits | `méthode documentée (récurrence post-MEP)` | déclaré (experimental) |
-| **Instrumentation de crawl avancée** | mesurer aussi les sites JS, le balisage, les CWV terrain et les crawlers IA | `python scripts\{crawler.py --rendu-js, crux.py, agents_ia.py}` | prouvé (experimental) |
+| **Instrumentation de crawl avancée** | mesurer aussi les sites JS, le balisage, les CWV terrain (clé CrUX gratuite requise — sinon nœud 31 non mesuré) et les crawlers IA (journaux serveur requis, accès souvent exceptionnel — sinon verdict non mesurable motivé, nœud 58 jugé sur robots.txt/llms.txt seuls) | `python scripts\{crawler.py --rendu-js, crux.py, agents_ia.py}` | prouvé (experimental) |
 | **Scorer et écrire le CSV d'actions** | transformer les actions rédigées de la mission en CSV scoré, trié et contrôlé | `python scripts\scorer_actions.py --mission <chemin>` | prouvé (experimental) |
 | **Migrer une étude vers la grille courante** | restituer une étude auditée sur une grille antérieure, sans figer la forge ni inventer de verdict | `python scripts\migrer_mission.py --projet <chemin> [--verifier]` | prouvé (production) |
 
