@@ -28,7 +28,11 @@ from gabarits import VERSION_ETAT, version_snapshot
 from grille import NB_NOEUDS, chaine_correspondance
 from livrables import COLONNES_ACTIONS
 from remplir_fiches import en_prose
-from validate import controler_actions, controler_versions
+from validate import (
+    controler_actions,
+    controler_verdicts_de_terrain,
+    controler_versions,
+)
 
 IDS_GRILLE = set(range(1, NB_NOEUDS + 1))
 
@@ -275,6 +279,83 @@ def cas_prose(b: Bilan, racine: Path) -> None:
     )
 
 
+# ------------------------------------------------------------------- TF-0264
+
+
+SOURCE_TERRAIN = "données de terrain publiques (CrUX / PageSpeed Insights)"
+SOURCE_CRAWL = "crawl (HTML + en-têtes)"
+
+
+def fiche_noeud(id_: int, noeud: str, source: str, verdict: str) -> dict:
+    """Fiche reduite a ce que le controle de terrain regarde."""
+    return {"id": id_, "noeud": noeud, "source_requise": source, "verdict": verdict}
+
+
+def crux_depose(base: Path, disponible: bool) -> Path:
+    """Releve CrUX au format que crux.py ecrit reellement."""
+    dossier = base / "donnees" / "performance"
+    dossier.mkdir(parents=True, exist_ok=True)
+    f = dossier / "crux-exemple.fr-2026-01-01.json"
+    corps = (
+        {"disponible": True, "metriques": {"largest_contentful_paint": {"p75": 3128}}}
+        if disponible else
+        {"disponible": False,
+         "motif_indisponible": "trafic insuffisant pour publication"}
+    )
+    f.write_text(json.dumps(corps, indent=2) + "\n", encoding="utf-8")
+    return f
+
+
+def cas_terrain(b: Bilan, racine: Path) -> None:
+    """Laboratoire n'est pas terrain : un verdict de conformite sur un noeud de
+    terrain exige la donnee de terrain, ou il n'est pas rendu.
+
+    Le 15/08, le noeud 31 a ete declare CONFORME sur 21 ms de temps de reponse
+    serveur median quand CrUX donnait 1 162 ms de TTFB p75 : un facteur cinquante.
+    """
+    performance = fiche_noeud(31, "Performance", SOURCE_TERRAIN, "conforme")
+    canonical = fiche_noeud(30, "Canonical", SOURCE_CRAWL, "conforme")
+
+    base = etude_minimale(racine / "terrain-vert" / "seo")
+    crux_depose(base, disponible=True)
+    ecarts, resume = controler_verdicts_de_terrain(base, [performance, canonical])
+    b.attendu("verdict de terrain adosse a un releve CrUX", bool(ecarts), False, resume)
+
+    base = etude_minimale(racine / "terrain-vert-non-mesure" / "seo")
+    ecarts, resume = controler_verdicts_de_terrain(
+        base, [fiche_noeud(31, "Performance", SOURCE_TERRAIN, "non-mesure")])
+    b.attendu(
+        "sans releve, « non-mesure » est le verdict attendu et passe",
+        bool(ecarts), False, resume,
+    )
+
+    base = etude_minimale(racine / "terrain-vert-hors-portee" / "seo")
+    ecarts, resume = controler_verdicts_de_terrain(base, [canonical])
+    b.attendu(
+        "un noeud sans dependance au terrain n'est pas concerne",
+        bool(ecarts), False, resume,
+    )
+
+    base = etude_minimale(racine / "terrain-rouge-absent" / "seo")
+    ecarts, _ = controler_verdicts_de_terrain(base, [performance, canonical])
+    b.attendu(
+        "« conforme » rendu sans aucune donnee de terrain",
+        len(ecarts) == 1 and "noeud 31" in ecarts[0],
+        True,
+        ecarts[0][:120] if ecarts else "aucun ecart releve",
+    )
+
+    base = etude_minimale(racine / "terrain-rouge-indisponible" / "seo")
+    crux_depose(base, disponible=False)
+    ecarts, _ = controler_verdicts_de_terrain(base, [performance])
+    b.attendu(
+        "releve CrUX present mais VIDE (trafic sous le seuil) : toujours pas un feu vert",
+        bool(ecarts) and "trafic insuffisant" in ecarts[0],
+        True,
+        ecarts[0][:120] if ecarts else "aucun ecart releve",
+    )
+
+
 # ----------------------------------------------------------------------- main
 
 
@@ -283,6 +364,7 @@ CAS = [
     ("TF-0056 -- actions rattachees a la grille", cas_actions),
     ("TF-0048 -- tables de correspondance de grille", cas_correspondances),
     ("TF-0030 -- mise en prose des fiches", cas_prose),
+    ("TF-0264 -- verdicts de terrain adosses au terrain", cas_terrain),
 ]
 
 

@@ -27,6 +27,7 @@ from gabarits import (
     front_matter,
     version_snapshot,
 )
+from crux import noeud_exige_terrain, terrain_disponible
 from livrables import compteurs, ids_noeuds, lire_actions, lire_fiches
 from schema import valider
 from grille import (
@@ -61,6 +62,10 @@ CHAMPS_FICHE = [
 ]
 
 ETATS = {"a-faire", "en-cours", "fait", "hors-perimetre"}
+
+# Verdicts qui AFFIRMENT quelque chose sur l'etat du site (par opposition a
+# « non-mesure » et « sans-objet », qui declarent une absence).
+VERDICTS_AFFIRMATIFS = {"conforme", "partiel", "non-conforme"}
 
 # Artefacts de mission : leur presence dans la forge signifie qu'une etude
 # client s'y est installee, ce que l'architecture interdit.
@@ -194,6 +199,41 @@ def controler_versions(base: Path) -> tuple[list[str], str]:
                 f"{nom} : schema_version {declare!r}, la forge produit {attendu!r}"
             )
     return ecarts, " · ".join(resume)
+
+
+def controler_verdicts_de_terrain(base: Path, fiches: list[dict]) -> tuple[list[str], str]:
+    """Aucun verdict affirmatif sur un noeud de terrain sans la donnee de terrain.
+
+    TF-0264 : le noeud 31 (Performance) a ete declare CONFORME sur 21 ms de temps
+    de reponse serveur median, quand CrUX donnait 1 162 ms de TTFB p75 sur
+    utilisateurs reels -- un facteur cinquante, et trois seuils sur quatre
+    manques. La grille dit pourtant « données de terrain publiques (CrUX /
+    PageSpeed Insights) » : le run s'est rabattu sur ce qu'il avait.
+
+    Le controle ne lit AUCUN identifiant de noeud en dur : il interroge
+    `source_requise`, donc il suit la grille si elle evolue. Il regarde ce que
+    l'etude CONTIENT, pas comment elle a ete produite -- un verdict pose a la
+    main dans une fiche est attrape aussi bien qu'un verdict genere.
+    """
+    concernes = [n for n in fiches if noeud_exige_terrain(n.get("source_requise"))]
+    if not concernes:
+        return [], "aucun noeud adosse a des donnees de terrain dans cette grille"
+
+    dispo, resume = terrain_disponible(base)
+    if dispo:
+        return [], f"{len(concernes)} noeud(s) de terrain — donnee presente : {resume}"
+
+    ecarts = [
+        f"noeud {n['id']} ({n['noeud']}) : verdict « {n.get('verdict')} » rendu sans "
+        f"donnee de terrain — {resume}. Attendu : « non-mesure ». Aucune mesure de "
+        "laboratoire ne se substitue au terrain, elles ne portent pas sur la meme "
+        "grandeur (TF-0264)."
+        for n in concernes if n.get("verdict") in VERDICTS_AFFIRMATIFS
+    ]
+    return ecarts, (
+        f"{len(concernes)} noeud(s) de terrain, aucune donnee ({resume}) — "
+        f"{len(ecarts)} verdict(s) affirmatif(s) indu(s)"
+    )
 
 
 def controler_actions(base: Path, ids_grille: set[int]) -> tuple[list[str], str]:
@@ -556,6 +596,15 @@ def valider_mission(projet: Path, json_mode: bool = False) -> int:
         not ecarts_a,
         resume_a,
         ecarts_a[:5],
+    )
+
+    # 9 -- aucun verdict de conformite rendu sur la mauvaise grandeur (TF-0264)
+    ecarts_t, resume_t = controler_verdicts_de_terrain(base, lire_fiches(base))
+    r.controle(
+        "9. verdicts de terrain adosses a des donnees de terrain",
+        not ecarts_t,
+        resume_t,
+        ecarts_t[:5],
     )
 
     return r.bilan()

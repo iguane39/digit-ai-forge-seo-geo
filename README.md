@@ -314,6 +314,14 @@ cérémoniel.
 7. versions de schéma de l'étude alignées sur la forge
 8. `actions-*.csv` **rattachées à la grille** — tout id cité existe au manifeste, et
    le taux de rattachement effectif est non nul sur un CSV non vide
+9. **verdicts de terrain adossés à des données de terrain** — aucun `conforme`,
+   `partiel` ou `non-conforme` sur un nœud dont `source_requise` cite CrUX tant que
+   `seo/donnees/performance/` ne porte pas de relevé exploitable. Le 15/08, le nœud 31
+   a été déclaré conforme sur 21 ms de médiane serveur quand CrUX donnait 1 162 ms de
+   TTFB p75 : une mesure de laboratoire ne se substitue pas au terrain, elles ne
+   portent pas sur la même grandeur. `remplir_fiches.py` requalifie de lui-même le
+   verdict en `non-mesure` et dit comment obtenir la clé ; ce contrôle attrape en plus
+   les verdicts posés à la main
 
 **Le moteur est dans la forge, le contenu chez la mission.** `remplir_fiches.py` pose un
 contenu rédigé dans les 88 fiches et reporte les constats d'un run précédent. Il vivait

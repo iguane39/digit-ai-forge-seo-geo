@@ -58,6 +58,7 @@ import re
 import sys
 from pathlib import Path
 
+from crux import OBTENIR_LA_CLE, noeud_exige_terrain, terrain_disponible
 from gabarits import front_matter
 from grille import NB_NOEUDS, RACINE
 
@@ -65,6 +66,10 @@ MANIFESTE = RACINE / "seo" / "manifest.json"
 
 # Vocabulaire impose par snapshot.schema.json et par le rapport.
 VERDICTS = {"conforme", "partiel", "non-conforme", "non-mesure", "sans-objet"}
+
+# Verdicts qui AFFIRMENT quelque chose sur l'etat du site. Les rendre exige la
+# donnee que la grille nomme ; « non-mesure » et « sans-objet », non.
+VERDICTS_AFFIRMATIFS = {"conforme", "partiel", "non-conforme"}
 
 # Motif de hors-perimetre par statut d'instrumentation. Un noeud sans contenu
 # n'est pas un oubli quand la grille declare elle-meme qu'il n'est pas mesurable
@@ -258,6 +263,9 @@ def remplir(
     ecrites = mesurees = hors = a_faire = 0
     par_statut: dict[str, int] = {}
     soucis: list[str] = []
+    # TF-0264 : la donnee de terrain est cherchee UNE fois pour l'etude entiere.
+    terrain_ok, terrain_resume = terrain_disponible(base)
+    requalifies: list[str] = []
 
     for n in manifeste:
         p = base / "analyse" / n["chemin"] / "_fiche.md"
@@ -285,6 +293,32 @@ def remplir(
             corps = (bloc("Constat", d["constat"])
                      + bloc("Preuves", d.get("preuves", "—"))
                      + bloc("Interpretation", d.get("interpretation", "—")))
+            # TF-0264 -- laboratoire n'est pas terrain. Le noeud 31 (Performance) a
+            # ete declare CONFORME sur 21 ms de temps de reponse serveur median,
+            # quand CrUX donnait 1 162 ms de TTFB p75 sur utilisateurs reels : trois
+            # seuils sur quatre manques. L'ecart ne vient pas du redacteur mais de ce
+            # qu'un run sans cle CrUX se rabat sur ce qu'il a. Un verdict AFFIRMATIF
+            # sur un noeud que la grille adosse a des donnees de terrain est donc
+            # requalifie en « non-mesure » tant que ces donnees n'existent pas dans
+            # l'etude. Le constat redige est CONSERVE -- il mesure quelque chose de
+            # reel -- mais il cesse de valoir jugement de conformite.
+            if (noeud_exige_terrain(n.get("source_requise"))
+                    and verdict in VERDICTS_AFFIRMATIFS and not terrain_ok):
+                requalifies.append(
+                    f"{n['id']} {n['noeud']} : « {verdict} » → « non-mesure » "
+                    f"({terrain_resume})"
+                )
+                verdict, preuve = "non-mesure", "null"
+                corps = (bloc("Constat",
+                              "**Non mesuré sur données de terrain.** Ce nœud se juge "
+                              f"sur {n.get('source_requise')} — absentes de l'étude "
+                              f"({terrain_resume}). Aucune mesure de laboratoire ne "
+                              "s'y substitue : elles ne portent pas sur la même "
+                              "grandeur. Le constat ci-dessous est conservé pour ce "
+                              "qu'il mesure, il ne vaut pas verdict de conformité.\n\n"
+                              + d["constat"])
+                         + bloc("Preuves", d.get("preuves", "—"))
+                         + bloc("Interpretation", d.get("interpretation", "—")))
             liees = d.get("actions") or []
             actions = "[" + ", ".join(liees) + "]" if liees else "[]"
             mesurees += 1
@@ -351,6 +385,12 @@ def remplir(
     print("statuts traités :", dict(sorted(par_statut.items())))
     print(f"reprises disponibles du run précédent : {len(repris)}"
           + (f" · {len(deplaces)} déplacement(s) appliqué(s)" if deplaces else ""))
+    if requalifies:
+        print(f"\n{len(requalifies)} verdict(s) requalifié(s) en « non-mesure » — "
+              "donnée de terrain absente (TF-0264) :")
+        for ligne in requalifies:
+            print("   ", ligne)
+        print(OBTENIR_LA_CLE)
     if soucis:
         print(f"\n!! {len(soucis)} anomalie(s) :")
         for s in soucis:

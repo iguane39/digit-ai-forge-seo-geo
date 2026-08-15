@@ -43,6 +43,62 @@ from pathlib import Path
 ENDPOINT = "https://chromeuxreport.googleapis.com/v1/records:queryRecord"
 FACTEURS_FORME = ("PHONE", "DESKTOP", "TABLET", "ALL_FORM_FACTORS")
 
+# Ou l'etude range ses releves de terrain, et comment on reconnait un noeud qui en
+# depend. Le motif se cherche dans `source_requise` du manifeste, jamais sur un
+# identifiant de noeud : les identifiants bougent d'une version de grille a
+# l'autre, la source requise, non.
+DOSSIER_TERRAIN = ("donnees", "performance")
+MOTIF_SOURCE_TERRAIN = "crux"
+
+# Le message que TOUT refus de mesure de terrain doit porter. Une cle CrUX est
+# gratuite et sans facturation : le run du 15/08 a conclu « conforme » sur 21 ms
+# de mediane serveur faute de l'avoir demandee, quand le terrain donnait 1 162 ms
+# de TTFB p75. Le cout de la cle etait deux commandes.
+OBTENIR_LA_CLE = (
+    "Clé CrUX GRATUITE, sans facturation, deux commandes :\n"
+    "    gcloud services enable chromeuxreport.googleapis.com\n"
+    '    gcloud services api-keys create --display-name="CrUX forge-seo"\n'
+    "  (ou en un clic : https://developer.chrome.com/docs/crux/api#getting_an_api_key)\n"
+    "  Puis : python scripts/crux.py --projet <chemin> --url <site> --origine"
+)
+
+
+def noeud_exige_terrain(source_requise: str | None) -> bool:
+    """Ce noeud se juge-t-il sur des donnees de TERRAIN (CrUX) ?
+
+    TF-0264 -- le noeud 31 (Performance) demande « données de terrain publiques
+    (CrUX / PageSpeed Insights) ». Sans cle, le run se rabattait sur ce qu'il
+    avait -- un temps de reponse serveur mesure en laboratoire -- et rendait
+    « conforme » sur la mauvaise grandeur. Laboratoire et terrain divergeaient
+    d'un facteur cinquante. Un verdict de conformite sur un tel noeud exige donc
+    la donnee que la grille nomme, ou il n'est pas rendu.
+    """
+    return MOTIF_SOURCE_TERRAIN in (source_requise or "").lower()
+
+
+def terrain_disponible(base_etude: Path) -> tuple[bool, str]:
+    """Un releve CrUX EXPLOITABLE existe-t-il dans l'etude ? (verdict, resume)
+
+    « Exploitable » exclut le releve marque `disponible: false` : un site sous le
+    seuil de publication de CrUX n'a pas de donnees de terrain, et c'est un
+    resultat -- non-mesurable -- pas un feu vert pour juger sur autre chose.
+    """
+    dossier = base_etude.joinpath(*DOSSIER_TERRAIN)
+    fichiers = sorted(dossier.glob("crux-*.json")) if dossier.is_dir() else []
+    if not fichiers:
+        return False, "aucun relevé CrUX dans seo/donnees/performance/"
+    vides = []
+    for f in fichiers:
+        try:
+            brut = json.loads(f.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as e:
+            vides.append(f"{f.name} illisible ({e})")
+            continue
+        if brut.get("disponible") and brut.get("metriques"):
+            return True, f"{f.name} — {len(brut['metriques'])} métrique(s) de terrain"
+        vides.append(f"{f.name} : {brut.get('motif_indisponible') or 'aucune métrique'}")
+    return False, " ; ".join(vides)
+
 
 def interpreter_reponse(corps: dict) -> dict:
     """Traduit un enregistrement CrUX brut en resume exploitable, SANS jamais
@@ -126,8 +182,11 @@ def main() -> int:
         print(
             "REFUS : aucune cle API CrUX fournie (--cle ou variable d'environnement "
             "CRUX_API_KEY).\n"
-            "Cle GRATUITE, sans facturation : "
-            "https://developer.chrome.com/docs/crux/api#getting_an_api_key"
+            "Sans elle, le noeud 31 (Performance) reste NON MESURE : il se juge sur "
+            "des donnees de terrain,\net aucune mesure de laboratoire ne s'y "
+            "substitue — le 15/08, 21 ms de mediane serveur\nont valu « conforme » "
+            "quand le terrain donnait 1 162 ms de TTFB p75.\n"
+            + OBTENIR_LA_CLE
         )
         return 1
 
