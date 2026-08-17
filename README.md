@@ -30,7 +30,7 @@ sur une grille stable, comparable et versionnée.
 | **Migrer une étude vers la grille courante** | restituer une étude auditée sur une grille antérieure, sans figer la forge ni inventer de verdict | `python scripts\migrer_mission.py --projet <chemin> [--verifier]` | prouvé (production) |
 
 Le catalogue consolidé des dix forges vit chez le pilot :
-[digit-ai-forge-pilot/catalogues/CATALOGUES.md](https://github.com/iguane39/digit-ai-forge-pilot/blob/main/catalogues/CATALOGUES.md).
+[digit-ai-factory/catalogues/CATALOGUES.md](https://github.com/iguane39/digit-ai-factory/blob/main/catalogues/CATALOGUES.md).
 
 ## Invoquer forge-seo depuis un projet extérieur
 
