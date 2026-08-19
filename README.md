@@ -1,6 +1,12 @@
-# forge-seo
+# forge-seo-geo
 
-Outil d'audit et de stratégie SEO. La forge porte **la méthode** — une grille de
+Outil d'audit et de stratégie **SEO et GEO** — les deux périmètres de la visibilité :
+les moteurs de recherche classiques (SEO) et les moteurs génératifs qui citent ou
+reformulent (GEO — volet TRANSVERSAL de la grille : présence actuelle **et**
+construction d'entité, nœuds 53-58, dont la cohérence llms.txt ↔ sitemap et le contenu
+pensé pour les LLM). Renommée `forge-seo` → `forge-seo-geo` le 19/08/2026 sur mandat
+humain, pour dire ce que la grille couvrait déjà ; l'ancien nom redirige sur GitHub.
+La forge porte **la méthode** — une grille de
 88 nœuds, un barème, des garde-fous. **L'objet audité est un site en ligne**, jamais un
 « produit » : chaque site audité reçoit **son étude dans le dossier du projet hôte**
 (`<projet>/seo/`) — le projet n'est que le lieu où l'étude s'accumule, pas l'objet
@@ -44,13 +50,13 @@ il commence par une commande explicite. C'est l'invocation du projet qui l'encle
 cd c:/dev/mon-client
 
 # 1. créer l'espace de travail — 114 dossiers, 88 fiches hydratées
-python c:/dev/digit-ai-forge-seo/scripts/new_mission.py \
+python c:/dev/digit-ai-forge-seo-geo/scripts/new_mission.py \
        --projet . --client "Acme" --domaine acme.fr --modele b2b-lead-gen
 
 # 2. remplir seo/cadrage.md, déposer les exports dans seo/donnees/{gsc,ga,crm,logs}/
 
 # 3. collecter — crawl du site, étape 1 du pipeline
-python c:/dev/digit-ai-forge-seo/scripts/crawler.py --projet . --url https://acme.fr
+python c:/dev/digit-ai-forge-seo-geo/scripts/crawler.py --projet . --url https://acme.fr
 #    lit sitemap.xml (via robots.txt, index suivis) AVANT de suivre les liens :
 #    l'inventaire mesuré est celui du site, pas celui du graphe de navigation.
 #    La synthèse OUVRE sur l'écart entre les deux sources — URL déclarées au
@@ -62,7 +68,7 @@ python c:/dev/digit-ai-forge-seo/scripts/crawler.py --projet . --url https://acm
 #    relance exacte. --jusqu-a-epuisement vide la file sous une borne dure.
 
 # 3 bis. (optionnel, noeud 31) donnees de terrain CrUX -- gratuit, cle API requise
-CRUX_API_KEY=... python c:/dev/digit-ai-forge-seo/scripts/crux.py --projet . --url https://acme.fr
+CRUX_API_KEY=... python c:/dev/digit-ai-forge-seo-geo/scripts/crux.py --projet . --url https://acme.fr
 #    cle gratuite (aucune facturation) : https://developer.chrome.com/docs/crux/api
 #    sans cle, le refus reste un refus (sortie 1 — la cle s'obtient en deux commandes),
 #    mais il ECRIT desormais sa trace horodatée « non mesurable » dans
@@ -70,7 +76,7 @@ CRUX_API_KEY=... python c:/dev/digit-ai-forge-seo/scripts/crux.py --projet . --u
 #    mesurée : une absence de mesure du nœud 31 laisse une preuve datée (TF-0273).
 
 # 3 ter. (noeuds 29/58) ventilation par agent IA nommé
-python c:/dev/digit-ai-forge-seo/scripts/agents_ia.py --projet . --logs seo/donnees/logs/access.log
+python c:/dev/digit-ai-forge-seo-geo/scripts/agents_ia.py --projet . --logs seo/donnees/logs/access.log
 #    catalogue daté des agents (GPTBot, ClaudeBot, PerplexityBot…) dans referentiel/agents-ia.json
 #    --logs est OPTIONNEL : sans lui — le cas normal, l'accès aux journaux étant
 #    l'exception — le script rend un verdict « non mesurable » motivé, écrit et
@@ -83,29 +89,29 @@ python c:/dev/digit-ai-forge-seo/scripts/agents_ia.py --projet . --logs seo/donn
 
 # 4 bis. (run de version) poser un contenu rédigé dans les 88 fiches, et reporter
 #        les constats du run précédent — appariés par (branche, nœud), jamais par id
-python c:/dev/digit-ai-forge-seo/scripts/remplir_fiches.py \
+python c:/dev/digit-ai-forge-seo-geo/scripts/remplir_fiches.py \
        --projet . --contenu seo/fiches.json --reprise ../docs/seo/analyse
 
 # 5. assembler ce qui se déduit des fiches — snapshot, dette, compteurs
-python c:/dev/digit-ai-forge-seo/scripts/livrables.py --projet .
+python c:/dev/digit-ai-forge-seo-geo/scripts/livrables.py --projet .
 
 # 5 bis. (étape 5 du pipeline : Actions) calculer le score des actions rédigées
 #        par la mission et écrire seo/livrables/actions-<domaine>-<jour>.csv
-python c:/dev/digit-ai-forge-seo/scripts/scorer_actions.py \
+python c:/dev/digit-ai-forge-seo-geo/scripts/scorer_actions.py \
        --projet . --contenu seo/actions.json
 #    la mission rédige libellé, gain/effort/confiance et la preuve du cran cité
 #    (referentiel/scoring.md) ; le script calcule score = (gain × confiance) /
 #    effort, trie, et écrit aux colonnes imposées par livrables.py (TF-0056).
 
 # 6. produire le rapport client
-python c:/dev/digit-ai-forge-seo/scripts/rapport_html.py --projet . --verifier
+python c:/dev/digit-ai-forge-seo-geo/scripts/rapport_html.py --projet . --verifier
 
 # à tout moment : contrôler l'étude
-python c:/dev/digit-ai-forge-seo/scripts/validate.py --mission .
+python c:/dev/digit-ai-forge-seo-geo/scripts/validate.py --mission .
 
 # si la grille a évolué depuis l'ouverture de l'étude : migrer, puis rejouer 6
-python c:/dev/digit-ai-forge-seo/scripts/migrer_mission.py --projet . --verifier
-python c:/dev/digit-ai-forge-seo/scripts/migrer_mission.py --projet .
+python c:/dev/digit-ai-forge-seo-geo/scripts/migrer_mission.py --projet . --verifier
+python c:/dev/digit-ai-forge-seo-geo/scripts/migrer_mission.py --projet .
 ```
 
 `--modele` prend `b2b-lead-gen`, `e-commerce`, `media-affiliation`, `local` ou `saas`.
