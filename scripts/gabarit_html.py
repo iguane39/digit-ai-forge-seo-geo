@@ -1,5 +1,11 @@
 """Gabarit du rapport HTML client — charte, tokens, squelette, composants.
 
+promesses-verifiees — ce fichier ADHÈRE au contrôle des promesses de commentaire
+(`oracle-promesses`, règle PR1 du pilot) : une classe ou un attribut nommé dans un commentaire
+ici DOIT exister dans le code. Un générateur de page est l'endroit où une promesse de prose coûte
+le plus cher — elle s'y lit comme une garantie de ce que la page contient. Signé le 23/08/2026,
+choix humain « signer tout ce qui est propre dans les forges » ; joué avant signature, zéro constat.
+
 Socle `digit-ai-page-html` : tokens :root, Roboto titres / DM Sans corps, theme
 clair, aucun hex hors :root, WCAG 2.2 AA, lang="fr", un seul <h1>.
 
