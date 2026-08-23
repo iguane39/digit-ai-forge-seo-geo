@@ -179,6 +179,23 @@ def fiche_noeud(n: dict, modele: str | None = None) -> str:
         and not renvoi
         and modele not in n.get("modeles", [])
     )
+    # TF-0476 : la grille declare pour certains noeuds que leur resultat est NON REPRODUCTIBLE
+    # (noeud 57 : « ne jamais presenter le taux comme une metrique de suivi fiable »). Cette
+    # reserve vivait dans le referentiel et nulle part ailleurs — la fiche que l'auditeur remplit
+    # ne la portait pas, et son front-matter n'offrait AUCUN champ de plan de mesure. Un taux date
+    # suffisait donc formellement. Les quatre champs ne sont poses que sur ces noeuds : quatre
+    # champs vides sur 88 fiches seraient du bruit, et un champ qui ne sert jamais finit par etre
+    # rempli n'importe comment.
+    non_reproductible = "non reproductible" in (n.get("reserve") or "").lower()
+    plan = [
+        "# --- plan de mesure (TF-0476) : la grille declare ce resultat NON REPRODUCTIBLE ---",
+        "plan_formulations: null",
+        "plan_langues: null",
+        "plan_surfaces: null",
+        "plan_reexecutions: null",
+        "plan_dates: null",
+        "dispersion: null",
+    ] if non_reproductible else []
     entete = [
         "---",
         f"id: {n['id']}",
@@ -201,6 +218,7 @@ def fiche_noeud(n: dict, modele: str | None = None) -> str:
         "niveau_preuve: null",
         "date_mesure: null",
         "actions_liees: []",
+        *plan,
         "---",
         "",
     ]
@@ -236,6 +254,28 @@ def fiche_noeud(n: dict, modele: str | None = None) -> str:
             "",
             n["source_requise"],
             "",
+            *(["## Reserve du referentiel",
+                "",
+                f"> **{n['reserve']}**",
+                "",
+                "> Ce que cela impose ici, et pourquoi. Un verdict affirmatif sans plan de mesure",
+                "> est REFUSE par `validate.py` (controle 10) ; le verdict attendu est alors",
+                "> « non-mesure » motive. Cinq champs du front-matter, tous obligatoires des lors",
+                "> qu un taux est publie :",
+                "",
+                "| Champ | Ce qu il declare | Pourquoi il compte |",
+                "|---|---|---|",
+                "| `plan_formulations` | combien de formulations distinctes de la meme intention | l hypothese « une formulation represente l intention » a ete testee et INVALIDEE (arXiv 2605.27440) |",
+                "| `plan_langues` | quelles langues de requete | la langue explique **26,5 %** de la variance d une reponse |",
+                "| `plan_surfaces` | quelles surfaces interrogees, nommees | deux surfaces ne repondent pas la meme chose, et aucune ne s engage |",
+                "| `plan_reexecutions` | combien de fois le plan a ete rejoue | le reechantillonnage PUR pese **34,8 %** — une execution est un tirage, pas une mesure |",
+                "| `plan_dates` | la date de chaque reexecution | sans dates, aucune comparaison entre runs n est possible |",
+                "| `dispersion` | l ecart entre reexecutions (min-max, ecart-type) | un chiffre nu n est pas un taux |",
+                "",
+                "> *Ordre de grandeur a garder en tete : la marque elle-meme explique **1,5 %** de",
+                "> la variance (ICC 0,0146, decomposition REML sur 12 933 reponses, arXiv",
+                "> 2607.13304). Un taux publie sans plan mesure surtout autre chose que la marque.*",
+                ""] if "non reproductible" in (n.get("reserve") or "").lower() else []),
             "## Methode",
             "",
             n["methode"],

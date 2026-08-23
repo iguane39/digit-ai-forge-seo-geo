@@ -53,6 +53,10 @@ CHAMPS_MANIFESTE = (
     "source_requise",
     "methode",
     "critere_verdict",
+    # TF-0476 : la RESERVE que la grille porte dans sa colonne de statut. Elle y vivait seule —
+    # ni au manifeste, ni dans la fiche que l'auditeur remplit, donc dans aucun controle. Une
+    # reserve qui ne se verifie pas par execution n'est qu'un avis.
+    "reserve",
     "doublon_de",
     "modeles",
 )

@@ -236,6 +236,94 @@ def controler_verdicts_de_terrain(base: Path, fiches: list[dict]) -> tuple[list[
     )
 
 
+# TF-0476 (23/08/2026) — LES CHAMPS D'UN PLAN DE MESURE. Ce ne sont pas des metadonnees de
+# confort : ce sont les quatre facteurs dont la litterature 2026 mesure qu'ils DOMINENT le
+# resultat. Decomposition de variance par REML sur 12 933 reponses (arXiv 2607.13304) : la
+# LANGUE de la requete explique 26,5 % de la variance, l'identite de la marque 1,5 % (ICC
+# 0,0146), et sur le sous-ensemble de stabilite le REECHANTILLONNAGE pur pese 34,8 %. Fragilite
+# a la paraphrase (arXiv 2605.27440) : l'hypothese produit des outils du marche — « le prompt de
+# suivi represente l'intention d'achat sous-jacente » — est testee et INVALIDEE.
+# Autrement dit : sans ces quatre declarations, le chiffre publie est domine par des facteurs qui
+# ne sont pas la marque.
+# Cles PLATES : le front-matter de ce depot l'est par choix (« le rester est un controle en
+# soi »), et un bloc imbriquerait ses enfants comme des cles de premier niveau.
+CHAMPS_PLAN = ("plan_formulations", "plan_langues", "plan_surfaces", "plan_reexecutions")
+VIDES = {"", "null", "none", "~", "-", "0"}
+
+
+def noeud_non_reproductible(reserve: str | None) -> bool:
+    """La grille declare-t-elle elle-meme le resultat de ce noeud non reproductible ?
+
+    MEME DOCTRINE QUE `noeud_exige_terrain`, et pour la meme raison : aucun identifiant de noeud
+    en dur. Le predicat interroge la RESERVE portee par la grille, donc il suit la grille si elle
+    evolue. Le controle de TF-0264 disait deja cela de lui-meme — et il ne le tenait pas : son
+    predicat etait le mot litteral « crux », une seule FAMILLE DE SOURCE. Mesure du 19/08 :
+    `noeud_exige_terrain()` rend True sur la source du noeud 31 et False sur celle du noeud 57,
+    qui est pourtant son frere de classe — un verdict affirmatif rendu sur une grandeur que la
+    source ne porte pas. Ici, le predicat lit une phrase que la grille ECRIT.
+    """
+    return "non reproductible" in (reserve or "").lower()
+
+
+def controler_plan_de_mesure(base: Path, fiches: list[dict]) -> tuple[list[str], str]:
+    """Un taux publie sur un noeud NON REPRODUCTIBLE porte son plan de mesure et sa dispersion.
+
+    Trois invariants, et le troisieme est celui qui protege du pire usage :
+      I1 un releve sans plan declare (formulations, langues, surfaces, reexecutions) n'est pas
+         publiable comme constat — le verdict attendu est « non-mesure » motive, exactement ce
+         que la grille fait deja quand la donnee de terrain manque ;
+      I2 un taux publie porte sa DISPERSION, ou ce n'est pas un taux : un chiffre nu est refuse ;
+      I3 une seule reexecution ne fait pas un plan. C'est le point ou le service de runs
+         recurrents fabriquerait une TENDANCE a partir de bruit — sur une grandeur dont la
+         marque explique 1,5 % de la variance.
+
+    ANTI-FAUX-POSITIF, et il est aussi important que le controle : une fiche declaree
+    NON MESURABLE (hors perimetre, acces absent, verdict « non-mesure ») passe. L'exigence ne
+    doit pas transformer une absence legitime en echec — sinon elle apprend a etre contournee.
+    """
+    concernes = [n for n in fiches if noeud_non_reproductible(n.get("reserve"))]
+    if not concernes:
+        return [], "aucun noeud declare non reproductible par la grille"
+
+    ecarts: list[str] = []
+    for n in concernes:
+        if n.get("verdict") not in VERDICTS_AFFIRMATIFS:
+            continue  # non-mesure, hors perimetre, vide : rien a exiger d'une absence assumee
+        manquants = [
+            c for c in CHAMPS_PLAN
+            if str(n.get(c) or "").strip().strip('"').lower() in VIDES
+        ]
+        if manquants:
+            ecarts.append(
+                f"noeud {n['id']} ({n['noeud']}) : verdict « {n.get('verdict')} » rendu sans "
+                f"plan de mesure — manque {', '.join(manquants)}. La grille declare ce resultat "
+                "NON REPRODUCTIBLE ; sans le plan, le chiffre est domine par la langue de la "
+                "requete (26,5 % de la variance mesuree) et le reechantillonnage (34,8 %), pas "
+                "par la marque (1,5 %). Attendu : « non-mesure » motive, ou le plan declare."
+            )
+            continue
+        try:
+            reexecutions = int(str(n.get("plan_reexecutions")).strip().strip('"'))
+        except (TypeError, ValueError):
+            reexecutions = 0
+        if reexecutions < 2:
+            ecarts.append(
+                f"noeud {n['id']} ({n['noeud']}) : plan declare avec {reexecutions or 'aucune'} "
+                "reexecution — une seule execution n'est pas un plan, c'est un tirage. Deux "
+                "runs successifs deviendraient une TENDANCE construite sur du bruit."
+            )
+        if str(n.get("dispersion") or "").strip().strip('"').lower() in VIDES:
+            ecarts.append(
+                f"noeud {n['id']} ({n['noeud']}) : taux publie SANS DISPERSION — un chiffre nu "
+                "n'est pas un taux. Declarer l'ecart entre reexecutions (min-max, ecart-type), "
+                "sinon le lecteur croit lire une mesure la ou il lit un tirage."
+            )
+    return ecarts, (
+        f"{len(concernes)} noeud(s) declare(s) non reproductible(s) par la grille — "
+        f"{len(ecarts)} ecart(s) de plan de mesure"
+    )
+
+
 def controler_actions(base: Path, ids_grille: set[int]) -> tuple[list[str], str]:
     """Coherence referentielle entre actions-*.csv et la grille.
 
@@ -605,6 +693,18 @@ def valider_mission(projet: Path, json_mode: bool = False) -> int:
         not ecarts_t,
         resume_t,
         ecarts_t[:5],
+    )
+
+    # TF-0476 : le frere non couvert du controle 9. Meme classe de defaut — un verdict affirmatif
+    # rendu sur une grandeur que la source ne porte pas — autre source. Le controle 9 suivait une
+    # seule FAMILLE de source (« crux ») en croyant suivre la grille ; celui-ci suit la reserve
+    # que la grille ECRIT.
+    ecarts_p, resume_p = controler_plan_de_mesure(base, lire_fiches(base))
+    r.controle(
+        "10. taux non reproductible adosse a un plan de mesure declare",
+        not ecarts_p,
+        resume_p,
+        ecarts_p[:5],
     )
 
     return r.bilan()

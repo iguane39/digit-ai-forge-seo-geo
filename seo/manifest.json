@@ -247,6 +247,7 @@
       "source_requise": "crawl du site",
       "methode": "clustering thématique des URLs par segment d'URL et par H1 ; lecture des 3 pages les plus liées en interne",
       "critere_verdict": "≥ 70 % des pages rattachables à ≤ 3 thèmes cohérents",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -269,6 +270,7 @@
       "source_requise": "SERP approximée + contenu de la page",
       "methode": "pour 10 requêtes cibles du cadrage, relever le format des 5 premiers résultats (transactionnel / informationnel / comparatif / local) et le comparer au format de la page du site",
       "critere_verdict": "mismatch de format sur ≤ 20 % des requêtes testées",
+      "reserve": "SERP approximée, preuves en `[T3]",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -291,6 +293,7 @@
       "source_requise": "CPC (outil payant) ; à défaut signaux monétaires SERP",
       "methode": "comptage des annonces, blocs Shopping et comparateurs en SERP sur les requêtes cibles ; CPC moyen si outil disponible",
       "critere_verdict": "à calibrer — pas de seuil universel, dépend du modèle d'acquisition",
+      "reserve": "dégradation `SD` : signaux SERP seuls, sans CPC",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -313,6 +316,7 @@
       "source_requise": "SERP approximée + crawl léger des concurrents",
       "methode": "pour 10 requêtes, relever les domaines présents et les classer : marque nationale / pure player spécialisé / média généraliste / concurrent direct / résultat faible (forum, page fine, hors-sujet)",
       "critere_verdict": "≥ 2 résultats classés « faibles » en top 10 = requête attaquable",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -335,6 +339,7 @@
       "source_requise": "GSC (requêtes en impressions sans clic, positions 11-30) + questions People-Also-Ask",
       "methode": "croiser les requêtes GSC hors top 10 avec les questions suggérées en SERP ; retenir celles dont aucun résultat top 5 ne traite le sujet en page dédiée",
       "critere_verdict": "≥ 10 requêtes qualifiées pour ouvrir un chantier",
+      "reserve": "dégradation `SD` très partielle : PAA seuls, sans preuve de demande propre au site",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -357,6 +362,7 @@
       "source_requise": "outil de volume (Keyword Planner, Semrush, Ahrefs) ou impressions GSC comme proxy",
       "methode": "relevé direct ; à défaut, impressions GSC sur 12 mois comme plancher observé (jamais comme volume de marché)",
       "critere_verdict": "aucun — donnée de cadrage, pas de verdict",
+      "reserve": "ou `EX` via impressions GSC. **Jamais estimé de tête",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -379,6 +385,7 @@
       "source_requise": "CRM + dépenses média du client",
       "methode": "déclaratif client, à reprendre en `[T2]`",
       "critere_verdict": "aucun — donnée de cadrage",
+      "reserve": "motif : exige CRM et données de dépense média, hors périmètre observable",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -401,6 +408,7 @@
       "source_requise": "CRM ou e-commerce",
       "methode": "déclaratif client, à reprendre en `[T2]`. Sans lui, aucun gain ne peut être exprimé en €",
       "critere_verdict": "aucun — donnée de cadrage",
+      "reserve": "motif : exige CRM ou back-office e-commerce",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -423,6 +431,7 @@
       "source_requise": "index de backlinks (autorité des top 10) ; à défaut proxy observable",
       "methode": "proxy sans outil : nombre de marques fortes en top 10 + profondeur et ancienneté des pages classées + longueur/profondeur du contenu classé",
       "critere_verdict": "à calibrer par marché ; produire un score relatif 1-5, jamais un score absolu emprunté à un outil absent",
+      "reserve": "dégradation `SD` : proxy structurel, à déclarer comme tel",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -445,6 +454,7 @@
       "source_requise": "GA + CRM + historique de publication",
       "methode": "croiser date de publication, date de première conversion attribuée, et délai médian",
       "critere_verdict": "aucun — donnée de calibrage des projections",
+      "reserve": "motif : exige GA **et** CRM ; devient `EX` si les deux sont fournis",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -467,6 +477,7 @@
       "source_requise": "crawl",
       "methode": "arbre d'URL + graphe de liens internes ; mesurer le taux de liens internes restant dans le même silo",
       "critere_verdict": "≥ 60 % des liens internes intra-silo",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -489,6 +500,7 @@
       "source_requise": "crawl + cadrage (requêtes money)",
       "methode": "pour chaque requête money du cadrage, identifier la page cible ; détecter les cas où deux pages visent la même requête",
       "critere_verdict": "1 page par requête money (0 cannibalisation) **et** profondeur ≤ 2 clics",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -511,6 +523,7 @@
       "source_requise": "crawl",
       "methode": "compter les liens internes contextuels entrants vers chaque page money, en excluant menus et pieds de page",
       "critere_verdict": "≥ 3 satellites par page money, liens en corps de texte",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -533,6 +546,7 @@
       "source_requise": "crawl",
       "methode": "compter les liens internes entrants par page (hors navigation) ; classer par décile",
       "critere_verdict": "les pages money figurent dans le décile supérieur",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -555,6 +569,7 @@
       "source_requise": "crawl",
       "methode": "parcours en largeur depuis l'accueil ; profondeur minimale par URL",
       "critere_verdict": "0 page money > 3 clics **et** ≥ 90 % des pages à valeur ≤ 4 clics",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -577,6 +592,7 @@
       "source_requise": "cadrage + crawl (couverture) ; GSC (performance)",
       "methode": "croiser la liste des requêtes money du cadrage avec les pages existantes",
       "critere_verdict": "100 % des requêtes money ont une page dédiée",
+      "reserve": "pour la couverture — la performance exige `EX",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -599,6 +615,7 @@
       "source_requise": "GSC (requêtes, clics)",
       "methode": "distribution des clics par requête ; part des requêtes < 10 clics/mois",
       "critere_verdict": "≥ 40 % des clics issus de la traîne = base saine ; < 15 % = dépendance à quelques requêtes",
+      "reserve": "motif sinon : la distribution du trafic par requête n'est pas observable de l'extérieur",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -621,6 +638,7 @@
       "source_requise": "People-Also-Ask, forums et communautés du secteur, GSC",
       "methode": "extraire 30 questions récurrentes ; vérifier pour chacune l'existence d'une réponse identifiable sur le site",
       "critere_verdict": "≥ 70 % des 30 questions traitées, réponse repérable sous un titre",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -643,6 +661,7 @@
       "source_requise": "GSC exclusivement",
       "methode": "filtrer les requêtes à impressions élevées et CTR bas, et celles en position 11-30 avec volume",
       "critere_verdict": "liste priorisée par (impressions × écart de CTR attendu)",
+      "reserve": "NM` sans GSC, sans exception** (garde-fou 2)",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -665,6 +684,7 @@
       "source_requise": "SERP approximée",
       "methode": "scorer la faiblesse du top 10 : présence de forums, pages fines, résultats hors intention, absence de page dédiée chez les concurrents",
       "critere_verdict": "≥ 3 signaux de faiblesse sur le top 10 = requête prioritaire",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -687,6 +707,7 @@
       "source_requise": "crawl",
       "methode": "pour chaque silo identifié au nœud 11, chercher la page la plus complète et la plus liée",
       "critere_verdict": "1 pilier par silo, couvrant le sujet de bout en bout, ≥ 5 liens sortants internes vers son silo",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -709,6 +730,7 @@
       "source_requise": "crawl + questions du nœud 18",
       "methode": "cartographier les contenus par étape du parcours (découverte / évaluation / décision)",
       "critere_verdict": "aucune étape du parcours sans contenu",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -731,6 +753,7 @@
       "source_requise": "crawl + SERP",
       "methode": "vérifier l'existence de pages comparatives ; relever qui occupe ces SERP",
       "critere_verdict": "présence d'au moins une page par famille comparative pertinente",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -753,6 +776,7 @@
       "source_requise": "crawl (HTML)",
       "methode": "échantillonner les blocs de questions ; mesurer la distance entre le titre-question et la réponse",
       "critere_verdict": "réponse en ≤ 60 mots immédiatement sous le titre de la question",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -775,6 +799,7 @@
       "source_requise": "crawl",
       "methode": "détecter les motifs d'URL répétés ; échantillonner 10 pages du même motif ; mesurer la part de contenu unique hors gabarit",
       "critere_verdict": "≥ 40 % de contenu unique par page **et** valeur propre pour l'utilisateur, sinon candidat au nœud 75",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "e-commerce",
@@ -795,6 +820,7 @@
       "source_requise": "crawl (HTML brut) + vérification web datée",
       "methode": "vérifier : réponse directe en tête de page, affirmations factuelles attribuables, structure de titres explicite, données chiffrées sourcées, contenu essentiel présent dans le HTML et non injecté en JS",
       "critere_verdict": "≥ 4 des 5 critères sur les pages à enjeu",
+      "reserve": "garde-fou 4 : vérification web datée obligatoire, les critères de citabilité évoluent",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -817,6 +843,7 @@
       "source_requise": "`robots.txt`, codes HTTP, chaînes de redirection",
       "methode": "vérifier les directives `robots.txt` contre les pages à valeur ; relever les codes HTTP et les chaînes de redirection sur l'échantillon",
       "critere_verdict": "0 blocage sur page à valeur · 0 chaîne de redirection > 2 sauts · 0 boucle",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -839,6 +866,7 @@
       "source_requise": "—",
       "methode": "**renvoi vers la branche `Indexation`, nœuds 33-37**",
       "critere_verdict": "ne pas auditer ici",
+      "reserve": "",
       "doublon_de": "07-indexation",
       "modeles": [
         "b2b-lead-gen",
@@ -861,6 +889,7 @@
       "source_requise": "logs serveur ou CDN",
       "methode": "analyse des hits Googlebot par type de page et par profondeur ; détection du crawl gaspillé",
       "critere_verdict": "aucun — diagnostic descriptif",
+      "reserve": "motif : exige un accès aux logs serveur ou CDN. **Impact : budget de crawl réel, fréquence de passage et gaspillage restent invisibles",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -883,6 +912,7 @@
       "source_requise": "crawl (HTML + en-têtes)",
       "methode": "relever la canonical de chaque page de l'échantillon ; détecter les canonicals croisées, vers non-200, ou incohérentes avec le sitemap et les hreflang",
       "critere_verdict": "0 canonical vers une page non-200 · 0 canonical croisée non intentionnelle · cohérence avec hreflang",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -905,6 +935,7 @@
       "source_requise": "données de terrain publiques (CrUX / PageSpeed Insights)",
       "methode": "relever les métriques de terrain sur les gabarits principaux, mobile en priorité",
       "critere_verdict": "seuils **à vérifier au run** — ne pas citer de métrique retirée du référentiel",
+      "reserve": "garde-fou 4 : le jeu de métriques et leurs seuils changent, vérifier avant de conclure",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -927,6 +958,7 @@
       "source_requise": "crawl (JSON-LD, microdata)",
       "methode": "extraire le balisage de l'échantillon ; valider la syntaxe ; vérifier l'adéquation type de balisage / type de page ; détecter le balisage non conforme aux règles d'éligibilité",
       "critere_verdict": "0 erreur bloquante · balisage présent sur 100 % des gabarits éligibles · 0 balisage abusif",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -949,6 +981,7 @@
       "source_requise": "`sitemap.xml` + crawl",
       "methode": "croiser les URLs du sitemap avec les codes HTTP, les `noindex` et les canonicals",
       "critere_verdict": "0 URL non-200 · 0 URL en `noindex` · 0 URL canonicalisée ailleurs · ≥ 95 % des pages à valeur présentes",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -971,6 +1004,7 @@
       "source_requise": "GSC — rapport d'indexation des pages",
       "methode": "relever les pages indexées, non indexées et leur motif ; hiérarchiser les motifs par volume",
       "critere_verdict": "0 page à valeur en « détectée non indexée » ou « explorée non indexée »",
+      "reserve": "NM` sinon",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -993,6 +1027,7 @@
       "source_requise": "GSC + dates de publication",
       "methode": "délai médian entre date de publication et première impression",
       "critere_verdict": "délai médian ≤ 7 jours",
+      "reserve": "NM` sinon",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1015,6 +1050,7 @@
       "source_requise": "GSC (fiable) ; à défaut inspection page par page",
       "methode": "échantillonner les pages de profondeur ≥ 4 issues du nœud 15 et vérifier leur statut d'indexation",
       "critere_verdict": "≥ 80 % des pages profondes à valeur indexées",
+      "reserve": "dégradation à déclarer : l'opérateur `site:` **n'est pas** une mesure d'indexation fiable",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1037,6 +1073,7 @@
       "source_requise": "GSC + crawl",
       "methode": "comparer le nombre de pages crawlables à valeur au nombre de pages indexées",
       "critere_verdict": "≥ 80 % — un ratio plus bas signale du contenu jugé sans valeur par Google, pas un problème technique",
+      "reserve": "NM` sinon",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1059,6 +1096,7 @@
       "source_requise": "index de backlinks tiers (payant)",
       "methode": "relevé des domaines référents, de leur thématique et de leur qualité ; comparaison aux concurrents du cadrage",
       "critere_verdict": "aucun seuil absolu — comparaison relative aux concurrents uniquement",
+      "reserve": "dégradation `SD` très partielle : liens détectables par recherche web seulement",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1081,6 +1119,7 @@
       "source_requise": "GSC (clics, impressions)",
       "methode": "relevé sur 12 mois glissants, avec tendance",
       "critere_verdict": "aucun — baseline",
+      "reserve": "NM` sinon : non observable de l'extérieur** (garde-fou 2)",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1103,6 +1142,7 @@
       "source_requise": "index de backlinks ; à défaut mentions trouvées en recherche web",
       "methode": "classer les domaines référents par proximité thématique",
       "critere_verdict": "≥ 60 % des domaines référents thématiquement proches",
+      "reserve": "dégradation `SD` partielle",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1125,6 +1165,7 @@
       "source_requise": "recherche web",
       "methode": "rechercher la marque hors du domaine propre ; compter et qualifier les sources (presse, annuaire, forum, partenaire, avis)",
       "critere_verdict": "≥ 10 mentions qualifiées hors annuaires automatiques",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1147,6 +1188,7 @@
       "source_requise": "recherche web + crawl des 404",
       "methode": "croiser les mentions du nœud 41 sans lien sortant, et les URLs en 404 recevant des liens",
       "critere_verdict": "liste nominative d'opportunités, chiffrée en nombre de domaines",
+      "reserve": "partiel — `PY` pour la détection exhaustive des liens vers 404",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1169,6 +1211,7 @@
       "source_requise": "GSC (impressions, clics, position)",
       "methode": "comparer le CTR observé au CTR médian du site pour la même tranche de position",
       "critere_verdict": "écart négatif > 30 % vs médiane du site = titre/meta à retravailler",
+      "reserve": "NM` sinon : non observable de l'extérieur** (garde-fou 2)",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1191,6 +1234,7 @@
       "source_requise": "GA (acquisition)",
       "methode": "relevé des domaines référents par sessions ; PART IA isolée (décision du 11/08/2026) : segmenter les référents des assistants génératifs (chatgpt.com, perplexity.ai, copilot.microsoft.com, gemini.google.com, claude.ai…) — liste à rafraîchir par vérification web datée au run",
       "critere_verdict": "part IA du trafic référent relevée et datée ; le reste descriptif",
+      "reserve": "NM` sinon",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1213,6 +1257,7 @@
       "source_requise": "GA (acquisition)",
       "methode": "part des sessions d'origine sociale",
       "critere_verdict": "aucun — descriptif. **La présence sociale est observable ; le trafic qu'elle génère ne l'est pas**",
+      "reserve": "NM` sinon",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1235,6 +1280,7 @@
       "source_requise": "GA (engagement, parcours)",
       "methode": "taux d'engagement, pages par session et conversions sur le segment organique",
       "critere_verdict": "à calibrer sur la médiane du site, jamais sur un standard sectoriel emprunté",
+      "reserve": "NM` sinon",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1257,6 +1303,7 @@
       "source_requise": "avis publics, commentaires, forums",
       "methode": "collecter et classer les retours par thème récurrent (produit, service, contenu, expérience)",
       "critere_verdict": "≥ 3 thèmes récurrents identifiés, avec verbatims cités",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1279,6 +1326,7 @@
       "source_requise": "crawl (dates) + recherche web",
       "methode": "repérer les contenus liés à l'actualité du secteur et leur fraîcheur ; comparer au rythme du secteur",
       "critere_verdict": "≥ 1 contenu d'actualité par mois pour un site à ambition Discover, sinon nœud hors périmètre",
+      "reserve": "la performance Discover réelle exige `EX` (rapport dédié GSC)",
       "doublon_de": null,
       "modeles": [
         "e-commerce",
@@ -1298,6 +1346,7 @@
       "source_requise": "crawl (balises `title`, H1)",
       "methode": "échantillon de 20 titres : longueur, présence d'un bénéfice ou d'une tension, unicité, cohérence avec le contenu réel",
       "critere_verdict": "0 titre dupliqué · 0 promesse non tenue par la page · longueur adaptée à l'affichage SERP",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "e-commerce",
@@ -1317,6 +1366,7 @@
       "source_requise": "dates observables + `lastmod` du sitemap",
       "methode": "distribution des dates de publication et de modification sur 12 mois",
       "critere_verdict": "cadence régulière et déclarée ; 0 `lastmod` faussement actualisé en masse",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "e-commerce",
@@ -1336,6 +1386,7 @@
       "source_requise": "recherche web",
       "methode": "rechercher les reprises de titres et d'extraits ; relever les sources reprenant le contenu",
       "critere_verdict": "≥ 3 reprises hors agrégateurs automatiques",
+      "reserve": "partiel",
       "doublon_de": null,
       "modeles": [
         "e-commerce",
@@ -1355,6 +1406,7 @@
       "source_requise": "GSC / GA (séries temporelles)",
       "methode": "détecter les ruptures de série et les rattacher à une page ou un sujet",
       "critere_verdict": "aucun — diagnostic descriptif, sert à identifier ce qui fonctionne",
+      "reserve": "NM` sinon",
       "doublon_de": null,
       "modeles": [
         "e-commerce",
@@ -1374,6 +1426,7 @@
       "source_requise": "crawl (schema, page « à propos ») + recherche web",
       "methode": "vérifier le balisage `Organization` / `Person`, la cohérence des informations d'identité sur toutes les pages, les liens `sameAs` vers des profils tiers, et l'existence d'une page d'identité factuelle",
       "critere_verdict": "balisage d'entité présent · identité cohérente partout · ≥ 3 `sameAs` vérifiables",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1396,6 +1449,7 @@
       "source_requise": "recherche web",
       "methode": "rechercher le nom de marque seul ; détecter les homonymies et les entités concurrentes qui captent la requête",
       "critere_verdict": "le site occupe la première position sur son nom de marque, sans confusion d'entité",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1418,6 +1472,7 @@
       "source_requise": "recherche web",
       "methode": "rechercher les sujets propriétaires du site et relever qui est cité comme source",
       "critere_verdict": "≥ 3 citations comme source sur des sujets du site",
+      "reserve": "partiel — exhaustivité `PY",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1440,6 +1495,7 @@
       "source_requise": "crawl + recherche web",
       "methode": "échantillon de 10 pages : chercher au moins un élément introuvable ailleurs (donnée propre, expérience vécue, méthode, chiffre original)",
       "critere_verdict": "≥ 60 % des pages de l'échantillon portent un élément non substituable",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1462,6 +1518,7 @@
       "source_requise": "test manuel documenté + vérification web datée du protocole",
       "methode": "**protocole à établir au run** : les surfaces et leur comportement changent. Tester N requêtes cibles, consigner la formulation exacte, la date, la surface interrogée, et si le site est cité",
       "critere_verdict": "taux de citation sur les requêtes cibles, relevé et daté",
+      "reserve": "résultat non reproductible et non stable : le déclarer explicitement, ne jamais présenter le taux comme une métrique de suivi fiable",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1484,6 +1541,7 @@
       "source_requise": "crawl (robots.txt, llms.txt, en-têtes) + logs si fournis",
       "methode": "vérifier robots.txt pour chaque agent IA de recherche (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended…) — posture par défaut : AUTORISÉ (décision du 11/08/2026), tout blocage est une décision consignée et datée du propriétaire ; distinguer agents d'entraînement et agents de recherche ; vérifier la présence de llms.txt et sa cohérence avec le sitemap (standard émergent ADOPTÉ par décision du 11/08/2026 — consommation par les moteurs à réévaluer par vérification web datée à chaque run) ; contrôler qu'aucun blocage CDN/WAF ne frappe ces UA quand les logs le montrent",
       "critere_verdict": "aucun agent IA de recherche interdit sans décision consignée · llms.txt présent et cohérent avec le sitemap · zéro blocage CDN/WAF constaté sur les UA IA (si logs fournis)",
+      "reserve": "partiel — logs `EX",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1506,6 +1564,7 @@
       "source_requise": "recherche web sur la marque + le lieu",
       "methode": "relever la présence de la fiche, son exhaustivité (catégorie principale, horaires, description, photos, attributs) et l'existence d'un propriétaire déclaré",
       "critere_verdict": "fiche revendiquée · catégorie principale exacte · horaires à jour · ≥ 5 photos",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "local"
@@ -1524,6 +1583,7 @@
       "source_requise": "crawl du site + recherche web",
       "methode": "comparer le triplet du site (mentions légales, contact, pied de page, balisage) à celui de la fiche d'établissement et des annuaires trouvés",
       "critere_verdict": "0 divergence sur les 3 champs, balisage d'établissement présent et cohérent",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "local"
@@ -1542,6 +1602,7 @@
       "source_requise": "recherche web",
       "methode": "inventorier les annuaires du secteur et de la zone ; relever présence, exactitude et fraîcheur de chaque fiche",
       "critere_verdict": "présence sur ≥ 60 % des annuaires de référence du secteur, sans donnée périmée",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "local"
@@ -1560,6 +1621,7 @@
       "source_requise": "avis publics",
       "methode": "relever volume, note moyenne, rythme d'acquisition sur 12 mois et taux de réponse du gestionnaire",
       "critere_verdict": "rythme régulier · taux de réponse ≥ 50 % · aucune période de 3 mois sans avis",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "local"
@@ -1578,6 +1640,7 @@
       "source_requise": "crawl",
       "methode": "repérer les pages géolocalisées ; mesurer la part de contenu unique hors gabarit et la présence d'éléments propres à la zone",
       "critere_verdict": "1 page par zone à enjeu · ≥ 40 % de contenu unique · 0 duplication entre zones",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "local"
@@ -1596,6 +1659,7 @@
       "source_requise": "déclaratif client",
       "methode": "inventaire des automatisations existantes et de leur périmètre",
       "critere_verdict": "aucun — sert à calibrer le régime d'automatisation des actions",
+      "reserve": "(déclaratif, à étiqueter `[T2]`)",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1618,6 +1682,7 @@
       "source_requise": "déclaratif + observation de l'outillage",
       "methode": "vérifier l'existence d'un crawler, d'un accès aux données, d'un format de sortie exploitable",
       "critere_verdict": "capacité présente ou absente, avec le coût de sa mise en place",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1640,6 +1705,7 @@
       "source_requise": "déclaratif",
       "methode": "inventaire des alertes en place et de leur destinataire",
       "critere_verdict": "alerte active sur : chute d'indexation, erreurs 5xx, chute de trafic organique",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1662,6 +1728,7 @@
       "source_requise": "crawl (nœud 25) + déclaratif",
       "methode": "relier les motifs d'URL détectés au processus de génération déclaré ; identifier le point de contrôle qualité",
       "critere_verdict": "tout gabarit génératif a un contrôle qualité nommé avant publication",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1684,6 +1751,7 @@
       "source_requise": "déclaratif",
       "methode": "vérifier l'existence d'une boucle : source de données → règle de détection → destinataire",
       "critere_verdict": "mécanisme présent ou absent ; s'il est absent, candidat prioritaire au quadrant `IA + gratuit`",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1706,6 +1774,7 @@
       "source_requise": "GSC",
       "methode": "relevé 12 mois glissants, tendance et saisonnalité",
       "critere_verdict": "aucun — baseline et KPI cible",
+      "reserve": "NM` sinon** (garde-fou 2)",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1728,6 +1797,7 @@
       "source_requise": "GSC",
       "methode": "relevé 12 mois glissants",
       "critere_verdict": "aucun — baseline et KPI cible",
+      "reserve": "NM` sinon** (garde-fou 2)",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1750,6 +1820,7 @@
       "source_requise": "GSC",
       "methode": "position moyenne par requête cible, avec le volume d'impressions associé",
       "critere_verdict": "aucun — baseline et KPI cible",
+      "reserve": "NM` sinon** (garde-fou 2)",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1772,6 +1843,7 @@
       "source_requise": "GA (conversions) + CRM",
       "methode": "relevé des conversions attribuées à l'organique, avec le modèle d'attribution déclaré",
       "critere_verdict": "aucun — baseline et KPI cible",
+      "reserve": "motif : exige GA **et** définition de conversion validée ; devient `EX` si fournis",
       "doublon_de": null,
       "modeles": [
         "e-commerce",
@@ -1791,6 +1863,7 @@
       "source_requise": "GA e-commerce ou CRM rapproché des pages d'entrée",
       "methode": "croiser pages d'entrée organiques et revenu attribué",
       "critere_verdict": "aucun — sert à pondérer le gain des actions en €",
+      "reserve": "motif : exige un back-office e-commerce ou un CRM rapprochable",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1813,6 +1886,7 @@
       "source_requise": "GSC (positions 5-20 à fort volume d'impressions)",
       "methode": "trier par (impressions × gain de CTR attendu si passage en top 3) ; croiser avec la complétude du contenu",
       "critere_verdict": "liste des 10 pages au plus fort potentiel de gain à effort faible",
+      "reserve": "dégradation `SD` : pages fines ou incomplètes détectables au crawl, sans hiérarchisation par potentiel",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1835,6 +1909,7 @@
       "source_requise": "crawl (similarité) ; GSC pour confirmation",
       "methode": "détecter les pages de sujet proche visant la même intention ; confirmer par GSC (même requête servie par deux URLs)",
       "critere_verdict": "0 paire de pages en cannibalisation confirmée",
+      "reserve": "partiel — `EX` pour la confirmation",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1857,6 +1932,7 @@
       "source_requise": "GSC + GA ; à défaut signaux structurels",
       "methode": "croiser absence de clics sur 12 mois, absence de liens entrants et absence de conversion",
       "critere_verdict": "candidates listées avec, pour chacune, l'arbitrage suppression / fusion / amélioration — **jamais de suppression recommandée sur la seule absence de trafic**",
+      "reserve": "dégradation `SD` : pages orphelines, dupliquées ou expirées détectables au crawl",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1879,6 +1955,7 @@
       "source_requise": "déclaratif + observation",
       "methode": "vérifier l'existence de groupes de pages comparables et d'un moyen de mesurer l'écart",
       "critere_verdict": "capacité présente ou absente, avec le prérequis manquant nommé",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1901,6 +1978,7 @@
       "source_requise": "déclaratif + historique des runs",
       "methode": "vérifier l'existence d'un état de référence antérieur et d'une trace des actions passées",
       "critere_verdict": "**c'est le nœud qu'instrumente le couple `snapshot` / `diff` de ce skill** : au premier run, le constat est « boucle absente, snapshot initial posé »",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1923,6 +2001,7 @@
       "source_requise": "nœuds 1, 4, 5, 20 + cadrage",
       "methode": "identifier les thèmes adjacents où la SERP est attaquable et où le site a une légitimité démontrable",
       "critere_verdict": "≥ 2 silos candidats, chacun avec sa légitimité et sa SERP qualifiée",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1945,6 +2024,7 @@
       "source_requise": "cadrage + nœuds 1 et 11",
       "methode": "poser la question à l'envers : qu'est-ce qui empêche de le faire sur le domaine existant ?",
       "critere_verdict": "recommandé **uniquement** si le domaine existant est structurellement inadapté (marque, langue, modèle) — jamais pour contourner un problème d'autorité",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1967,6 +2047,7 @@
       "source_requise": "cadrage + SERP",
       "methode": "vérifier si les SERP cibles affichent des formats que le site ne produit pas",
       "critere_verdict": "investissement justifié seulement si la SERP cible affiche déjà ce format",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -1989,6 +2070,7 @@
       "source_requise": "nœuds 41, 42, 51 + cadrage",
       "methode": "identifier les acteurs déjà en relation ou déjà citants, et les opportunités de réciprocité",
       "critere_verdict": "≥ 5 partenaires nominatifs, avec l'angle d'approche",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -2011,6 +2093,7 @@
       "source_requise": "ensemble de l'audit",
       "methode": "distinguer les actions à effet unique (correction technique) des actifs à effet cumulé (pilier qui capte la traîne, outil gratuit qui attire des liens, données propriétaires)",
       "critere_verdict": "≥ 3 actifs cumulatifs identifiés dans la trajectoire",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -2033,6 +2116,7 @@
       "source_requise": "cadrage client + baseline",
       "methode": "dériver de la baseline et du potentiel des requêtes cibles ; calcul visible, fourchette obligatoire",
       "critere_verdict": "cible chiffrée, étiquetée `[T4]`, avec sa sensibilité",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -2055,6 +2139,7 @@
       "source_requise": "cadrage + nœuds 72 et 46",
       "methode": "appliquer le taux de conversion observé au trafic cible ; **si le taux n'est pas mesuré, la cible est non calculable et doit être déclarée telle**",
       "critere_verdict": "cible chiffrée ou déclaration explicite de non-calculabilité",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "e-commerce"
@@ -2073,6 +2158,7 @@
       "source_requise": "cadrage + nœuds 8 et 73",
       "methode": "appliquer la valeur client aux leads cibles",
       "critere_verdict": "cible chiffrée ou déclaration explicite de non-calculabilité",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",
@@ -2095,6 +2181,7 @@
       "source_requise": "—",
       "methode": "**renvoi vers la branche `Autorité`, nœuds 38-42**",
       "critere_verdict": "ne pas auditer ici",
+      "reserve": "",
       "doublon_de": "08-autorite",
       "modeles": [
         "b2b-lead-gen",
@@ -2117,6 +2204,7 @@
       "source_requise": "synthèse des branches `Automatisation`, `Mesure`, `Optimisation`",
       "methode": "scorer la maturité sur 5 : 1 = actions ponctuelles sans mesure · 3 = mesure en place, actions réactives · 5 = détection, action et remesure outillées et cadencées",
       "critere_verdict": "score de maturité 1-5, justifié par les nœuds 58-62, 64-68 et 69-73",
+      "reserve": "",
       "doublon_de": null,
       "modeles": [
         "b2b-lead-gen",

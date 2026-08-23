@@ -151,6 +151,18 @@ def _cellules(ligne: str) -> list[str]:
     return [c.strip() for c in ligne.strip().strip("|").split("|")]
 
 
+def _reserve(cellule: str) -> str:
+    """Ce que la cellule de statut dit EN PLUS de son code — la reserve du referentiel.
+
+    TF-0476 : `_statut` ne retient que le premier code a deux lettres. Tout le reste de la
+    cellule — et c'est la que la grille pose ses reserves — n'allait nulle part. On le garde
+    tel quel, sans interpretation : le controle qui s'en sert lit la grille, il ne la recopie
+    pas.
+    """
+    reste = re.sub(r"`?\b[A-Z]{2}\b`?", "", cellule, count=1).strip(" -—*`")
+    return reste.strip()
+
+
 def _statut(cellule: str) -> str:
     """Premier code a deux lettres de la cellule statut.
 
@@ -223,6 +235,14 @@ def lire(chemin: Path | None = None) -> dict:
             "slug_noeud": f"{rang_local:02d}-{slugify(nom)}",
             "volet": _volet(cells[2]),
             "statut": _statut(cells[7]),
+            # TF-0476 (23/08/2026) : la RESERVE de la derniere colonne etait lue pour son seul
+            # code de statut, et le reste JETE. Or c'est la que la grille declare, pour le noeud
+            # 57, que « le resultat est non reproductible et non stable : ne jamais presenter le
+            # taux comme une metrique de suivi fiable ». Cette phrase vivait dans le referentiel
+            # et NULLE PART AILLEURS — ni au manifeste, ni dans la fiche que l'auditeur remplit,
+            # donc dans aucun controle. Une reserve qui ne se verifie pas par execution n'est
+            # qu'un avis. Elle est desormais portee jusqu'au manifeste, telle quelle.
+            "reserve": _reserve(cells[7]),
             "question_audit": cells[3],
             "source_requise": cells[4],
             "methode": cells[5],
