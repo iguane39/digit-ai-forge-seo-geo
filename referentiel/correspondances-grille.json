@@ -7,7 +7,7 @@
     "Un identifiant retiré ne se réaffecte JAMAIS à un autre nœud : il sort, il ne se recycle pas.",
     "Les évolutions se chaînent. Une étude qui a sauté plusieurs versions est récupérable tant qu'une suite d'entrées relie sa version à la version courante."
   ],
-  "version_courante": "0adef2177300",
+  "version_courante": "6245d81445b9",
   "evolutions": [
     {
       "de": "3d0af44aae9a",
@@ -68,6 +68,24 @@
       "correspondances": {},
       "identifiants_retires": [],
       "identifiants_nouveaux": []
+    },
+    {
+      "de": "0adef2177300",
+      "vers": "11c22421e42d",
+      "date": "2026-08-26",
+      "motif": "TF-0636 (lot Produit-02 20260825c) : le noeud 58 « Acces & Directives IA » jugeait la PRESENCE des directives IA et jamais leur EXACTITUDE. Sa question porte sur l'acces ET les directives ; son constat sur un projet reel portait entierement sur l'acces — « le serveur repond HTTP 200 et 17 421 octets a l'identique a un navigateur, a GPTBot, a ClaudeBot et a PerplexityBot ». Exact, et sans rapport avec le contenu. Mesure : la chaine « llms » n'apparaissait que DEUX FOIS dans tout le code Python de la forge, jamais pour en lire le contenu. Un llms.txt annoncant des tarifs perimes, des capacites fausses ou des URLs mortes passait donc le noeud sans une remarque — et ce fichier existe precisement pour etre repris SANS verification par des modeles de langue, ou une erreur porte plus loin qu'ailleurs. METHODE et CRITERE DE VERDICT renforces : le contenu se LIT, la presence et l'accessibilite ne valent pas verification. AUCUN IDENTIFIANT NE BOUGE : ni insertion, ni retrait, ni renumerotation — la grille compte toujours 88 noeuds, et une etude ouverte sur la version precedente reste lisible sans table de correspondance.",
+      "correspondances": {},
+      "identifiants_retires": [],
+      "identifiants_nouveaux": []
+    },
+    {
+      "de": "11c22421e42d",
+      "vers": "6245d81445b9",
+      "date": "2026-08-26",
+      "motif": "TF-0653 : les TROIS tables de synthese de la grille se contredisaient avec la grille qu'elles resument, et depuis QUINZE JOURS. Elles annoncaient toutes « Total 87 » pour 88 noeuds ; la table par branche faisait chevaucher GEO 53-58 et Local 58-62 et sautait le 73 ; la table par statut comptait SD 53 pour 54 ; celle par volet TRANSVERSAL 51 pour 52. CAUSE : l'insertion du noeud 58 le 11/08 (TF-0093) a bien produit sa table de CORRESPONDANCE — 30 identifiants decales, declares — mais aucune des trois syntheses LISIBLES n'a suivi. Le contrat de ce registre exige une table de correspondance ; il n'exigeait rien de la synthese. CE QUE CA COUTAIT : quiconque lit ces tables pour PLANIFIER une evolution — inserer un noeud dans une branche, par exemple — calcule contre une carte fausse. Corrige contre la mesure du manifeste, et un controle neuf (13) confronte desormais les trois tables a la grille. AUCUN IDENTIFIANT NE BOUGE : seules les syntheses changent, la grille porte les memes 88 noeuds.",
+      "correspondances": {},
+      "identifiants_retires": [],
+      "identifiants_nouveaux": []
     }
   ],
   "historique_anterieur_au_registre": {
@@ -98,25 +116,100 @@
     "table_verifiee_par_les_titres": {
       "commentaire": "Verification faite titre a titre sur les trois branches que le noeud Machine SEO prend pour source. Aucun titre n'a change, aucun noeud n'a ete retire : le decalage est purement positionnel.",
       "Automatisation": [
-        { "g82": 58, "g87": 63, "g88": 64, "titre": "Agents IA" },
-        { "g82": 59, "g87": 64, "g88": 65, "titre": "Audits Massifs" },
-        { "g82": 60, "g87": 65, "g88": 66, "titre": "Monitoring" },
-        { "g82": 61, "g87": 66, "g88": 67, "titre": "Generation De Pages" },
-        { "g82": 62, "g87": 67, "g88": 68, "titre": "Detection Opportunites" }
+        {
+          "g82": 58,
+          "g87": 63,
+          "g88": 64,
+          "titre": "Agents IA"
+        },
+        {
+          "g82": 59,
+          "g87": 64,
+          "g88": 65,
+          "titre": "Audits Massifs"
+        },
+        {
+          "g82": 60,
+          "g87": 65,
+          "g88": 66,
+          "titre": "Monitoring"
+        },
+        {
+          "g82": 61,
+          "g87": 66,
+          "g88": 67,
+          "titre": "Generation De Pages"
+        },
+        {
+          "g82": 62,
+          "g87": 67,
+          "g88": 68,
+          "titre": "Detection Opportunites"
+        }
       ],
       "Mesure": [
-        { "g82": 63, "g87": 68, "g88": 69, "titre": "Impressions" },
-        { "g82": 64, "g87": 69, "g88": 70, "titre": "Clics" },
-        { "g82": 65, "g87": 70, "g88": 71, "titre": "Positions" },
-        { "g82": 66, "g87": 71, "g88": 72, "titre": "Leads" },
-        { "g82": 67, "g87": 72, "g88": 73, "titre": "Revenu Par Page" }
+        {
+          "g82": 63,
+          "g87": 68,
+          "g88": 69,
+          "titre": "Impressions"
+        },
+        {
+          "g82": 64,
+          "g87": 69,
+          "g88": 70,
+          "titre": "Clics"
+        },
+        {
+          "g82": 65,
+          "g87": 70,
+          "g88": 71,
+          "titre": "Positions"
+        },
+        {
+          "g82": 66,
+          "g87": 71,
+          "g88": 72,
+          "titre": "Leads"
+        },
+        {
+          "g82": 67,
+          "g87": 72,
+          "g88": 73,
+          "titre": "Revenu Par Page"
+        }
       ],
       "Optimisation": [
-        { "g82": 68, "g87": 73, "g88": 74, "titre": "Contenus A Renforcer" },
-        { "g82": 69, "g87": 74, "g88": 75, "titre": "Pages A Fusionner" },
-        { "g82": 70, "g87": 75, "g88": 76, "titre": "Pages A Supprimer" },
-        { "g82": 71, "g87": 76, "g88": 77, "titre": "Tests SEO" },
-        { "g82": 72, "g87": 77, "g88": 78, "titre": "Boucles D'Amelioration" }
+        {
+          "g82": 68,
+          "g87": 73,
+          "g88": 74,
+          "titre": "Contenus A Renforcer"
+        },
+        {
+          "g82": 69,
+          "g87": 74,
+          "g88": 75,
+          "titre": "Pages A Fusionner"
+        },
+        {
+          "g82": 70,
+          "g87": 75,
+          "g88": 76,
+          "titre": "Pages A Supprimer"
+        },
+        {
+          "g82": 71,
+          "g87": 76,
+          "g88": 77,
+          "titre": "Tests SEO"
+        },
+        {
+          "g82": 72,
+          "g87": 77,
+          "g88": 78,
+          "titre": "Boucles D'Amelioration"
+        }
       ]
     },
     "arbitrage_noeud_mesure": {

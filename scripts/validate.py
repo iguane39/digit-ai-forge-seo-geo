@@ -31,6 +31,7 @@ from crux import noeud_exige_terrain, terrain_disponible
 from livrables import compteurs, ids_noeuds, lire_actions, lire_fiches
 from schema import valider
 from grille import (
+    GRILLE,
     NB_BRANCHES,
     NB_NOEUDS,
     RACINE,
@@ -236,6 +237,87 @@ def controler_verdicts_de_terrain(base: Path, fiches: list[dict]) -> tuple[list[
     )
 
 
+# TF-0636 (26/08/2026, lot Produit-02 20260825c) — LA PRESENCE N'EST PAS L'EXACTITUDE.
+#
+# LE FAIT. Le noeud « Acces & Directives IA » pose DEUX questions : les agents peuvent-ils acceder
+# au site, et les directives sont-elles POSEES ? Son constat sur un projet reel portait entierement
+# sur la premiere : « le serveur repond HTTP 200 et 17 421 octets a l'identique a un navigateur, a
+# GPTBot, a ClaudeBot et a PerplexityBot ». Exact, verifiable, et sans aucun rapport avec ce que le
+# fichier DIT.
+#
+# MESURE QUI L'ETABLIT : la chaine « llms » n'apparaissait que DEUX FOIS dans tout le code Python
+# de cette forge, jamais pour en lire le contenu. Un llms.txt annoncant des tarifs perimes, des
+# capacites fausses ou des URLs mortes passait donc le noeud sans une remarque.
+#
+# POURQUOI CE FICHIER PLUS QU'UN AUTRE : il existe pour etre repris SANS verification par des
+# modeles de langue. Une erreur y porte plus loin qu'ailleurs — elle est recopiee, pas lue.
+#
+# MEME DOCTRINE QUE LES CONTROLES 9 ET 10 : aucun identifiant de noeud en dur. Le predicat
+# interroge `source_requise`, donc il suit la grille si elle evolue.
+#
+# LA BORNE, et elle evite le faux positif evident : un constat qui declare le fichier ABSENT n'a
+# aucun contenu a citer. L'exiger de lui reviendrait a punir la seule reponse honnete.
+FICHIER_DIRECTIVES = "llms.txt"
+#: Ce qui prouve qu'on a LU : une citation, ou un denombrement de ce que le fichier porte.
+_LU = re.compile(
+    r"«[^»]{3,}»|`[^`]{3,}`|\b\d+\s*(?:URL|lien|entr[ée]e|section|ligne|item|rubrique)s?\b",
+    re.IGNORECASE,
+)
+#: Ce qui dit qu'il n'y a rien a lire — la seule reponse honnete quand le fichier n'existe pas.
+_ABSENT = re.compile(r"\b(absent|introuvable|n\'existe pas|404|non servi|aucun llms)\b", re.IGNORECASE)
+
+
+def _constat_de(base: Path, chemin_noeud: str) -> str:
+    """Le corps « ## Constat » d'une fiche, ou une chaine vide. Ne leve jamais."""
+    f = base / "analyse" / chemin_noeud / "_fiche.md"
+    try:
+        corps = f.read_text(encoding="utf-8").split("\n---\n", 1)[-1]
+    except OSError:
+        return ""
+    bloc = corps.split("## Constat", 1)
+    if len(bloc) < 2:
+        return ""
+    return bloc[1].split("## Interpretation", 1)[0].split("## Preuves", 1)[0]
+
+
+def controler_directives_ia(base: Path, fiches: list[dict]) -> tuple[list[str], str]:
+    """Un verdict affirmatif sur un noeud de directives IA a LU le fichier, pas seulement atteint.
+
+    Le controle ne se declenche que si le constat PARLE du fichier : un noeud rendu non-conforme
+    parce que `robots.txt` bloque un agent n'a rien a dire de `llms.txt`, et l'accuser serait
+    inventer une exigence que la grille ne porte pas.
+    """
+    concernes = [n for n in fiches
+                 if FICHIER_DIRECTIVES in (n.get("source_requise") or "").lower()]
+    if not concernes:
+        return [], "aucun noeud de directives IA dans cette grille"
+
+    ecarts = []
+    examines = 0
+    for n in concernes:
+        if n.get("verdict") not in VERDICTS_AFFIRMATIFS:
+            continue
+        constat = _constat_de(base, n.get("chemin", ""))
+        if FICHIER_DIRECTIVES not in constat.lower():
+            continue
+        examines += 1
+        if _ABSENT.search(constat) or _LU.search(constat):
+            continue
+        ecarts.append(
+            f"noeud {n['id']} ({n['noeud']}) : verdict « {n.get('verdict')} » rendu sur "
+            f"{FICHIER_DIRECTIVES} sans qu'aucune trace de LECTURE du contenu figure au constat — "
+            "ni citation, ni denombrement de ce qu'il porte. Repondre HTTP 200 a un agent prouve "
+            "l'ACCES, jamais l'EXACTITUDE : un fichier annoncant des tarifs perimes ou des URLs "
+            "mortes repond 200 comme un autre, et il existe pour etre repris SANS verification "
+            "par des modeles de langue (TF-0636)."
+        )
+    if not examines:
+        return [], (f"{len(concernes)} noeud(s) de directives IA — aucun verdict affirmatif "
+                    f"parlant de {FICHIER_DIRECTIVES}, rien a corroborer")
+    return ecarts, (f"{examines} verdict(s) affirmatif(s) parlant de {FICHIER_DIRECTIVES} — "
+                    f"{len(ecarts)} sans trace de lecture du contenu")
+
+
 # TF-0476 (23/08/2026) — LES CHAMPS D'UN PLAN DE MESURE. Ce ne sont pas des metadonnees de
 # confort : ce sont les quatre facteurs dont la litterature 2026 mesure qu'ils DOMINENT le
 # resultat. Decomposition de variance par REML sur 12 933 reponses (arXiv 2607.13304) : la
@@ -391,6 +473,80 @@ def controler_actions(base: Path, ids_grille: set[int]) -> tuple[list[str], str]
 # ------------------------------------------------------- referentiel canonique
 
 
+def controler_synthese_grille(chemin: Path | None = None) -> tuple[list[str], str]:
+    """Les tables de synthese de la grille confrontees a la grille elle-meme.
+
+    Trois tables, trois axes : par BRANCHE (compte et plage d'identifiants), par STATUT
+    d'instrumentation, par VOLET. Chacune se recalcule depuis le manifeste, qui est la
+    projection machine de la grille — on ne compare donc pas la grille a une seconde
+    declaration, on la compare a elle-meme.
+
+    Ne juge que ce qui est ECRIT : une table absente n'est pas un ecart. Ajouter un axe de
+    synthese ne demande rien ici tant qu'il n'est pas nomme.
+    """
+    texte = (chemin or GRILLE).read_text(encoding="utf-8")
+    noeuds = json.loads((SEO / "manifest.json").read_text(encoding="utf-8"))["noeuds"]
+
+    par_branche: dict[str, list[int]] = {}
+    par_statut: dict[str, int] = {}
+    par_volet: dict[str, int] = {}
+    for n in noeuds:
+        par_branche.setdefault(n["branche"], []).append(n["id"])
+        par_statut[(n.get("statut") or "?").strip("`").split()[0].strip("`")] = (
+            par_statut.get((n.get("statut") or "?").strip("`").split()[0].strip("`"), 0) + 1
+        )
+        par_volet[n.get("volet") or "?"] = par_volet.get(n.get("volet") or "?", 0) + 1
+
+    ecarts: list[str] = []
+    lues = 0
+
+    # Les lignes de table, quelle que soit leur mise en gras : `| Nom | 5 | 59-63 |`.
+    ligne_plage = re.compile(
+        r"^\|\s*\*{0,2}`?([^|`*]+?)`?\*{0,2}\s*\|\s*\*{0,2}(\d+)\*{0,2}\s*\|\s*\*{0,2}(\d+)-(\d+)\*{0,2}\s*\|",
+        re.MULTILINE,
+    )
+    sans_accent = lambda x: (x or "").strip().upper().replace("É", "E").replace("È", "E").replace("Ê", "E")
+    branches = {sans_accent(b): ids for b, ids in par_branche.items()}
+    for nom, compte, debut, fin in ligne_plage.findall(texte):
+        ids = branches.get(sans_accent(nom))
+        if ids is None:
+            continue
+        lues += 1
+        attendu = (len(ids), min(ids), max(ids))
+        vu = (int(compte), int(debut), int(fin))
+        if vu != attendu:
+            ecarts.append(
+                f"table par branche, « {nom.strip()} » : la synthese dit {vu[0]} noeud(s) {vu[1]}-{vu[2]}, "
+                f"la grille porte {attendu[0]} noeud(s) {attendu[1]}-{attendu[2]}"
+            )
+
+    # Les totaux : tout `| **Total** | **N** |` doit valoir le nombre reel de noeuds.
+    for total in re.findall(r"^\|\s*\*{0,2}Total\*{0,2}\s*\|\s*\*{0,2}(\d+)\*{0,2}\s*\|", texte, re.MULTILINE):
+        lues += 1
+        if int(total) != len(noeuds):
+            ecarts.append(
+                f"un total de synthese annonce {total} noeud(s), la grille en porte {len(noeuds)}"
+            )
+
+    # Les comptes par statut et par volet, sur les lignes a deux colonnes chiffrees.
+    for cle, reels in (("statut", par_statut), ("volet", par_volet)):
+        for nom, compte in re.findall(
+            r"^\|\s*`?([A-Z]{2,12})`?[^|]*\|\s*\*{0,2}(\d+)\*{0,2}\s*\|", texte, re.MULTILINE
+        ):
+            attendu = reels.get(nom)
+            if attendu is None:
+                continue
+            lues += 1
+            if int(compte) != attendu:
+                ecarts.append(
+                    f"table par {cle}, « {nom} » : la synthese dit {compte}, la grille porte {attendu}"
+                )
+
+    if not lues:
+        return [], "aucune table de synthese chiffree dans la grille — rien a confronter"
+    return ecarts, f"{lues} ligne(s) de synthese confrontee(s) a la grille — {len(ecarts)} ecart(s)"
+
+
 def valider_referentiel(json_mode: bool = False) -> int:
     r = Rapport("referentiel", json_mode)
     r.entete("validate -- referentiel canonique de la forge")
@@ -543,6 +699,31 @@ def valider_referentiel(json_mode: bool = False) -> int:
         + ("" if courante == reelle else
            " -- la grille a change sans table de correspondance : ajouter l'evolution "
            "dans referentiel/correspondances-grille.json et y porter version_courante"),
+    )
+
+    # TF-0653 (26/08/2026) — LA GRILLE ET SA PROPRE SYNTHESE.
+    #
+    # LE FAIT, mesure : les TROIS tables de synthese de `grille-noeuds.md` annoncaient « Total 87 »
+    # pour 88 noeuds, et depuis QUINZE JOURS. La table par branche faisait chevaucher GEO 53-58 et
+    # Local 58-62, et sautait le 73 ; celle par statut comptait SD 53 pour 54 ; celle par volet
+    # TRANSVERSAL 51 pour 52.
+    #
+    # LA CAUSE N'EST PAS UNE ETOURDERIE, c'est un trou de contrat. L'insertion du noeud 58 le 11/08
+    # a bien produit sa table de CORRESPONDANCE — 30 identifiants decales, tous declares, comme le
+    # registre l'exige. Le registre exige une correspondance ; il n'exigeait RIEN de la synthese
+    # lisible. Le controle 12 verifiait donc scrupuleusement une moitie du document.
+    #
+    # CE QUE CA COUTAIT, et ce n'est pas cosmetique : ces tables sont ce qu'on LIT pour planifier
+    # une evolution — « ou inserer un noeud, quels identifiants bougent ». Planifier contre une
+    # carte fausse produit une renumerotation fausse, et une renumerotation fausse fait pointer
+    # chaque constat d'une etude ouverte sur un autre noeud que celui mesure. C'est exactement le
+    # defaut fondateur que ce registre existe pour empecher.
+    ecarts_s, resume_s = controler_synthese_grille()
+    r.controle(
+        "13. les tables de synthese disent ce que la grille porte",
+        not ecarts_s,
+        resume_s,
+        ecarts_s[:6],
     )
 
     return r.bilan()
@@ -705,6 +886,19 @@ def valider_mission(projet: Path, json_mode: bool = False) -> int:
         not ecarts_p,
         resume_p,
         ecarts_p[:5],
+    )
+
+    # TF-0636 : le TROISIEME frere des controles 9 et 10, sur un objet de plus. Le 9 refuse un
+    # verdict affirmatif sans la DONNEE DE TERRAIN, le 10 sans le PLAN DE MESURE ; celui-ci le
+    # refuse sans la trace d'une LECTURE du fichier de directives. Meme doctrine dans les trois :
+    # le predicat interroge ce que la grille ECRIT (`source_requise`), jamais un identifiant de
+    # noeud en dur, donc il suit la grille si elle evolue.
+    ecarts_d, resume_d = controler_directives_ia(base, lire_fiches(base))
+    r.controle(
+        "11. verdict sur les directives IA adosse a une LECTURE du fichier",
+        not ecarts_d,
+        resume_d,
+        ecarts_d[:5],
     )
 
     return r.bilan()

@@ -25,11 +25,13 @@ import tempfile
 from pathlib import Path
 
 from gabarits import VERSION_ETAT, version_snapshot
-from grille import NB_NOEUDS, chaine_correspondance
+from grille import GRILLE, NB_NOEUDS, chaine_correspondance
 from livrables import COLONNES_ACTIONS
 from remplir_fiches import en_prose
 from validate import (
     controler_actions,
+    controler_directives_ia,
+    controler_synthese_grille,
     controler_verdicts_de_terrain,
     controler_versions,
 )
@@ -356,6 +358,138 @@ def cas_terrain(b: Bilan, racine: Path) -> None:
     )
 
 
+SOURCE_DIRECTIVES = "crawl (robots.txt, llms.txt, en-têtes) + logs si fournis"
+CHEMIN_58 = "11-geo/06-acces-directives-ia"
+
+
+def fiche_sur_disque(base: Path, chemin: str, constat: str) -> Path:
+    """Une fiche de noeud REELLE, avec son constat — le controle lit le corps, pas le front-matter."""
+    dossier = base / "analyse" / chemin
+    dossier.mkdir(parents=True, exist_ok=True)
+    f = dossier / "_fiche.md"
+    f.write_text(
+        "---\nid: 58\nnoeud: Acces & Directives IA\n---\n\n"
+        "# GEO / Acces & Directives IA\n\n"
+        f"## Constat\n\n{constat}\n\n## Preuves\n\n- releve du 2026-08-26\n",
+        encoding="utf-8",
+    )
+    return f
+
+
+def cas_directives_ia(b: Bilan, racine: Path) -> None:
+    """Repondre 200 a un agent prouve l ACCES, jamais l EXACTITUDE du fichier servi.
+
+    TF-0636 : le constat d un projet reel portait entierement sur l acces — « le serveur repond
+    HTTP 200 et 17 421 octets a l identique a un navigateur, a GPTBot, a ClaudeBot et a
+    PerplexityBot ». Exact, et sans rapport avec ce que le fichier DIT. Un llms.txt annoncant des
+    tarifs perimes ou des URLs mortes repond 200 comme un autre — et ce fichier existe pour etre
+    repris SANS verification par des modeles de langue.
+    """
+    noeud = fiche_noeud(58, "Acces & Directives IA", SOURCE_DIRECTIVES, "conforme")
+    noeud["chemin"] = CHEMIN_58
+
+    # ROUGE — le constat fondateur, mot pour mot dans sa forme.
+    base = etude_minimale(racine / "directives-rouge" / "seo")
+    fiche_sur_disque(base, CHEMIN_58,
+                     "llms.txt est servi : le serveur repond HTTP 200 et 17 421 octets a "
+                     "l identique a un navigateur, a GPTBot, a ClaudeBot et a PerplexityBot.")
+    ecarts, _ = controler_directives_ia(base, [noeud])
+    b.attendu(
+        "« conforme » sur llms.txt adosse au seul ACCES (HTTP 200, octets servis)",
+        len(ecarts) == 1 and "noeud 58" in ecarts[0], True,
+        ecarts[0][:120] if ecarts else "aucun ecart releve",
+    )
+
+    # VERTE — le MEME verdict, avec la trace d une lecture. Sans ce cas, une regle qui crierait
+    # sur tout constat parlant de llms.txt passerait le cas rouge.
+    base = etude_minimale(racine / "directives-verte" / "seo")
+    fiche_sur_disque(base, CHEMIN_58,
+                     "llms.txt porte 12 URL, toutes vivantes au 26/08, et annonce "
+                     "« Nos 5 gites » — conforme a ce que sert la page de reservation.")
+    ecarts, resume = controler_directives_ia(base, [noeud])
+    b.attendu("le meme verdict, adosse a une lecture du contenu", bool(ecarts), False, resume)
+
+    # VERTE — la seule reponse honnete quand il n y a rien a lire n est pas punie.
+    base = etude_minimale(racine / "directives-absent" / "seo")
+    fiche_sur_disque(base, CHEMIN_58, "llms.txt est absent du site : rien a confronter.")
+    ecarts, resume = controler_directives_ia(base, [noeud])
+    b.attendu("un fichier declare ABSENT n a aucun contenu a citer", bool(ecarts), False, resume)
+
+    # BORNE — un noeud dont la source ne nomme pas le fichier n est pas concerne.
+    base = etude_minimale(racine / "directives-hors-portee" / "seo")
+    autre = fiche_noeud(30, "Canonical", SOURCE_CRAWL, "conforme")
+    autre["chemin"] = "06-technique/01-canonical"
+    ecarts, resume = controler_directives_ia(base, [autre])
+    b.attendu("un noeud hors du champ des directives n est pas juge", bool(ecarts), False, resume)
+
+    # BORNE — un verdict NON affirmatif ne se juge pas : il n affirme rien.
+    base = etude_minimale(racine / "directives-non-mesure" / "seo")
+    fiche_sur_disque(base, CHEMIN_58, "llms.txt : non mesure ce run.")
+    non_mesure = fiche_noeud(58, "Acces & Directives IA", SOURCE_DIRECTIVES, "non-mesure")
+    non_mesure["chemin"] = CHEMIN_58
+    ecarts, resume = controler_directives_ia(base, [non_mesure])
+    b.attendu("« non-mesure » n affirme rien, donc rien a corroborer", bool(ecarts), False, resume)
+
+    # BORNE — un constat qui ne PARLE PAS du fichier ne se voit rien reprocher. Un noeud rendu
+    # non-conforme parce que robots.txt bloque un agent n a rien a dire de llms.txt, et l accuser
+    # serait inventer une exigence que la grille ne porte pas.
+    base = etude_minimale(racine / "directives-robots" / "seo")
+    fiche_sur_disque(base, CHEMIN_58,
+                     "robots.txt interdit GPTBot sans decision consignee : non-conforme.")
+    non_conforme = fiche_noeud(58, "Acces & Directives IA", SOURCE_DIRECTIVES, "non-conforme")
+    non_conforme["chemin"] = CHEMIN_58
+    ecarts, resume = controler_directives_ia(base, [non_conforme])
+    b.attendu("un constat muet sur le fichier n est pas accuse", bool(ecarts), False, resume)
+
+
+def cas_synthese_grille(b: Bilan, racine: Path) -> None:
+    """La grille et ses propres tables de synthese doivent dire la meme chose.
+
+    TF-0653 : les TROIS tables annoncaient « Total 87 » pour 88 noeuds, et depuis QUINZE JOURS.
+    L'insertion du noeud 58 le 11/08 avait produit sa table de CORRESPONDANCE — 30 identifiants
+    decales, tous declares — mais aucune des syntheses LISIBLES n'avait suivi. Le registre
+    exigeait une correspondance ; il n'exigeait rien de la synthese.
+
+    Ces tables sont ce qu'on LIT pour planifier une evolution : « ou inserer, quels identifiants
+    bougent ». Planifier contre une carte fausse produit une renumerotation fausse, et une
+    renumerotation fausse fait pointer chaque constat d'une etude ouverte sur un autre noeud que
+    celui mesure — le defaut fondateur que ce registre existe pour empecher.
+    """
+    ecarts, resume = controler_synthese_grille()
+    b.attendu("la grille reelle et ses syntheses s accordent", bool(ecarts), False, resume)
+
+    # ROUGE — le defaut d'origine, remis mot pour mot dans sa forme.
+    fausse = racine / "grille-fausse.md"
+    texte = GRILLE.read_text(encoding="utf-8")
+    fausse.write_text(
+        texte.replace("| **Local** | **5** | **59-63** |", "| **Local** | **5** | **58-62** |")
+             .replace("| `TRANSVERSAL` | 52 |", "| `TRANSVERSAL` | 51 |"),
+        encoding="utf-8",
+    )
+    ecarts, _ = controler_synthese_grille(fausse)
+    b.attendu(
+        "une plage de branche et un compte de volet decales d un rang",
+        len(ecarts) == 2 and any("Local" in e for e in ecarts), True,
+        ecarts[0][:110] if ecarts else "aucun ecart releve",
+    )
+
+    # ROUGE — le total, qui etait faux dans les TROIS tables a la fois.
+    total = racine / "grille-total-faux.md"
+    total.write_text(texte.replace("**Total** | **88**", "**Total** | **87**"), encoding="utf-8")
+    ecarts, _ = controler_synthese_grille(total)
+    b.attendu(
+        "un total de synthese qui ne vaut pas le nombre de noeuds",
+        len(ecarts) == 3 and all("total" in e for e in ecarts), True,
+        ecarts[0][:110] if ecarts else "aucun ecart releve",
+    )
+
+    # BORNE — un document sans table chiffree n est pas accuse : la regle ne s invente pas de cible.
+    nue = racine / "grille-sans-synthese.md"
+    nue.write_text("# Grille\n\nDu texte, aucune table de synthese.\n", encoding="utf-8")
+    ecarts, resume = controler_synthese_grille(nue)
+    b.attendu("un document sans table chiffree n est pas juge", bool(ecarts), False, resume)
+
+
 # ----------------------------------------------------------------------- main
 
 
@@ -365,6 +499,8 @@ CAS = [
     ("TF-0048 -- tables de correspondance de grille", cas_correspondances),
     ("TF-0030 -- mise en prose des fiches", cas_prose),
     ("TF-0264 -- verdicts de terrain adosses au terrain", cas_terrain),
+    ("TF-0636 -- la presence des directives IA n est pas leur exactitude", cas_directives_ia),
+    ("TF-0653 -- la grille et ses propres tables de synthese", cas_synthese_grille),
 ]
 
 

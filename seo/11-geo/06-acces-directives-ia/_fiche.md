@@ -30,11 +30,11 @@ crawl (robots.txt, llms.txt, en-têtes) + logs si fournis
 
 ## Methode
 
-vérifier robots.txt pour chaque agent IA de recherche (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended…) — posture par défaut : AUTORISÉ (décision du 11/08/2026), tout blocage est une décision consignée et datée du propriétaire ; distinguer agents d'entraînement et agents de recherche ; vérifier la présence de llms.txt et sa cohérence avec le sitemap (standard émergent ADOPTÉ par décision du 11/08/2026 — consommation par les moteurs à réévaluer par vérification web datée à chaque run) ; contrôler qu'aucun blocage CDN/WAF ne frappe ces UA quand les logs le montrent
+vérifier robots.txt pour chaque agent IA de recherche (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended…) — posture par défaut : AUTORISÉ (décision du 11/08/2026), tout blocage est une décision consignée et datée du propriétaire ; distinguer agents d'entraînement et agents de recherche ; LIRE le contenu de llms.txt — pas seulement constater sa présence : chaque URL qu'il cite doit répondre, et ce qu'il annonce doit correspondre à ce que le site sert ; vérifier aussi sa cohérence avec le sitemap (standard émergent ADOPTÉ par décision du 11/08/2026 — consommation par les moteurs à réévaluer par vérification web datée à chaque run). Ce fichier existe pour être repris SANS vérification par des modèles de langue : une erreur y porte plus loin qu'ailleurs ; contrôler qu'aucun blocage CDN/WAF ne frappe ces UA quand les logs le montrent
 
 ## Critere de verdict
 
-aucun agent IA de recherche interdit sans décision consignée · llms.txt présent et cohérent avec le sitemap · zéro blocage CDN/WAF constaté sur les UA IA (si logs fournis)
+aucun agent IA de recherche interdit sans décision consignée · llms.txt présent ET SON CONTENU LU — URLs citées vivantes, annonces confrontées à ce que le site sert, cohérence avec le sitemap ; la présence et l'accessibilité ne valent PAS vérification du contenu · zéro blocage CDN/WAF constaté sur les UA IA (si logs fournis)
 
 ---
 

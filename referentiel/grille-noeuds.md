@@ -210,7 +210,7 @@ apparaître. Elle est isolée sur une seule ligne pour être révisée sans touc
 | 55 | Citations | TRANSVERSAL | Le site est-il cité comme source sur ses sujets par des tiers ? | recherche web | rechercher les sujets propriétaires du site et relever qui est cité comme source | ≥ 3 citations comme source sur des sujets du site | `SD` partiel — exhaustivité `PY` |
 | 56 | Contenu Utile | TRANSVERSAL | Le contenu apporte-t-il une information non substituable ? | crawl + recherche web | échantillon de 10 pages : chercher au moins un élément introuvable ailleurs (donnée propre, expérience vécue, méthode, chiffre original) | ≥ 60 % des pages de l'échantillon portent un élément non substituable | `SD` |
 | 57 | Présence Dans Les Réponses IA | TRANSVERSAL | La marque ou le site apparaît-il dans les réponses des moteurs génératifs sur ses requêtes cibles ? | test manuel documenté + vérification web datée du protocole | **protocole à établir au run** : les surfaces et leur comportement changent. Tester N requêtes cibles, consigner la formulation exacte, la date, la surface interrogée, et si le site est cité | taux de citation sur les requêtes cibles, relevé et daté | `SD` — **résultat non reproductible et non stable : le déclarer explicitement, ne jamais présenter le taux comme une métrique de suivi fiable** |
-| 58 | Accès & Directives IA | TRANSVERSAL | Les agents des moteurs génératifs peuvent-ils accéder au site, et les directives IA sont-elles posées ? | crawl (robots.txt, llms.txt, en-têtes) + logs si fournis | vérifier robots.txt pour chaque agent IA de recherche (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended…) — posture par défaut : AUTORISÉ (décision du 11/08/2026), tout blocage est une décision consignée et datée du propriétaire ; distinguer agents d'entraînement et agents de recherche ; vérifier la présence de llms.txt et sa cohérence avec le sitemap (standard émergent ADOPTÉ par décision du 11/08/2026 — consommation par les moteurs à réévaluer par vérification web datée à chaque run) ; contrôler qu'aucun blocage CDN/WAF ne frappe ces UA quand les logs le montrent | aucun agent IA de recherche interdit sans décision consignée · llms.txt présent et cohérent avec le sitemap · zéro blocage CDN/WAF constaté sur les UA IA (si logs fournis) | `SD` partiel — logs `EX` |
+| 58 | Accès & Directives IA | TRANSVERSAL | Les agents des moteurs génératifs peuvent-ils accéder au site, et les directives IA sont-elles posées ? | crawl (robots.txt, llms.txt, en-têtes) + logs si fournis | vérifier robots.txt pour chaque agent IA de recherche (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended…) — posture par défaut : AUTORISÉ (décision du 11/08/2026), tout blocage est une décision consignée et datée du propriétaire ; distinguer agents d'entraînement et agents de recherche ; LIRE le contenu de llms.txt — pas seulement constater sa présence : chaque URL qu'il cite doit répondre, et ce qu'il annonce doit correspondre à ce que le site sert ; vérifier aussi sa cohérence avec le sitemap (standard émergent ADOPTÉ par décision du 11/08/2026 — consommation par les moteurs à réévaluer par vérification web datée à chaque run). Ce fichier existe pour être repris SANS vérification par des modèles de langue : une erreur y porte plus loin qu'ailleurs ; contrôler qu'aucun blocage CDN/WAF ne frappe ces UA quand les logs le montrent | aucun agent IA de recherche interdit sans décision consignée · llms.txt présent ET SON CONTENU LU — URLs citées vivantes, annonces confrontées à ce que le site sert, cohérence avec le sitemap ; la présence et l'accessibilité ne valent PAS vérification du contenu · zéro blocage CDN/WAF constaté sur les UA IA (si logs fournis) | `SD` partiel — logs `EX` |
 
 ---
 
@@ -309,25 +309,25 @@ est un résultat et non une dette d'instrumentation.*
 | Signaux | 5 | 43-47 |
 | Discover | 5 | 48-52 |
 | GEO | 6 | 53-58 |
-| **Local** | **5** | **58-62** |
-| Automatisation | 5 | 63-67 |
-| Mesure | 5 | 68-72 |
+| **Local** | **5** | **59-63** |
+| Automatisation | 5 | 64-68 |
+| Mesure | 5 | 69-73 |
 | Optimisation | 5 | 74-78 |
 | Croissance | 5 | 79-83 |
 | Objectif | 5 | 84-88 |
-| **Total** | **87** | — |
+| **Total** | **88** | — |
 
 ### Par statut
 
 | Statut | Nombre | Lecture |
 |---|---|---|
-| `SD` — sans dépendance externe | **53** | mesurables sur tout site, sans rien demander au client |
+| `SD` — sans dépendance externe | **54** | mesurables sur tout site, sans rien demander au client |
 | `EX` — si export fourni | **18** | dépendent de GSC / GA / CRM |
 | `PY` — si outil payant | **5** | dépendent d'un index de backlinks ou d'une source de volume |
 | `NM` — non mesurable | **6** | logs serveur, CRM, données économiques |
 | `RV` — renvoi doublon | **2** | audités dans leur branche autoritaire |
 | `CA` — cadrage | **3** | entrées et cibles, pas des audits |
-| **Total** | **87** | — |
+| **Total** | **88** | — |
 
 ### Par volet
 
@@ -335,9 +335,9 @@ est un résultat et non une dette d'instrumentation.*
 |---|---|
 | `ÉTAT` | 16 |
 | `STRATÉGIE` | 15 |
-| `TRANSVERSAL` | 51 |
+| `TRANSVERSAL` | 52 |
 | `CADRAGE` | 5 |
-| **Total** | **87** |
+| **Total** | **88** |
 
 **Sans aucun export client**, 53 nœuds sur 87 restent instrumentés (61 %), et 24 basculent en non mesurable (18 `EX` + 6 `NM`), dont l'intégralité de la mesure de performance. C'est le chiffre à annoncer en R0.
 
