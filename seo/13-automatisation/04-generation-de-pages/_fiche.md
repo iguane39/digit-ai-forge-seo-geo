@@ -1,10 +1,10 @@
 ---
-id: 67
+id: 68
 branche: Automatisation
 noeud: Génération De Pages
 volet: TRANSVERSAL
 statut_instrumentation: SD
-source_requise: "crawl (nœud 25) + déclaratif"
+source_requise: "crawl (nœud 26) + déclaratif"
 doublon_de: null
 modeles: b2b-lead-gen,e-commerce,local,media-affiliation,saas
 # --- rempli pendant la mission ---
@@ -26,7 +26,7 @@ Des pages sont-elles générées à l'échelle, et avec quel contrôle qualité 
 
 ## Source requise
 
-crawl (nœud 25) + déclaratif
+crawl (nœud 26) + déclaratif
 
 ## Methode
 

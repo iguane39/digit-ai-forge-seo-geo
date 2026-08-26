@@ -11,12 +11,12 @@ nb_noeuds: 6
 
 | # | Noeud | Volet | Statut | Dossier |
 |---|---|---|---|---|
-| 27 | Crawl | ETAT | `SD` | `01-crawl/` |
-| 28 | Indexation | ETAT | `RV` | `02-indexation/` |
-| 29 | Logs Serveur | ETAT | `NM` | `03-logs-serveur/` |
-| 30 | Canonical | ETAT | `SD` | `04-canonical/` |
-| 31 | Performance | ETAT | `SD` | `05-performance/` |
-| 32 | Schema | ETAT | `SD` | `06-schema/` |
+| 28 | Crawl | ETAT | `SD` | `01-crawl/` |
+| 29 | Indexation | ETAT | `RV` | `02-indexation/` |
+| 30 | Logs Serveur | ETAT | `NM` | `03-logs-serveur/` |
+| 31 | Canonical | ETAT | `SD` | `04-canonical/` |
+| 32 | Performance | ETAT | `SD` | `05-performance/` |
+| 33 | Schema | ETAT | `SD` | `06-schema/` |
 
 > Referentiel canonique de la forge, en lecture seule. Le travail se fait
 > dans le dossier `seo/analyse/` du projet audite.

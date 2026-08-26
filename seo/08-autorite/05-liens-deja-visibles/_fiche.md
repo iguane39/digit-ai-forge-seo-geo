@@ -1,5 +1,5 @@
 ---
-id: 42
+id: 43
 branche: Autorité
 noeud: Liens Déjà Visibles
 volet: TRANSVERSAL
@@ -30,7 +30,7 @@ recherche web + crawl des 404
 
 ## Methode
 
-croiser les mentions du nœud 41 sans lien sortant, et les URLs en 404 recevant des liens
+croiser les mentions du nœud 42 sans lien sortant, et les URLs en 404 recevant des liens
 
 ## Critere de verdict
 

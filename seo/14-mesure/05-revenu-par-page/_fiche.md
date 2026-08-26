@@ -1,12 +1,12 @@
 ---
-id: 73
+id: 74
 branche: Mesure
 noeud: Revenu Par Page
 volet: TRANSVERSAL
 statut_instrumentation: NM
 source_requise: "GA e-commerce ou CRM rapproché des pages d'entrée"
 doublon_de: null
-modeles: b2b-lead-gen,e-commerce,local,media-affiliation,saas
+modeles: e-commerce,media-affiliation
 # --- rempli pendant la mission ---
 etat: a-faire
 motif_hors_perimetre: null

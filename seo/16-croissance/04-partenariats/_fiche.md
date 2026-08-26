@@ -1,10 +1,10 @@
 ---
-id: 82
+id: 83
 branche: Croissance
 noeud: Partenariats
 volet: STRATEGIE
 statut_instrumentation: SD
-source_requise: "nœuds 41, 42, 51 + cadrage"
+source_requise: "nœuds 42, 43, 52 + cadrage"
 doublon_de: null
 modeles: b2b-lead-gen,e-commerce,local,media-affiliation,saas
 # --- rempli pendant la mission ---
@@ -26,7 +26,7 @@ Quels partenaires peuvent apporter autorité et audience ?
 
 ## Source requise
 
-nœuds 41, 42, 51 + cadrage
+nœuds 42, 43, 52 + cadrage
 
 ## Methode
 

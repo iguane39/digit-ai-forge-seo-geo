@@ -11,12 +11,12 @@ nb_noeuds: 6
 
 | # | Noeud | Volet | Statut | Dossier |
 |---|---|---|---|---|
-| 21 | Pages Piliers | TRANSVERSAL | `SD` | `01-pages-piliers/` |
-| 22 | Guides | TRANSVERSAL | `SD` | `02-guides/` |
-| 23 | Comparatifs | TRANSVERSAL | `SD` | `03-comparatifs/` |
-| 24 | FAQ | TRANSVERSAL | `SD` | `04-faq/` |
-| 25 | Contenu Programmatique | TRANSVERSAL | `SD` | `05-contenu-programmatique/` |
-| 26 | Contenu Pensé Pour Les LLM | TRANSVERSAL | `SD` | `06-contenu-pense-pour-les-llm/` |
+| 22 | Pages Piliers | TRANSVERSAL | `SD` | `01-pages-piliers/` |
+| 23 | Guides | TRANSVERSAL | `SD` | `02-guides/` |
+| 24 | Comparatifs | TRANSVERSAL | `SD` | `03-comparatifs/` |
+| 25 | FAQ | TRANSVERSAL | `SD` | `04-faq/` |
+| 26 | Contenu Programmatique | TRANSVERSAL | `SD` | `05-contenu-programmatique/` |
+| 27 | Contenu Pensé Pour Les LLM | TRANSVERSAL | `SD` | `06-contenu-pense-pour-les-llm/` |
 
 > Referentiel canonique de la forge, en lecture seule. Le travail se fait
 > dans le dossier `seo/analyse/` du projet audite.

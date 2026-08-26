@@ -1,5 +1,5 @@
 ---
-id: 46
+id: 47
 branche: Signaux
 noeud: Comportement Post Clic
 volet: ETAT

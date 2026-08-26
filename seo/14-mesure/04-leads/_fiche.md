@@ -1,12 +1,12 @@
 ---
-id: 72
+id: 73
 branche: Mesure
 noeud: Leads
 volet: TRANSVERSAL
 statut_instrumentation: NM
 source_requise: "GA (conversions) + CRM"
 doublon_de: null
-modeles: e-commerce,media-affiliation
+modeles: b2b-lead-gen,e-commerce,local,media-affiliation,saas
 # --- rempli pendant la mission ---
 etat: a-faire
 motif_hors_perimetre: null

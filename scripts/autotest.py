@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -458,30 +459,54 @@ def cas_synthese_grille(b: Bilan, racine: Path) -> None:
     ecarts, resume = controler_synthese_grille()
     b.attendu("la grille reelle et ses syntheses s accordent", bool(ecarts), False, resume)
 
-    # ROUGE — le defaut d'origine, remis mot pour mot dans sa forme.
-    fausse = racine / "grille-fausse.md"
+    # ROUGE — la MEME forme que le defaut d'origine, mais DERIVEE de la grille du jour.
+    #
+    # Le premier jet ecrivait les valeurs en dur — « Local 59-63 », « TRANSVERSAL 52 », « Total
+    # 88 ». Une fixture qui fige un nombre que la grille a le DROIT de changer casse a la premiere
+    # evolution legitime, et elle casse pour une raison qui n'est pas celle qu'elle mesure : on
+    # croit avoir trouve un defaut, on a seulement vieilli. Ces cas perturbent donc ce que la
+    # grille dit AUJOURD'HUI, quel que soit ce qu'elle dit.
     texte = GRILLE.read_text(encoding="utf-8")
-    fausse.write_text(
-        texte.replace("| **Local** | **5** | **59-63** |", "| **Local** | **5** | **58-62** |")
-             .replace("| `TRANSVERSAL` | 52 |", "| `TRANSVERSAL` | 51 |"),
-        encoding="utf-8",
-    )
-    ecarts, _ = controler_synthese_grille(fausse)
-    b.attendu(
-        "une plage de branche et un compte de volet decales d un rang",
-        len(ecarts) == 2 and any("Local" in e for e in ecarts), True,
-        ecarts[0][:110] if ecarts else "aucun ecart releve",
-    )
+
+    plage = re.search(r"^\|\s*\*{0,2}[^|`*]+\*{0,2}\s*\|\s*\*{0,2}\d+\*{0,2}\s*\|\s*\*{0,2}(\d+)-(\d+)\*{0,2}\s*\|$",
+                      texte, re.MULTILINE)
+    fausse = racine / "grille-fausse.md"
+    if plage:
+        # La perturbation ne touche QUE la plage — pas le compte, qui reste juste. Le premier jet
+        # remplacait « la premiere occurrence du chiffre » et atteignait la colonne du compte :
+        # le cas rougissait quand meme, mais sur autre chose que ce qu'il annonce. Une fixture
+        # doit etre fausse sur le point qu'elle teste et JUSTE sur tout le reste.
+        avant, apres = plage.group(1), plage.group(2)
+        decalee = plage.group(0).replace(f"{avant}-{apres}", f"{int(avant) - 1}-{int(apres) - 1}", 1)
+        fausse.write_text(texte.replace(plage.group(0), decalee, 1), encoding="utf-8")
+        ecarts, _ = controler_synthese_grille(fausse)
+        b.attendu(
+            "une plage de branche decalee d un rang",
+            len(ecarts) == 1 and "table par branche" in ecarts[0], True,
+            ecarts[0][:110] if ecarts else "aucun ecart releve",
+        )
+    else:
+        b.attendu("une plage de branche decalee d un rang", False, False,
+                  "NON JOUE : aucune ligne de plage dans la grille du jour")
 
     # ROUGE — le total, qui etait faux dans les TROIS tables a la fois.
+    totaux = re.findall(r"^\|\s*\*{0,2}Total\*{0,2}\s*\|\s*\*{0,2}(\d+)\*{0,2}\s*\|", texte, re.MULTILINE)
     total = racine / "grille-total-faux.md"
-    total.write_text(texte.replace("**Total** | **88**", "**Total** | **87**"), encoding="utf-8")
-    ecarts, _ = controler_synthese_grille(total)
-    b.attendu(
-        "un total de synthese qui ne vaut pas le nombre de noeuds",
-        len(ecarts) == 3 and all("total" in e for e in ecarts), True,
-        ecarts[0][:110] if ecarts else "aucun ecart releve",
-    )
+    reel = totaux[0] if totaux else None
+    if reel:
+        total.write_text(
+            re.sub(r"(\|\s*\*{0,2}Total\*{0,2}\s*\|\s*\*{0,2})" + reel + r"(\*{0,2}\s*\|)",
+                   r"\g<1>" + str(int(reel) - 1) + r"\g<2>", texte),
+            encoding="utf-8")
+        ecarts, _ = controler_synthese_grille(total)
+        b.attendu(
+            "un total de synthese qui ne vaut pas le nombre de noeuds",
+            len(ecarts) == len(totaux) and all("total" in e for e in ecarts), True,
+            ecarts[0][:110] if ecarts else "aucun ecart releve",
+        )
+    else:
+        b.attendu("un total de synthese qui ne vaut pas le nombre de noeuds", False, False,
+                  "NON JOUE : aucun total chiffre dans la grille du jour")
 
     # BORNE — un document sans table chiffree n est pas accuse : la regle ne s invente pas de cible.
     nue = racine / "grille-sans-synthese.md"

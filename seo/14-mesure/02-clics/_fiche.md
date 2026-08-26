@@ -1,5 +1,5 @@
 ---
-id: 70
+id: 71
 branche: Mesure
 noeud: Clics
 volet: TRANSVERSAL

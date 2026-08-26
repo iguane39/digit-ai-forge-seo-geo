@@ -1,5 +1,5 @@
 ---
-id: 25
+id: 26
 branche: Contenu
 noeud: Contenu Programmatique
 volet: TRANSVERSAL
@@ -34,7 +34,7 @@ détecter les motifs d'URL répétés ; échantillonner 10 pages du même motif 
 
 ## Critere de verdict
 
-≥ 40 % de contenu unique par page **et** valeur propre pour l'utilisateur, sinon candidat au nœud 75
+≥ 40 % de contenu unique par page **et** valeur propre pour l'utilisateur, sinon candidat au nœud 76
 
 ---
 

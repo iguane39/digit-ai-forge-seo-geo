@@ -1,5 +1,5 @@
 ---
-id: 26
+id: 27
 branche: Contenu
 noeud: Contenu Pensé Pour Les LLM
 volet: TRANSVERSAL

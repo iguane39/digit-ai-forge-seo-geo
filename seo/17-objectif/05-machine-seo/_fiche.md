@@ -1,5 +1,5 @@
 ---
-id: 88
+id: 89
 branche: Objectif
 noeud: Machine SEO
 volet: CADRAGE
@@ -34,7 +34,7 @@ scorer la maturité sur 5 : 1 = actions ponctuelles sans mesure · 3 = mesure en
 
 ## Critere de verdict
 
-score de maturité 1-5, justifié par les nœuds 58-62, 64-68 et 69-73
+score de maturité 1-5, justifié par les nœuds 59-63, 65-69 et 70-74
 
 ---
 

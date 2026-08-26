@@ -4,8 +4,8 @@
   "avertissement": "Genere par scripts/scaffold.py depuis la grille. Ne pas editer a la main : validate.py detecte toute derive. Le fichier input/Schema SEO.MD n'est parse par aucun script (indentation cassee du bloc Objectif -- voir scripts/grille.py).",
   "comptes": {
     "branches": 17,
-    "noeuds": 88,
-    "dossiers": 105
+    "noeuds": 89,
+    "dossiers": 106
   },
   "branches": [
     {
@@ -57,7 +57,8 @@
         17,
         18,
         19,
-        20
+        20,
+        21
       ]
     },
     {
@@ -66,12 +67,12 @@
       "slug": "05-contenu",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        21,
         22,
         23,
         24,
         25,
-        26
+        26,
+        27
       ]
     },
     {
@@ -80,12 +81,12 @@
       "slug": "06-technique",
       "volet_dominant": "ETAT",
       "noeuds": [
-        27,
         28,
         29,
         30,
         31,
-        32
+        32,
+        33
       ]
     },
     {
@@ -94,11 +95,11 @@
       "slug": "07-indexation",
       "volet_dominant": "ETAT",
       "noeuds": [
-        33,
         34,
         35,
         36,
-        37
+        37,
+        38
       ]
     },
     {
@@ -107,11 +108,11 @@
       "slug": "08-autorite",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        38,
         39,
         40,
         41,
-        42
+        42,
+        43
       ]
     },
     {
@@ -120,11 +121,11 @@
       "slug": "09-signaux",
       "volet_dominant": "ETAT",
       "noeuds": [
-        43,
         44,
         45,
         46,
-        47
+        47,
+        48
       ]
     },
     {
@@ -133,11 +134,11 @@
       "slug": "10-discover",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        48,
         49,
         50,
         51,
-        52
+        52,
+        53
       ]
     },
     {
@@ -146,12 +147,12 @@
       "slug": "11-geo",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        53,
         54,
         55,
         56,
         57,
-        58
+        58,
+        59
       ]
     },
     {
@@ -160,11 +161,11 @@
       "slug": "12-local",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        59,
         60,
         61,
         62,
-        63
+        63,
+        64
       ]
     },
     {
@@ -173,11 +174,11 @@
       "slug": "13-automatisation",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        64,
         65,
         66,
         67,
-        68
+        68,
+        69
       ]
     },
     {
@@ -186,11 +187,11 @@
       "slug": "14-mesure",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        69,
         70,
         71,
         72,
-        73
+        73,
+        74
       ]
     },
     {
@@ -199,11 +200,11 @@
       "slug": "15-optimisation",
       "volet_dominant": "TRANSVERSAL",
       "noeuds": [
-        74,
         75,
         76,
         77,
-        78
+        78,
+        79
       ]
     },
     {
@@ -212,11 +213,11 @@
       "slug": "16-croissance",
       "volet_dominant": "STRATEGIE",
       "noeuds": [
-        79,
         80,
         81,
         82,
-        83
+        83,
+        84
       ]
     },
     {
@@ -225,11 +226,11 @@
       "slug": "17-objectif",
       "volet_dominant": "CADRAGE",
       "noeuds": [
-        84,
         85,
         86,
         87,
-        88
+        88,
+        89
       ]
     }
   ],
@@ -696,6 +697,29 @@
     },
     {
       "id": 21,
+      "branche": "Mots Clés",
+      "slug_branche": "04-mots-cles",
+      "noeud": "Adéquation Lexicale par Marché",
+      "slug_noeud": "06-adequation-lexicale-par-marche",
+      "chemin": "04-mots-cles/06-adequation-lexicale-par-marche",
+      "volet": "TRANSVERSAL",
+      "statut": "SD",
+      "question_audit": "Le vocabulaire SERVI dans chaque locale est-il celui que ce marché emploie réellement ?",
+      "source_requise": "catalogue de langue servi + glossaire du projet (`docs\\projet\\GLOSSAIRE.md`, R-53 du pilot) + complétions de recherche par marché ; Search Console par pays si export fourni",
+      "methode": "pour chaque locale servie, confronter le vocabulaire des QUATRE niveaux — title/meta, H1, corps et navigation, puis hreflang/sitemap/canoniques — aux termes réellement employés dans cette langue pour cette catégorie de produit ; signaler les HOMOGRAPHES TROMPEURS, cas le plus coûteux et le moins visible ; DÉCLARER les limites de la sonde — pas de volume, pas de géolocalisation fiable, le paramètre de langue d'une complétion fixe l'INTERFACE et non le pays du chercheur",
+      "critere_verdict": "pour chaque locale, le terme retenu est celui du marché, établi par AU MOINS DEUX sources de nature différente · zéro homographe trompeur non signalé · les quatre niveaux COHÉRENTS entre eux — corriger le title sans le corps crée une incohérence entre ce que la page promet et ce qu'elle contient",
+      "reserve": "partiel — Search Console `EX",
+      "doublon_de": null,
+      "modeles": [
+        "b2b-lead-gen",
+        "e-commerce",
+        "local",
+        "media-affiliation",
+        "saas"
+      ]
+    },
+    {
+      "id": 22,
       "branche": "Contenu",
       "slug_branche": "05-contenu",
       "noeud": "Pages Piliers",
@@ -718,7 +742,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 23,
       "branche": "Contenu",
       "slug_branche": "05-contenu",
       "noeud": "Guides",
@@ -741,7 +765,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 24,
       "branche": "Contenu",
       "slug_branche": "05-contenu",
       "noeud": "Comparatifs",
@@ -764,7 +788,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 25,
       "branche": "Contenu",
       "slug_branche": "05-contenu",
       "noeud": "FAQ",
@@ -787,7 +811,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 26,
       "branche": "Contenu",
       "slug_branche": "05-contenu",
       "noeud": "Contenu Programmatique",
@@ -798,7 +822,7 @@
       "question_audit": "Des gabarits génèrent-ils des pages à l'échelle, et sont-elles de qualité indexable ?",
       "source_requise": "crawl",
       "methode": "détecter les motifs d'URL répétés ; échantillonner 10 pages du même motif ; mesurer la part de contenu unique hors gabarit",
-      "critere_verdict": "≥ 40 % de contenu unique par page **et** valeur propre pour l'utilisateur, sinon candidat au nœud 75",
+      "critere_verdict": "≥ 40 % de contenu unique par page **et** valeur propre pour l'utilisateur, sinon candidat au nœud 76",
       "reserve": "",
       "doublon_de": null,
       "modeles": [
@@ -808,7 +832,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 27,
       "branche": "Contenu",
       "slug_branche": "05-contenu",
       "noeud": "Contenu Pensé Pour Les LLM",
@@ -831,7 +855,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 28,
       "branche": "Technique",
       "slug_branche": "06-technique",
       "noeud": "Crawl",
@@ -854,7 +878,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 29,
       "branche": "Technique",
       "slug_branche": "06-technique",
       "noeud": "Indexation",
@@ -864,7 +888,7 @@
       "statut": "RV",
       "question_audit": "*(doublon du schéma)*",
       "source_requise": "—",
-      "methode": "**renvoi vers la branche `Indexation`, nœuds 33-37**",
+      "methode": "**renvoi vers la branche `Indexation`, nœuds 34-38**",
       "critere_verdict": "ne pas auditer ici",
       "reserve": "",
       "doublon_de": "07-indexation",
@@ -877,7 +901,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 30,
       "branche": "Technique",
       "slug_branche": "06-technique",
       "noeud": "Logs Serveur",
@@ -900,7 +924,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 31,
       "branche": "Technique",
       "slug_branche": "06-technique",
       "noeud": "Canonical",
@@ -923,7 +947,7 @@
       ]
     },
     {
-      "id": 31,
+      "id": 32,
       "branche": "Technique",
       "slug_branche": "06-technique",
       "noeud": "Performance",
@@ -946,7 +970,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 33,
       "branche": "Technique",
       "slug_branche": "06-technique",
       "noeud": "Schema",
@@ -969,7 +993,7 @@
       ]
     },
     {
-      "id": 33,
+      "id": 34,
       "branche": "Indexation",
       "slug_branche": "07-indexation",
       "noeud": "Sitemap",
@@ -992,7 +1016,7 @@
       ]
     },
     {
-      "id": 34,
+      "id": 35,
       "branche": "Indexation",
       "slug_branche": "07-indexation",
       "noeud": "Search Console",
@@ -1015,7 +1039,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 36,
       "branche": "Indexation",
       "slug_branche": "07-indexation",
       "noeud": "Découverte Google",
@@ -1038,7 +1062,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 37,
       "branche": "Indexation",
       "slug_branche": "07-indexation",
       "noeud": "Pages Profondes",
@@ -1061,7 +1085,7 @@
       ]
     },
     {
-      "id": 37,
+      "id": 38,
       "branche": "Indexation",
       "slug_branche": "07-indexation",
       "noeud": "Indexation De Masse",
@@ -1084,7 +1108,7 @@
       ]
     },
     {
-      "id": 38,
+      "id": 39,
       "branche": "Autorité",
       "slug_branche": "08-autorite",
       "noeud": "Backlinks",
@@ -1107,7 +1131,7 @@
       ]
     },
     {
-      "id": 39,
+      "id": 40,
       "branche": "Autorité",
       "slug_branche": "08-autorite",
       "noeud": "Trafic GSC",
@@ -1130,7 +1154,7 @@
       ]
     },
     {
-      "id": 40,
+      "id": 41,
       "branche": "Autorité",
       "slug_branche": "08-autorite",
       "noeud": "Pertinence Thématique",
@@ -1153,7 +1177,7 @@
       ]
     },
     {
-      "id": 41,
+      "id": 42,
       "branche": "Autorité",
       "slug_branche": "08-autorite",
       "noeud": "Mentions De Marque",
@@ -1176,7 +1200,7 @@
       ]
     },
     {
-      "id": 42,
+      "id": 43,
       "branche": "Autorité",
       "slug_branche": "08-autorite",
       "noeud": "Liens Déjà Visibles",
@@ -1186,7 +1210,7 @@
       "statut": "SD",
       "question_audit": "Quels liens existants sont récupérables (mentions non liées, liens vers 404) ?",
       "source_requise": "recherche web + crawl des 404",
-      "methode": "croiser les mentions du nœud 41 sans lien sortant, et les URLs en 404 recevant des liens",
+      "methode": "croiser les mentions du nœud 42 sans lien sortant, et les URLs en 404 recevant des liens",
       "critere_verdict": "liste nominative d'opportunités, chiffrée en nombre de domaines",
       "reserve": "partiel — `PY` pour la détection exhaustive des liens vers 404",
       "doublon_de": null,
@@ -1199,7 +1223,7 @@
       ]
     },
     {
-      "id": 43,
+      "id": 44,
       "branche": "Signaux",
       "slug_branche": "09-signaux",
       "noeud": "CTR SERP",
@@ -1222,7 +1246,7 @@
       ]
     },
     {
-      "id": 44,
+      "id": 45,
       "branche": "Signaux",
       "slug_branche": "09-signaux",
       "noeud": "Trafic Référent",
@@ -1245,7 +1269,7 @@
       ]
     },
     {
-      "id": 45,
+      "id": 46,
       "branche": "Signaux",
       "slug_branche": "09-signaux",
       "noeud": "Trafic Social",
@@ -1268,7 +1292,7 @@
       ]
     },
     {
-      "id": 46,
+      "id": 47,
       "branche": "Signaux",
       "slug_branche": "09-signaux",
       "noeud": "Comportement Post Clic",
@@ -1291,7 +1315,7 @@
       ]
     },
     {
-      "id": 47,
+      "id": 48,
       "branche": "Signaux",
       "slug_branche": "09-signaux",
       "noeud": "Retours Utilisateurs",
@@ -1314,7 +1338,7 @@
       ]
     },
     {
-      "id": 48,
+      "id": 49,
       "branche": "Discover",
       "slug_branche": "10-discover",
       "noeud": "Angles Chauds",
@@ -1334,7 +1358,7 @@
       ]
     },
     {
-      "id": 49,
+      "id": 50,
       "branche": "Discover",
       "slug_branche": "10-discover",
       "noeud": "Titres Qui Attirent",
@@ -1354,7 +1378,7 @@
       ]
     },
     {
-      "id": 50,
+      "id": 51,
       "branche": "Discover",
       "slug_branche": "10-discover",
       "noeud": "Fraîcheur",
@@ -1374,7 +1398,7 @@
       ]
     },
     {
-      "id": 51,
+      "id": 52,
       "branche": "Discover",
       "slug_branche": "10-discover",
       "noeud": "Signaux Externes",
@@ -1394,7 +1418,7 @@
       ]
     },
     {
-      "id": 52,
+      "id": 53,
       "branche": "Discover",
       "slug_branche": "10-discover",
       "noeud": "Pics De Trafic",
@@ -1414,7 +1438,7 @@
       ]
     },
     {
-      "id": 53,
+      "id": 54,
       "branche": "GEO",
       "slug_branche": "11-geo",
       "noeud": "Entités",
@@ -1437,7 +1461,7 @@
       ]
     },
     {
-      "id": 54,
+      "id": 55,
       "branche": "GEO",
       "slug_branche": "11-geo",
       "noeud": "Marque",
@@ -1460,7 +1484,7 @@
       ]
     },
     {
-      "id": 55,
+      "id": 56,
       "branche": "GEO",
       "slug_branche": "11-geo",
       "noeud": "Citations",
@@ -1483,7 +1507,7 @@
       ]
     },
     {
-      "id": 56,
+      "id": 57,
       "branche": "GEO",
       "slug_branche": "11-geo",
       "noeud": "Contenu Utile",
@@ -1506,7 +1530,7 @@
       ]
     },
     {
-      "id": 57,
+      "id": 58,
       "branche": "GEO",
       "slug_branche": "11-geo",
       "noeud": "Présence Dans Les Réponses IA",
@@ -1529,7 +1553,7 @@
       ]
     },
     {
-      "id": 58,
+      "id": 59,
       "branche": "GEO",
       "slug_branche": "11-geo",
       "noeud": "Accès & Directives IA",
@@ -1552,7 +1576,7 @@
       ]
     },
     {
-      "id": 59,
+      "id": 60,
       "branche": "Local",
       "slug_branche": "12-local",
       "noeud": "Fiche D'Établissement",
@@ -1571,7 +1595,7 @@
       ]
     },
     {
-      "id": 60,
+      "id": 61,
       "branche": "Local",
       "slug_branche": "12-local",
       "noeud": "Cohérence NAP",
@@ -1590,7 +1614,7 @@
       ]
     },
     {
-      "id": 61,
+      "id": 62,
       "branche": "Local",
       "slug_branche": "12-local",
       "noeud": "Citations Et Annuaires",
@@ -1609,7 +1633,7 @@
       ]
     },
     {
-      "id": 62,
+      "id": 63,
       "branche": "Local",
       "slug_branche": "12-local",
       "noeud": "Avis Locaux",
@@ -1628,7 +1652,7 @@
       ]
     },
     {
-      "id": 63,
+      "id": 64,
       "branche": "Local",
       "slug_branche": "12-local",
       "noeud": "Pages Par Zone",
@@ -1647,7 +1671,7 @@
       ]
     },
     {
-      "id": 64,
+      "id": 65,
       "branche": "Automatisation",
       "slug_branche": "13-automatisation",
       "noeud": "Agents IA",
@@ -1670,7 +1694,7 @@
       ]
     },
     {
-      "id": 65,
+      "id": 66,
       "branche": "Automatisation",
       "slug_branche": "13-automatisation",
       "noeud": "Audits Massifs",
@@ -1693,7 +1717,7 @@
       ]
     },
     {
-      "id": 66,
+      "id": 67,
       "branche": "Automatisation",
       "slug_branche": "13-automatisation",
       "noeud": "Monitoring",
@@ -1716,7 +1740,7 @@
       ]
     },
     {
-      "id": 67,
+      "id": 68,
       "branche": "Automatisation",
       "slug_branche": "13-automatisation",
       "noeud": "Génération De Pages",
@@ -1725,7 +1749,7 @@
       "volet": "TRANSVERSAL",
       "statut": "SD",
       "question_audit": "Des pages sont-elles générées à l'échelle, et avec quel contrôle qualité ?",
-      "source_requise": "crawl (nœud 25) + déclaratif",
+      "source_requise": "crawl (nœud 26) + déclaratif",
       "methode": "relier les motifs d'URL détectés au processus de génération déclaré ; identifier le point de contrôle qualité",
       "critere_verdict": "tout gabarit génératif a un contrôle qualité nommé avant publication",
       "reserve": "",
@@ -1739,7 +1763,7 @@
       ]
     },
     {
-      "id": 68,
+      "id": 69,
       "branche": "Automatisation",
       "slug_branche": "13-automatisation",
       "noeud": "Détection Opportunités",
@@ -1762,7 +1786,7 @@
       ]
     },
     {
-      "id": 69,
+      "id": 70,
       "branche": "Mesure",
       "slug_branche": "14-mesure",
       "noeud": "Impressions",
@@ -1785,7 +1809,7 @@
       ]
     },
     {
-      "id": 70,
+      "id": 71,
       "branche": "Mesure",
       "slug_branche": "14-mesure",
       "noeud": "Clics",
@@ -1808,7 +1832,7 @@
       ]
     },
     {
-      "id": 71,
+      "id": 72,
       "branche": "Mesure",
       "slug_branche": "14-mesure",
       "noeud": "Positions",
@@ -1831,7 +1855,7 @@
       ]
     },
     {
-      "id": 72,
+      "id": 73,
       "branche": "Mesure",
       "slug_branche": "14-mesure",
       "noeud": "Leads",
@@ -1846,12 +1870,15 @@
       "reserve": "motif : exige GA **et** définition de conversion validée ; devient `EX` si fournis",
       "doublon_de": null,
       "modeles": [
+        "b2b-lead-gen",
         "e-commerce",
-        "media-affiliation"
+        "local",
+        "media-affiliation",
+        "saas"
       ]
     },
     {
-      "id": 73,
+      "id": 74,
       "branche": "Mesure",
       "slug_branche": "14-mesure",
       "noeud": "Revenu Par Page",
@@ -1866,15 +1893,12 @@
       "reserve": "motif : exige un back-office e-commerce ou un CRM rapprochable",
       "doublon_de": null,
       "modeles": [
-        "b2b-lead-gen",
         "e-commerce",
-        "local",
-        "media-affiliation",
-        "saas"
+        "media-affiliation"
       ]
     },
     {
-      "id": 74,
+      "id": 75,
       "branche": "Optimisation",
       "slug_branche": "15-optimisation",
       "noeud": "Contenus À Renforcer",
@@ -1897,7 +1921,7 @@
       ]
     },
     {
-      "id": 75,
+      "id": 76,
       "branche": "Optimisation",
       "slug_branche": "15-optimisation",
       "noeud": "Pages À Fusionner",
@@ -1920,7 +1944,7 @@
       ]
     },
     {
-      "id": 76,
+      "id": 77,
       "branche": "Optimisation",
       "slug_branche": "15-optimisation",
       "noeud": "Pages À Supprimer",
@@ -1943,7 +1967,7 @@
       ]
     },
     {
-      "id": 77,
+      "id": 78,
       "branche": "Optimisation",
       "slug_branche": "15-optimisation",
       "noeud": "Tests SEO",
@@ -1966,7 +1990,7 @@
       ]
     },
     {
-      "id": 78,
+      "id": 79,
       "branche": "Optimisation",
       "slug_branche": "15-optimisation",
       "noeud": "Boucles D'Amélioration",
@@ -1989,7 +2013,7 @@
       ]
     },
     {
-      "id": 79,
+      "id": 80,
       "branche": "Croissance",
       "slug_branche": "16-croissance",
       "noeud": "Nouveaux Silos",
@@ -2012,7 +2036,7 @@
       ]
     },
     {
-      "id": 80,
+      "id": 81,
       "branche": "Croissance",
       "slug_branche": "16-croissance",
       "noeud": "Nouveaux Sites",
@@ -2035,7 +2059,7 @@
       ]
     },
     {
-      "id": 81,
+      "id": 82,
       "branche": "Croissance",
       "slug_branche": "16-croissance",
       "noeud": "Nouveaux Médias",
@@ -2058,7 +2082,7 @@
       ]
     },
     {
-      "id": 82,
+      "id": 83,
       "branche": "Croissance",
       "slug_branche": "16-croissance",
       "noeud": "Partenariats",
@@ -2067,7 +2091,7 @@
       "volet": "STRATEGIE",
       "statut": "SD",
       "question_audit": "Quels partenaires peuvent apporter autorité et audience ?",
-      "source_requise": "nœuds 41, 42, 51 + cadrage",
+      "source_requise": "nœuds 42, 43, 52 + cadrage",
       "methode": "identifier les acteurs déjà en relation ou déjà citants, et les opportunités de réciprocité",
       "critere_verdict": "≥ 5 partenaires nominatifs, avec l'angle d'approche",
       "reserve": "",
@@ -2081,7 +2105,7 @@
       ]
     },
     {
-      "id": 83,
+      "id": 84,
       "branche": "Croissance",
       "slug_branche": "16-croissance",
       "noeud": "Actifs Qui Composent",
@@ -2104,7 +2128,7 @@
       ]
     },
     {
-      "id": 84,
+      "id": 85,
       "branche": "Objectif",
       "slug_branche": "17-objectif",
       "noeud": "Trafic Qualifié",
@@ -2127,7 +2151,7 @@
       ]
     },
     {
-      "id": 85,
+      "id": 86,
       "branche": "Objectif",
       "slug_branche": "17-objectif",
       "noeud": "Leads Entrants",
@@ -2136,27 +2160,8 @@
       "volet": "CADRAGE",
       "statut": "CA",
       "question_audit": "Quelle cible de leads organiques ?",
-      "source_requise": "cadrage + nœuds 72 et 46",
+      "source_requise": "cadrage + nœuds 73 et 47",
       "methode": "appliquer le taux de conversion observé au trafic cible ; **si le taux n'est pas mesuré, la cible est non calculable et doit être déclarée telle**",
-      "critere_verdict": "cible chiffrée ou déclaration explicite de non-calculabilité",
-      "reserve": "",
-      "doublon_de": null,
-      "modeles": [
-        "e-commerce"
-      ]
-    },
-    {
-      "id": 86,
-      "branche": "Objectif",
-      "slug_branche": "17-objectif",
-      "noeud": "Ventes",
-      "slug_noeud": "03-ventes",
-      "chemin": "17-objectif/03-ventes",
-      "volet": "CADRAGE",
-      "statut": "CA",
-      "question_audit": "Quelle cible de chiffre d'affaires organique ?",
-      "source_requise": "cadrage + nœuds 8 et 73",
-      "methode": "appliquer la valeur client aux leads cibles",
       "critere_verdict": "cible chiffrée ou déclaration explicite de non-calculabilité",
       "reserve": "",
       "doublon_de": null,
@@ -2172,6 +2177,25 @@
       "id": 87,
       "branche": "Objectif",
       "slug_branche": "17-objectif",
+      "noeud": "Ventes",
+      "slug_noeud": "03-ventes",
+      "chemin": "17-objectif/03-ventes",
+      "volet": "CADRAGE",
+      "statut": "CA",
+      "question_audit": "Quelle cible de chiffre d'affaires organique ?",
+      "source_requise": "cadrage + nœuds 8 et 74",
+      "methode": "appliquer la valeur client aux leads cibles",
+      "critere_verdict": "cible chiffrée ou déclaration explicite de non-calculabilité",
+      "reserve": "",
+      "doublon_de": null,
+      "modeles": [
+        "e-commerce"
+      ]
+    },
+    {
+      "id": 88,
+      "branche": "Objectif",
+      "slug_branche": "17-objectif",
       "noeud": "Autorité",
       "slug_noeud": "04-autorite",
       "chemin": "17-objectif/04-autorite",
@@ -2179,7 +2203,7 @@
       "statut": "RV",
       "question_audit": "*(doublon du schéma)*",
       "source_requise": "—",
-      "methode": "**renvoi vers la branche `Autorité`, nœuds 38-42**",
+      "methode": "**renvoi vers la branche `Autorité`, nœuds 39-43**",
       "critere_verdict": "ne pas auditer ici",
       "reserve": "",
       "doublon_de": "08-autorite",
@@ -2192,7 +2216,7 @@
       ]
     },
     {
-      "id": 88,
+      "id": 89,
       "branche": "Objectif",
       "slug_branche": "17-objectif",
       "noeud": "Machine SEO",
@@ -2203,7 +2227,7 @@
       "question_audit": "Le dispositif est-il autonome et répétable, ou dépend-il d'une impulsion externe ?",
       "source_requise": "synthèse des branches `Automatisation`, `Mesure`, `Optimisation`",
       "methode": "scorer la maturité sur 5 : 1 = actions ponctuelles sans mesure · 3 = mesure en place, actions réactives · 5 = détection, action et remesure outillées et cadencées",
-      "critere_verdict": "score de maturité 1-5, justifié par les nœuds 58-62, 64-68 et 69-73",
+      "critere_verdict": "score de maturité 1-5, justifié par les nœuds 59-63, 65-69 et 70-74",
       "reserve": "",
       "doublon_de": null,
       "modeles": [

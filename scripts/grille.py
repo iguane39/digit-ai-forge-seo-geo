@@ -42,7 +42,11 @@ GRILLE = RACINE / "referentiel" / "grille-noeuds.md"
 CORRESPONDANCES = RACINE / "referentiel" / "correspondances-grille.json"
 
 NB_BRANCHES = 17
-NB_NOEUDS = 88
+#: 89 depuis le 26/08/2026 (TF-0638) : insertion du noeud 21 « Adequation Lexicale par Marche » en
+#: branche Mots Cles, 68 identifiants decales, evolution declaree au registre de correspondances.
+#: Cette constante est un GARDE-FOU, pas une commodite : c'est elle qui a refuse le scaffold tant
+#: que la grille et le code ne s'accordaient pas sur le compte.
+NB_NOEUDS = 89
 
 STATUTS = {"SD", "EX", "PY", "NM", "RV", "CA"}
 
