@@ -21,6 +21,7 @@ import csv
 import json
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -515,6 +516,21 @@ def cas_synthese_grille(b: Bilan, racine: Path) -> None:
     b.attendu("un document sans table chiffree n est pas juge", bool(ecarts), False, resume)
 
 
+def cas_urls_declarees(b: Bilan, racine: Path) -> None:
+    """Toute URL que le site DECLARE de lui-meme repond 200, sans redirection (TF-0658).
+
+    Cet oracle porte ses propres fixtures double sens — il travaille sur un artefact de crawl et
+    n'appelle rien. Ce cas-ci le JOUE, parce qu'un oracle que la recette de la forge ne lance pas
+    n'est joue par personne : c'est exactement le defaut que TF-0629 a coute a ce depot.
+    """
+    r = subprocess.run(
+        [sys.executable, "-X", "utf8", str(Path(__file__).resolve().parent / "urls_declarees.py"), "--self-test"],
+        capture_output=True, text=True, encoding="utf-8")
+    sortie = ((r.stdout or "") + (r.stderr or "")).strip().splitlines()
+    detail = sortie[-1][:150] if sortie else "aucune sortie"
+    b.attendu("l oracle des URL declarees tient ses deux sens", r.returncode != 0, False, detail)
+
+
 # ----------------------------------------------------------------------- main
 
 
@@ -526,6 +542,7 @@ CAS = [
     ("TF-0264 -- verdicts de terrain adosses au terrain", cas_terrain),
     ("TF-0636 -- la presence des directives IA n est pas leur exactitude", cas_directives_ia),
     ("TF-0653 -- la grille et ses propres tables de synthese", cas_synthese_grille),
+    ("TF-0658 -- toute URL declaree par le site repond 200 sans redirection", cas_urls_declarees),
 ]
 
 
