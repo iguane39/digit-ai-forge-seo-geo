@@ -49,6 +49,7 @@ inscrit dans `.forge-seo.json` de l'étude.
 | `referentiel/sources-donnees.md` | déclarer ce qui sera mesurable, avant d'analyser |
 | `referentiel/scoring.md` | chiffrer gain / effort / confiance et prioriser |
 | `referentiel/strategie-future.md` | le volet trajectoire 12-24 mois |
+| `referentiel/recherche-multilingue.md` | mots-clés multilingues, CPC, cadence des données de recherche — nœuds 3, 6, 9, 17, 20, 21, 39-43, 51 (TF-0792) |
 | `referentiel/cadrage.template.md` | si aucun cadrage n'est fourni |
 | `referentiel/snapshot.schema.json` | comprendre le contrat du snapshot |
 
