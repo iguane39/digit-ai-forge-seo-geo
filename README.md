@@ -201,6 +201,7 @@ python scripts/recette.py --liste               # ce qui serait joué, sans rien
 python scripts/recette.py --fixture             # preuve à double sens du runner lui-même
 python scripts/validate.py --json               # verdict des 12 contrôles, en objet machine
 python scripts/new_mission.py --liste           # registre local des études créées
+node oracles/decouvrir-oracles.mjs              # les oracles de la forge, lus sur le disque (TF-1319, contrat du pilot)
 ```
 
 `recette.py` est le point d'entrée unique de la vérification (TF-0274) : il **découvre**
@@ -209,7 +210,7 @@ il n'y a aucune liste à tenir à jour — et joue en plus les deux vérificatio
 cette convention (`validate.py`, `autotest.py`). Chaque script reste lançable seul, à
 l'identique : le runner n'est qu'un chef d'orchestre. Une vérification dont la sortie ne
 porte pas de compte « N/M » est déclarée **muette** et fait échouer la recette, plutôt que
-d'être comptée 0 en silence. État courant : **10 vérifications, 147 cas**.
+d'être comptée 0 en silence. État mesuré le 23/09/2026 : **12 vérifications, 181 cas**.
 
 `python -m pytest scripts/` ne collecte **rien** et c'est normal : ces vérifications sont
 des scripts à `main()`, pas des fonctions `test_*` (pytest sort alors en 5, « no tests ran » —
