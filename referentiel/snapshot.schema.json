@@ -748,11 +748,11 @@
             "T3",
             "T4"
           ],
-          "description": "T1 observe · T2 declare (export, periode obligatoire) · T3 tiers (source et date) · T4 infere (fourchette et calcul)"
+          "description": "T1 observe (dont lecture par connecteur GSC / GA4, datee) · T2 declare (export, periode obligatoire) · T3 tiers (source et date) · T4 infere (fourchette et calcul)"
         },
         "source": {
           "type": "string",
-          "description": "Obligatoire pour T2 et T3 : nom de l'export ou URL + date de consultation"
+          "description": "Obligatoire pour T2 et T3 : nom de l'export ou URL + date de consultation. Pour un T1 lu par connecteur GSC / GA4 : 'connecteur', date de lecture AAAA-MM-JJ et periode interrogee"
         },
         "borne_basse": {
           "type": "number",

@@ -633,8 +633,8 @@ def manque_a_fournir(d: dict) -> list[str]:
     srcs = d["snapshot"].get("sources") or {}
     besoin = []
     for cle, libelle in (
-        ("gsc", "export Google Search Console"),
-        ("ga", "export Google Analytics"),
+        ("gsc", "export Google Search Console (ou lecture connecteur datée)"),
+        ("ga", "export Google Analytics (ou lecture connecteur datée)"),
         ("crm", "données CRM ou e-commerce"),
     ):
         if (srcs.get(cle) or {}).get("disponible"):
@@ -1223,12 +1223,14 @@ def bloc_requetes(d: dict) -> str:
         return absence(
             "Requêtes et recherches non renseignées",
             "Les branches Mots Clés, Signaux, Mesure et Idée ne portent aucun constat. "
-            "Sans export Google Search Console, positions, impressions, clics et CTR "
-            "SERP sont non observables de l'extérieur et ne seront jamais estimés.",
+            "Sans export ni lecture connecteur de Google Search Console, positions, "
+            "impressions, clics et CTR SERP sont non observables de l'extérieur et ne "
+            "seront jamais estimés.",
             "aucune requête ne peut être priorisée par sa demande réelle : la stratégie "
             "repose sur le potentiel supposé, pas sur la demande mesurée.",
             "fournir l'export GSC (requêtes, pages, impressions, clics, position) dans "
-            "seo/donnees/gsc/",
+            "seo/donnees/gsc/, ou ouvrir la lecture connecteur en lecture seule avec le "
+            "compte du client",
         )
     colonnes = [
         {"t": "Nœud", "w": 16, "tri": "txt"},

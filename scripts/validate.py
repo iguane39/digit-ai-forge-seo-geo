@@ -547,6 +547,140 @@ def controler_synthese_grille(chemin: Path | None = None) -> tuple[list[str], st
     return ecarts, f"{lues} ligne(s) de synthese confrontee(s) a la grille — {len(ecarts)} ecart(s)"
 
 
+# TF-1854 (18/10/2026, decision humaine D-27 (a)) — LA VOIE « CONNECTEUR » DE SEARCH CONSOLE ET DE GA4.
+#
+# LE FAIT. `sources-donnees.md` declarait « Absents, sans exception : Google Search Console, Google
+# Analytics » et laissait 16 noeuds non mesurables faute d'export. Le 17/10/2026 un produit a lu
+# Search Console (`sites.list` 200, `searchAnalytics/query` 200) et GA4 (`runReport` 200) avec le
+# compte de son client, en portees de lecture : la phrase etait fausse, et aucun controle ne la
+# jugeait — le referentiel etait lu par des agents, juge par personne.
+#
+# DEUX CONTROLES, UNE REGLE. Le premier juge le TEXTE du referentiel (la voie existe, avec ses
+# garde-fous, son renvoi, sa matrice, et sans identifiant de client) ; le second juge les ETUDES
+# (toute mesure « connecteur » du snapshot est T1 et porte sa date de lecture et sa periode). Aucun
+# identifiant de noeud en dur : les comptes de noeuds sont relus sur la ligne d'export de la matrice.
+FICHIER_SOURCES = RACINE / "referentiel" / "sources-donnees.md"
+
+#: La phrase d'avant : GSC ou GA declares absents SANS exception, sur une meme ligne.
+_RE_ABSENTS_GOOGLE = re.compile(
+    r"absents?\W+sans\s+exception[^\n]*(?:search\s+console|analytics)", re.IGNORECASE
+)
+#: Ce qui n'a rien a faire dans un referentiel de forge : un compte, une propriete, un jeton.
+_RE_IDENTIFIANT_CLIENT = re.compile(
+    r"sc-domain:|properties/\d{4,}|\bUA-\d{4,}|\bG-[A-Z0-9]{8,}\b|\.apps\.googleusercontent\.com"
+    r"|ya29\.|GOCSPX-|AIza[0-9A-Za-z_-]{20,}|[\w.+-]+@[\w-]+\.[\w.-]+"
+)
+#: Ce que la section « Deux voies » doit dire, mot pour mot de contrat.
+_EXIGENCES_VOIE_CONNECTEUR = (
+    ("lecture seule", "la lecture seule"),
+    ("compte du client", "le compte du client"),
+    ("jamais un compte de la forge", "l'interdiction d'un compte de la forge"),
+    ("date de lecture", "la date de lecture portee par chaque mesure"),
+    ("[T1 observé", "le niveau de preuve T1 observe"),
+    ("[T2 déclaré", "le niveau T2 de la voie export, qui reste"),
+    ("references/INTEGRATIONS-FOURNISSEURS.md", "le renvoi vers la procedure du pilot"),
+    ("Google — se connecter", "la section « Google — se connecter »"),
+    ("Google Analytics 4 — API, portées et lecture", "la section « Google Analytics 4 »"),
+    ("Search Console — API, portées et lecture", "la section « Search Console »"),
+    ("18/10/2026", "la date de verification de la procedure"),
+)
+_RE_COMPTE_NOEUDS = re.compile(r"\*\*(\d+) nœuds?\*\*")
+_RE_VERSION_SOURCES = re.compile(r"^\*\*Version \d+\.\d+\.\d+ — \d{4}-\d{2}-\d{2}", re.MULTILINE)
+
+
+def controler_voie_connecteur(chemin: Path | None = None) -> tuple[list[str], str]:
+    """Le referentiel des sources dit-il la voie connecteur, et sans en dire trop ?
+
+    Cinq verifications : la phrase « absents, sans exception » ne vise plus GSC ni GA ; la section
+    « Deux voies » porte chaque garde-fou ; la matrice a une ligne connecteur par source, qui rend
+    mesurable le MEME compte de noeuds que sa ligne d'export et ne s'etiquette jamais T2 ;
+    le referentiel porte un numero de version ; aucun identifiant de client n'y figure.
+    """
+    texte = (chemin or FICHIER_SOURCES).read_text(encoding="utf-8")
+    ecarts: list[str] = []
+
+    for m in _RE_ABSENTS_GOOGLE.finditer(texte):
+        ecarts.append(
+            "Search Console ou Google Analytics y sont encore declares « absents, sans exception » "
+            f"({m.group(0)[:60]!r}…) : le 17/10/2026 un produit les a lus avec le compte de son client"
+        )
+
+    section = texte.split("\n## Deux voies", 1)
+    if len(section) < 2:
+        ecarts.append("section « Deux voies » absente : la voie connecteur n'est pas ecrite")
+        corps = ""
+    else:
+        corps = section[1].split("\n## ", 1)[0]
+        ecarts += [f"section « Deux voies » : manque {quoi}" for mot, quoi in _EXIGENCES_VOIE_CONNECTEUR
+                   if mot.lower() not in corps.lower()]
+
+    lignes = {l.split("|")[1].strip(): l for l in texte.splitlines()
+              if l.startswith("| **") and l.count("|") >= 4}
+    lues = 0
+    for export, connecteur in (("**Export GSC**", "**Connecteur GSC**"), ("**Export GA**", "**Connecteur GA4**")):
+        l_exp = next((l for nom, l in lignes.items() if nom == export), None)
+        l_con = next((l for nom, l in lignes.items() if nom.startswith(connecteur)), None)
+        if l_con is None:
+            ecarts.append(f"matrice : aucune ligne « {connecteur.strip('*')} » a cote de « {export.strip('*')} »")
+            continue
+        lues += 1
+        comptes_exp = set(_RE_COMPTE_NOEUDS.findall(l_exp or ""))
+        comptes_con = set(_RE_COMPTE_NOEUDS.findall(l_con))
+        if not comptes_exp or comptes_exp != comptes_con:
+            ecarts.append(
+                f"matrice : « {connecteur.strip('*')} » dit {sorted(comptes_con)} noeud(s), "
+                f"« {export.strip('*')} » {sorted(comptes_exp)} — la voie connecteur rend mesurables "
+                "les memes noeuds que l'export"
+            )
+        if "T1 observé" not in l_con or "T2" in l_con:
+            ecarts.append(f"matrice : « {connecteur.strip('*')} » doit porter T1 observe, jamais T2")
+
+    if not _RE_VERSION_SOURCES.search(texte):
+        ecarts.append("aucun numero de version en tete (« **Version X.Y.Z — AAAA-MM-JJ** »)")
+
+    for m in _RE_IDENTIFIANT_CLIENT.finditer(texte):
+        ecarts.append(f"identifiant de client ou de compte dans le referentiel : {m.group(0)!r}")
+
+    return ecarts, (f"{lues} ligne(s) connecteur confrontee(s) a leur export, "
+                    f"{len(_EXIGENCES_VOIE_CONNECTEUR)} exigences de la section « Deux voies » — "
+                    f"{len(ecarts)} ecart(s)")
+
+
+_RE_LECTURE_DATEE = re.compile(r"\blue?\s+le\s+\d{4}-\d{2}-\d{2}\b", re.IGNORECASE)
+_RE_DATE_ISO = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+
+
+def controler_lectures_connecteur(snapshot) -> list[str]:
+    """Toute mesure lue par connecteur est T1 et porte sa date de lecture ET sa periode.
+
+    Parcourt le snapshot entier (baseline, noeuds, mesures) sans connaitre sa forme : une metrique
+    est tout objet qui a une `cle` et une `preuve`. Une lecture par API datee est `T1` ; un export
+    est `T2` — une lecture etiquetee T2 deguise sa nature, une lecture sans date n'est qu'un chiffre.
+    """
+    ecarts: list[str] = []
+
+    def parcourir(x, chemin: str) -> None:
+        if isinstance(x, dict):
+            if "cle" in x and "preuve" in x and "connecteur" in str(x.get("source") or "").lower():
+                nom, source = f"{chemin} ({x.get('cle')})", str(x.get("source"))
+                if x.get("preuve") != "T1":
+                    ecarts.append(f"{nom} : lecture connecteur etiquetee {x.get('preuve')!r}, "
+                                  "une lecture par API datee est T1")
+                if not _RE_LECTURE_DATEE.search(source):
+                    ecarts.append(f"{nom} : lecture connecteur sans « lu le AAAA-MM-JJ »")
+                if len(_RE_DATE_ISO.findall(source)) < 3:
+                    ecarts.append(f"{nom} : lecture connecteur sans periode interrogee "
+                                  "(date de lecture + debut + fin attendues)")
+            for k, v in x.items():
+                parcourir(v, f"{chemin}.{k}")
+        elif isinstance(x, list):
+            for i, v in enumerate(x):
+                parcourir(v, f"{chemin}[{i}]")
+
+    parcourir(snapshot, "$")
+    return ecarts
+
+
 def valider_referentiel(json_mode: bool = False) -> int:
     r = Rapport("referentiel", json_mode)
     r.entete("validate -- referentiel canonique de la forge")
@@ -726,6 +860,15 @@ def valider_referentiel(json_mode: bool = False) -> int:
         ecarts_s[:6],
     )
 
+    # TF-1854 : le referentiel des sources dit la voie connecteur, avec ses garde-fous.
+    ecarts_c, resume_c = controler_voie_connecteur()
+    r.controle(
+        "14. le referentiel des sources ouvre la voie connecteur de GSC et GA4, sans identifiant de client",
+        not ecarts_c,
+        resume_c,
+        ecarts_c[:6],
+    )
+
     return r.bilan()
 
 
@@ -841,7 +984,10 @@ def valider_mission(projet: Path, json_mode: bool = False) -> int:
         r.controle("6. snapshot conforme au schema", True, "aucun snapshot — rien a valider")
     else:
         sch = json.loads((RACINE / "referentiel" / "snapshot.schema.json").read_text(encoding="utf-8"))
-        ecarts = valider(json.loads(snaps[-1].read_text(encoding="utf-8")), sch)
+        snap_lu = json.loads(snaps[-1].read_text(encoding="utf-8"))
+        ecarts = valider(snap_lu, sch)
+        # TF-1854 : une mesure lue par connecteur est T1 et porte sa date de lecture et sa periode.
+        ecarts += controler_lectures_connecteur(snap_lu)
         r.controle(
             "6. snapshot conforme au schema",
             not ecarts,

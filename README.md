@@ -163,7 +163,7 @@ forge-seo/
 │   ├── methode.md               garde-fous, runbook, contrat de sortie
 │   ├── grille-noeuds.md         17 branches, 88 nœuds, portée par modèle
 │   ├── scoring.md               échelles ancrées, formule, trait de coupe
-│   ├── sources-donnees.md       matrice source → nœuds, dégradations
+│   ├── sources-donnees.md       matrice source → nœuds, voies export et connecteur, dégradations
 │   ├── strategie-future.md      méthode du volet 12-24 mois
 │   ├── cadrage.template.md      formulaire d'entrée détaillé
 │   ├── snapshot.schema.json     contrat de l'état persistant, appliqué
@@ -199,7 +199,7 @@ python scripts/scaffold.py                      # régénère seo/ depuis refere
 python scripts/recette.py                       # TOUTE la suite en une commande — le point d'entrée
 python scripts/recette.py --liste               # ce qui serait joué, sans rien exécuter
 python scripts/recette.py --fixture             # preuve à double sens du runner lui-même
-python scripts/validate.py --json               # verdict des 12 contrôles, en objet machine
+python scripts/validate.py --json               # verdict des 14 contrôles, en objet machine
 python scripts/new_mission.py --liste           # registre local des études créées
 node oracles/decouvrir-oracles.mjs              # les oracles de la forge, lus sur le disque (TF-1319, contrat du pilot)
 ```
@@ -210,7 +210,7 @@ il n'y a aucune liste à tenir à jour — et joue en plus les deux vérificatio
 cette convention (`validate.py`, `autotest.py`). Chaque script reste lançable seul, à
 l'identique : le runner n'est qu'un chef d'orchestre. Une vérification dont la sortie ne
 porte pas de compte « N/M » est déclarée **muette** et fait échouer la recette, plutôt que
-d'être comptée 0 en silence. État mesuré le 23/09/2026 : **12 vérifications, 181 cas**.
+d'être comptée 0 en silence. État mesuré le 18/10/2026 : **13 vérifications, 222 cas**.
 
 `python -m pytest scripts/` ne collecte **rien** et c'est normal : ces vérifications sont
 des scripts à `main()`, pas des fonctions `test_*` (pytest sort alors en 5, « no tests ran » —
