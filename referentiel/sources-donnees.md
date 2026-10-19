@@ -2,11 +2,13 @@
 
 **Version 1.1.0 — 2026-10-18.** TF-1854 : voie « connecteur » ouverte pour Search Console et Google Analytics 4, à côté de la voie « export » (décision humaine D-27 (a) du 18/10/2026). La version 1.0.0 est l'état antérieur, qui ne portait pas de numéro.
 
+**Version 1.1.1 — 2026-10-19.** TF-1869 : numéros de nœuds et comptes réalignés sur la grille à 89 nœuds. La matrice et le tableau « Principe » dataient de la grille à 87 nœuds, avant l'insertion des nœuds 21 et 59 ; un contrôle (15 de `validate.py`) les confronte désormais à la grille.
+
 À charger en **R0**, pour déclarer honnêtement ce qui sera mesurable avant d'analyser.
 
 ## Principe
 
-Le skill tourne **sans aucun export ni connecteur**. Dans ce mode, 53 nœuds sur 87 restent instrumentés et 24 basculent en non mesurable (comptes pour une étude `local`, qui mobilise toute la grille ; sur un autre modèle, les nœuds hors portée s'ajoutent). Ce n'est pas un échec : c'est un périmètre, et il doit être annoncé en tête de livrable, pas découvert en annexe.
+Le skill tourne **sans aucun export ni connecteur**. Dans ce mode, 55 nœuds sur 89 restent instrumentés et 24 basculent en non mesurable (comptes pour une étude `local`, qui mobilise toute la grille ; sur un autre modèle, les nœuds hors portée s'ajoutent). Ce n'est pas un échec : c'est un périmètre, et il doit être annoncé en tête de livrable, pas découvert en annexe.
 
 Pour Search Console et Google Analytics 4, ce périmètre dépend de la voie ouverte : **export** déposé par le client, **connecteur** (lecture seule avec le compte du client), ou aucune des deux. La section « Deux voies » ci-dessous dit laquelle donne quoi.
 
@@ -59,17 +61,17 @@ La matrice dit, pour chaque source, si elle est disponible, quels nœuds elle se
 
 | Source | Statut | Nœuds servis | Si absente |
 |---|---|---|---|
-| **Crawl + HTTP + HTML** | disponible | 1, 2, 4, 11-16, 18, 20-27, 30-33, 42, 49, 50, 53, 56, 59, 62, 66, 74, 75, 77 | — |
-| **Recherche web** | disponible | 2, 4, 5, 18, 20, 23, 41, 47, 51, 54, 55, 58, 59, 60, 61, 80 | — |
-| **Déclaratif client** | à demander | 63-67, 76 | nœud non renseigné, à marquer `à collecter` (pas `non mesurable`) |
-| **Export GSC** | à demander | 5, 17, 19, 34-37, 39, 43, 48, 52, 68, 69, 70, 73, 74, 75 | sans export **ni connecteur** : **16 nœuds** en non mesurable |
-| **Connecteur GSC** (lecture seule, compte du client) | à ouvrir avec le client | les mêmes nœuds que la ligne « Export GSC » | ces **16 nœuds** sont mesurables tant que la voie est ouverte, `[T1 observé]` ; voie fermée : retour à l'export, puis **16 nœuds** non mesurables |
-| **Export GA** | à demander | 10, 44, 45, 46, 71, 75 | sans export **ni connecteur** : **5 nœuds** en non mesurable |
-| **Connecteur GA4** (lecture seule, compte du client) | à ouvrir avec le client | les mêmes nœuds que la ligne « Export GA » | ces **5 nœuds** sont mesurables tant que la voie est ouverte, `[T1 observé]` ; voie fermée : retour à l'export, puis **5 nœuds** non mesurables |
-| **CRM / e-commerce** | à demander | 7, 8, 10, 71, 72 | **4 nœuds** en non mesurable |
-| **Index de backlinks** | payant | 9, 38, 40, 42, 55 | dégradation partielle documentée, jamais un chiffre inventé |
+| **Crawl + HTTP + HTML** | disponible | 1, 2, 4, 11-16, 18, 20, 22-28, 31-34, 43, 50, 51, 54, 57, 61, 64, 68, 76, 77, 79 | — |
+| **Recherche web** | disponible | 2, 4, 5, 18, 20, 24, 42, 48, 52, 55, 56, 60, 61, 62, 63, 82 | — |
+| **Déclaratif client** | à demander | 65-69, 78 | nœud non renseigné, à marquer `à collecter` (pas `non mesurable`) |
+| **Export GSC** | à demander | 5, 17, 19, 35-38, 40, 44, 49, 53, 70, 71, 72, 75, 76, 77 | sans export **ni connecteur** : **17 nœuds** en non mesurable |
+| **Connecteur GSC** (lecture seule, compte du client) | à ouvrir avec le client | les mêmes nœuds que la ligne « Export GSC » | ces **17 nœuds** sont mesurables tant que la voie est ouverte, `[T1 observé]` ; voie fermée : retour à l'export, puis **17 nœuds** non mesurables |
+| **Export GA** | à demander | 10, 45, 46, 47, 73, 77 | sans export **ni connecteur** : **6 nœuds** en non mesurable |
+| **Connecteur GA4** (lecture seule, compte du client) | à ouvrir avec le client | les mêmes nœuds que la ligne « Export GA » | ces **6 nœuds** sont mesurables tant que la voie est ouverte, `[T1 observé]` ; voie fermée : retour à l'export, puis **6 nœuds** non mesurables |
+| **CRM / e-commerce** | à demander | 7, 8, 10, 73, 74 | **5 nœuds** en non mesurable |
+| **Index de backlinks** | payant | 9, 39, 41, 43, 56 | dégradation partielle documentée, jamais un chiffre inventé |
 | **Source de volume** | payant | 3, 6 | volume remplacé par les impressions GSC comme **plancher observé**, ou déclaré inconnu |
-| **Logs serveur** | rarement obtenu | 29 | 1 nœud en non mesurable — budget de crawl invisible |
+| **Logs serveur** | rarement obtenu | 30 | 1 nœud en non mesurable — budget de crawl invisible |
 
 *Certains nœuds apparaissent sur plusieurs lignes : ils sont partiellement servis par une source et complétés par une autre.*
 
@@ -87,7 +89,7 @@ Formulations à reprendre telles quelles dans le livrable.
 
 > Le comportement des visiteurs et l'origine du trafic hors recherche ne sont pas mesurables SANS export fourni ni lecture connecteur datée : trafic référent, trafic social, comportement post-clic, leads attribués à l'organique. La vitesse de monétisation reste inconnue.
 >
-> Conséquence : aucun gain ne peut être exprimé en leads. Les gains restent exprimés en trafic qualifié, et la conversion en leads est signalée comme non calculable (nœud 84).
+> Conséquence : aucun gain ne peut être exprimé en leads. Les gains restent exprimés en trafic qualifié, et la conversion en leads est signalée comme non calculable (nœud 86).
 
 ### Sans données CRM ou e-commerce
 
@@ -97,7 +99,7 @@ Formulations à reprendre telles quelles dans le livrable.
 
 > Le profil de liens entrants n'est connu que par les liens détectables en recherche web — une fraction non quantifiable du profil réel.
 
-> **Part IA du trafic référent (décision du 11/08/2026, nœud 44)** : quand l'export GA
+> **Part IA du trafic référent (décision du 11/08/2026, nœud 45)** : quand l'export GA
 > est fourni ou la lecture connecteur GA4 ouverte, les référents des assistants génératifs (chatgpt.com, perplexity.ai,
 > copilot.microsoft.com, gemini.google.com, claude.ai…) sont isolés et datés — la liste
 > des domaines se rafraîchit par vérification web datée à chaque run, jamais récitée. La difficulté SEO est estimée par un **proxy structurel** (force des marques présentes en top 10, ancienneté et profondeur des pages classées) et non par un score d'autorité. Ce proxy est un classement relatif, pas une mesure : ne jamais le présenter comme un score de difficulté d'outil.

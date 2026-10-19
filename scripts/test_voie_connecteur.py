@@ -24,6 +24,7 @@ Usage :
 from __future__ import annotations
 
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -117,9 +118,13 @@ verifier(ecart_dit(ecarts, "aucune ligne « Connecteur GA4 »"),
 verifier(texte_sources(REEL.replace(ligne_ga + "\n", "").replace(
     "| **Export GA** |", ligne_ga + "\n| **Export GA** |", 1)) == [],
     "remede rejoue : remettre la ligne (meme a une autre place) repasse au vert")
-ecarts = texte_sources(REEL.replace(ligne_gsc, ligne_gsc.replace("**16 nœuds**", "**15 nœuds**")))
+# TF-1869 : le compte est relu sur la ligne (il suivait la matrice a 16 noeuds, ecrit en dur ; la
+# fixture se rompait des que le compte devenait juste). L'assertion ne change pas : un de moins.
+compte_gsc = int(re.search(r"\*\*(\d+) nœuds\*\*", ligne_gsc).group(1))
+ecarts = texte_sources(REEL.replace(
+    ligne_gsc, ligne_gsc.replace(f"**{compte_gsc} nœuds**", f"**{compte_gsc - 1} nœuds**")))
 verifier(ecart_dit(ecarts, "memes noeuds que l'export"),
-         "ROUGE : une ligne connecteur qui dit 15 noeuds quand l'export en dit 16 est refusee")
+         f"ROUGE : une ligne connecteur qui dit {compte_gsc - 1} noeuds quand l'export en dit {compte_gsc} est refusee")
 ecarts = texte_sources(REEL.replace(ligne_ga, ligne_ga.replace("T1 observé", "T2 déclaré")))
 verifier(ecart_dit(ecarts, "T1 observe, jamais T2"),
          "ROUGE : une voie connecteur etiquetee T2 est refusee (une lecture datee est T1)")

@@ -646,6 +646,109 @@ def controler_voie_connecteur(chemin: Path | None = None) -> tuple[list[str], st
                     f"{len(ecarts)} ecart(s)")
 
 
+# TF-1869 (19/10/2026) — LA MATRICE DES SOURCES SUIT LA GRILLE.
+#
+# LE FAIT. `sources-donnees.md` n'a pas ete touche entre le 08/08/2026 (grille a 87 noeuds) et le
+# 18/10/2026, alors que la grille gagnait deux noeuds (58 le 11/08, 21 le 26/08) et decalait 68
+# identifiants : la matrice envoyait « 34 » sur Sitemap quand Search Console etait devenu 35, et le
+# tableau « Principe » annoncait 53 sur 87. Le registre de correspondance (controle 12) et les
+# syntheses de la grille (controle 13) etaient verts : aucun controle ne lisait ce fichier-la. Sa
+# ligne « Export GSC » listait en plus 17 identifiants pour « 16 noeuds ».
+#
+# CE QUE LE CONTROLE JUGE, SANS RECOPIER LA GRILLE :
+#   - tout identifiant de la matrice existe dans la grille ;
+#   - tout compte ecrit sur une ligne (« 17 noeuds ») egale le nombre d'identifiants listes ;
+#   - pour les sources qu'un noeud NOMME dans sa propre ligne de grille (GSC, GA, CRM, logs,
+#     declaratif), chaque identifiant liste pointe un noeud qui cite cette source : c'est cette
+#     ancre qui attrape un decalage de numerotation, que « l'identifiant existe » laisse passer
+#     (87 identifiants anciens existent tous dans une grille de 89) ;
+#   - la phrase « N noeuds sur M restent instrumentes et K basculent » egale les comptes de la
+#     grille (SD ; total ; EX + NM).
+# Les lignes Crawl, Recherche web, backlinks et volume ne sont pas ancrees : la grille y nomme sa
+# source par des mots trop varies pour qu'une ancre ne produise pas de faux rouges.
+_RE_PRINCIPE_SOURCES = re.compile(
+    r"(\d+) nœuds sur (\d+) restent instrumentés et (\d+) basculent en non mesurable"
+)
+_RE_NOMBRE_DE_NOEUDS = re.compile(r"(\d+)\s+nœuds?")
+_ANCRES_SOURCES = {
+    "Export GSC": (re.compile(r"\bGSC\b|Search Console"), "GSC ou Search Console"),
+    "Export GA": (re.compile(r"\bGA\b|Google Analytics"), "GA"),
+    "CRM / e-commerce": (re.compile(r"CRM|e-commerce"), "CRM ou e-commerce"),
+    "Logs serveur": (re.compile(r"\blogs?\b", re.IGNORECASE), "des logs"),
+    "Déclaratif client": (re.compile(r"déclarati"), "du déclaratif"),
+}
+
+
+def _identifiants_de_cellule(cellule: str) -> list[int]:
+    """« 5, 17, 35-38 » → [5, 17, 35, 36, 37, 38]."""
+    ids: list[int] = []
+    for debut, fin in re.findall(r"(\d+)(?:\s*-\s*(\d+))?", cellule):
+        ids.extend(range(int(debut), int(fin or debut) + 1))
+    return ids
+
+
+def controler_matrice_sources(chemin: Path | None = None, grille: Path | None = None) -> tuple[list[str], str]:
+    """La matrice source → noeuds et le tableau « Principe » confrontes a la grille du jour."""
+    texte = (chemin or FICHIER_SOURCES).read_text(encoding="utf-8")
+    noeuds = {n["id"]: n for n in lire(grille)["noeuds"]}
+    ecarts: list[str] = []
+
+    lignes: dict[str, tuple[str, str]] = {}  # nom nettoye -> (cellule des noeuds, cellule « si absente »)
+    matrice = texte.split("\n## Matrice source", 1)
+    corps = matrice[1].split("\n## ", 1)[0] if len(matrice) == 2 else ""
+    for l in corps.splitlines():
+        cellules = [c.strip() for c in l.strip().strip("|").split("|")]
+        if l.startswith("| **") and len(cellules) == 4:
+            lignes[re.sub(r"\*\*|\s*\(.*$", "", cellules[0]).strip()] = (cellules[2], cellules[3])
+    if not lignes:
+        ecarts.append("section « Matrice source → nœuds » absente ou sans ligne : rien à confronter à la grille")
+
+    verifies = 0
+    for nom, (cellule_ids, cellule_compte) in lignes.items():
+        renvoi = re.search(r"que la ligne « ([^»]+?) »", cellule_ids)
+        if renvoi:
+            if renvoi.group(1) not in lignes:
+                ecarts.append(f"« {nom} » renvoie à la ligne « {renvoi.group(1)} », qui n'existe pas")
+                continue
+            identifiants = _identifiants_de_cellule(lignes[renvoi.group(1)][0])
+            ancre = _ANCRES_SOURCES.get(renvoi.group(1))
+        else:
+            identifiants = _identifiants_de_cellule(cellule_ids)
+            ancre = _ANCRES_SOURCES.get(nom)
+        verifies += len(identifiants)
+
+        for i in identifiants:
+            if i not in noeuds:
+                ecarts.append(f"« {nom} » cite le nœud {i}, absent de la grille ({len(noeuds)} nœuds)")
+            elif ancre and not ancre[0].search(f"{noeuds[i]['source_requise']} {noeuds[i]['reserve']}"):
+                ecarts.append(
+                    f"« {nom} » cite le nœud {i} « {noeuds[i]['noeud']} », dont la grille ne cite pas "
+                    f"{ancre[1]} — numéro décalé ?"
+                )
+        for compte in sorted(set(_RE_NOMBRE_DE_NOEUDS.findall(cellule_compte))):
+            if int(compte) != len(identifiants):
+                ecarts.append(
+                    f"« {nom} » écrit {compte} nœud(s) et en liste {len(identifiants)} "
+                    f"({', '.join(map(str, identifiants))})"
+                )
+
+    principe = _RE_PRINCIPE_SOURCES.search(texte)
+    if principe is None:
+        ecarts.append("tableau « Principe » : la phrase « N nœuds sur M restent instrumentés et K basculent… » est absente")
+    else:
+        statuts = [n["statut"] for n in noeuds.values()]
+        reel = (statuts.count("SD"), len(noeuds), statuts.count("EX") + statuts.count("NM"))
+        vu = tuple(int(x) for x in principe.groups())
+        if vu != reel:
+            ecarts.append(
+                f"tableau « Principe » : {vu[0]} nœuds sur {vu[1]} instrumentés et {vu[2]} non mesurables, "
+                f"la grille porte {reel[0]} sur {reel[1]} et {reel[2]} (SD ; total ; EX + NM)"
+            )
+
+    return ecarts, (f"{len(lignes)} ligne(s) de matrice, {verifies} identifiant(s) confronté(s) à la grille "
+                    f"de {len(noeuds)} nœuds, tableau « Principe » recalculé — {len(ecarts)} écart(s)")
+
+
 _RE_LECTURE_DATEE = re.compile(r"\blue?\s+le\s+\d{4}-\d{2}-\d{2}\b", re.IGNORECASE)
 _RE_DATE_ISO = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 
@@ -867,6 +970,15 @@ def valider_referentiel(json_mode: bool = False) -> int:
         not ecarts_c,
         resume_c,
         ecarts_c[:6],
+    )
+
+    # TF-1869 : la matrice des sources et le tableau « Principe » suivent la grille du jour.
+    ecarts_m, resume_m = controler_matrice_sources()
+    r.controle(
+        "15. la matrice des sources et le tableau « Principe » disent ce que la grille porte",
+        not ecarts_m,
+        resume_m,
+        ecarts_m[:6],
     )
 
     return r.bilan()

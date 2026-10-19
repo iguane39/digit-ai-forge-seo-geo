@@ -199,7 +199,7 @@ python scripts/scaffold.py                      # régénère seo/ depuis refere
 python scripts/recette.py                       # TOUTE la suite en une commande — le point d'entrée
 python scripts/recette.py --liste               # ce qui serait joué, sans rien exécuter
 python scripts/recette.py --fixture             # preuve à double sens du runner lui-même
-python scripts/validate.py --json               # verdict des 14 contrôles, en objet machine
+python scripts/validate.py --json               # verdict des 15 contrôles, en objet machine
 python scripts/new_mission.py --liste           # registre local des études créées
 node oracles/decouvrir-oracles.mjs              # les oracles de la forge, lus sur le disque (TF-1319, contrat du pilot)
 ```
