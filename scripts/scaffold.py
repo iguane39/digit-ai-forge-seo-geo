@@ -3,7 +3,7 @@
 Produit :
   seo/manifest.json                     source de verite machine
   seo/<NN-branche>/_branche.md          17 fiches de branche
-  seo/<NN-branche>/<NN-noeud>/_fiche.md 87 fiches de noeud, hydratees
+  seo/<NN-branche>/<NN-noeud>/_fiche.md 89 fiches de noeud, hydratees
 
 Ce referentiel est le MODELE VIERGE. Il ne contient jamais de donnees client :
 l'espace de travail d'une mission est cree par new_mission.py, dans le projet

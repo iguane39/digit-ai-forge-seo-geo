@@ -354,7 +354,7 @@ def bloc_bandeau(d: dict, repart: str) -> str:
         ("Marché", champ_cadrage(cad, "Pays / langue") or "non déclaré", ""),
         ("Audience", champ_cadrage(cad, "Audience du livrable") or "non déclarée", ""),
         ("Version de grille", prov.get("version_grille") or "—",
-         "Empreinte de la grille d'audit utilisée — les 87 questions et leurs critères, "
+         f"Empreinte de la grille d'audit utilisée — les {NB_NOEUDS} questions et leurs critères, "
          "figés. Deux rapports portant la même empreinte sont comparables question par "
          "question ; deux empreintes différentes signalent que la grille a évolué entre "
          "les deux runs."),

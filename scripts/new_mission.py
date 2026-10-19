@@ -12,7 +12,7 @@ Produit :
   <projet>/seo/.forge-seo.json    provenance : version de la grille, date
   <projet>/seo/.gitignore         garde-fou de confidentialite
   <projet>/seo/donnees/{gsc,ga,crm,logs,crawl}/
-  <projet>/seo/analyse/           104 dossiers, 87 fiches hydratees
+  <projet>/seo/analyse/           106 dossiers, 89 fiches hydratees
   <projet>/seo/livrables/
 
 REFUS D'ECRASEMENT : si <projet>/seo/ existe deja, le script s'arrete. Ecraser une

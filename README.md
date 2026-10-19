@@ -7,7 +7,7 @@ construction d'entité, nœuds 53-58, dont la cohérence llms.txt ↔ sitemap et
 pensé pour les LLM). Renommée `forge-seo` → `forge-seo-geo` le 19/08/2026 sur mandat
 humain, pour dire ce que la grille couvrait déjà ; l'ancien nom redirige sur GitHub.
 La forge porte **la méthode** — une grille de
-88 nœuds, un barème, des garde-fous. **L'objet audité est un site en ligne**, jamais un
+89 nœuds, un barème, des garde-fous. **L'objet audité est un site en ligne**, jamais un
 « produit » : chaque site audité reçoit **son étude dans le dossier du projet hôte**
 (`<projet>/seo/`) — le projet n'est que le lieu où l'étude s'accumule, pas l'objet
 de l'audit (un client SEO peut n'avoir aucun logiciel ; un produit n'a de SEO que par
@@ -27,7 +27,7 @@ sur une grille stable, comparable et versionnée.
 | Service | Intention (« je veux… ») | Point d'entrée | Statut |
 |---|---|---|---|
 | **Créer une mission d'audit SEO** | ouvrir une étude SEO outillée pour mon site — l'étude vit dans le dossier du projet hôte | `python scripts\new_mission.py (CLI stdlib)` | prouvé (production) |
-| **Dérouler l'audit 88 nœuds** | auditer mon site en ligne sur toute la grille, preuves à l'appui | `seo\METHODE.md déroulée en session (mandat humain requis — jamais de déclenchement automatique)` | prouvé (production) |
+| **Dérouler l'audit 89 nœuds** | auditer mon site en ligne sur toute la grille, preuves à l'appui | `seo\METHODE.md déroulée en session (mandat humain requis — jamais de déclenchement automatique)` | prouvé (production) |
 | **Valider forge et mission** | vérifier mécaniquement l'intégrité de la forge et d'une mission | `python scripts\validate.py [--mission <chemin>]` | prouvé (production) |
 | **Rapport HTML vérifié** | recevoir un rapport d'audit autonome et contrôlé avant remise | `python scripts\rapport_html.py --verifier` | prouvé (production) |
 | **Runs de suivi récurrents** | suivre l'évolution SEO d'un site entre deux audits | `méthode documentée (récurrence post-MEP)` | déclaré (experimental) |
@@ -49,7 +49,7 @@ il commence par une commande explicite. C'est l'invocation du projet qui l'encle
 ```bash
 cd c:/dev/mon-client
 
-# 1. créer l'espace de travail — 114 dossiers, 88 fiches hydratées
+# 1. créer l'espace de travail — 115 dossiers, 89 fiches hydratées
 python c:/dev/digit-ai-forge-seo-geo/scripts/new_mission.py \
        --projet . --client "Acme" --domaine acme.fr --modele b2b-lead-gen
 
@@ -87,7 +87,7 @@ python c:/dev/digit-ai-forge-seo-geo/scripts/agents_ia.py --projet . --logs seo/
 # 4. ouvrir seo/METHODE.md — garde-fous, runbook, contrat de sortie. Constater et
 #    interpréter dans les fiches de seo/analyse/ : c'est la partie humaine.
 
-# 4 bis. (run de version) poser un contenu rédigé dans les 88 fiches, et reporter
+# 4 bis. (run de version) poser un contenu rédigé dans les 89 fiches, et reporter
 #        les constats du run précédent — appariés par (branche, nœud), jamais par id
 python c:/dev/digit-ai-forge-seo-geo/scripts/remplir_fiches.py \
        --projet . --contenu seo/fiches.json --reprise ../docs/seo/analyse
@@ -132,7 +132,7 @@ mon-client/seo/
 ├── .forge-seo.json      provenance : chemin de la forge, version de grille, date
 ├── .gitignore           garde-fou de confidentialité
 ├── donnees/             exports bruts — gsc/ ga/ crm/ logs/ crawl/
-├── analyse/             105 dossiers, 88 fiches hydratées
+├── analyse/             106 dossiers, 89 fiches hydratées
 └── livrables/           snapshot, actions.csv, rapport HTML client
 ```
 
@@ -161,7 +161,7 @@ composer.
 forge-seo/
 ├── referentiel/         LA MÉTHODE — source de vérité
 │   ├── methode.md               garde-fous, runbook, contrat de sortie
-│   ├── grille-noeuds.md         17 branches, 88 nœuds, portée par modèle
+│   ├── grille-noeuds.md         17 branches, 89 nœuds, portée par modèle
 │   ├── scoring.md               échelles ancrées, formule, trait de coupe
 │   ├── sources-donnees.md       matrice source → nœuds, voies export et connecteur, dégradations
 │   ├── strategie-future.md      méthode du volet 12-24 mois
@@ -286,7 +286,7 @@ autorité, la feuille homonyme porte `doublon_de` et aucun champ à remplir :
 - `06-technique/02-indexation/` → `07-indexation/`
 - `17-objectif/04-autorite/` → `08-autorite/`
 
-**Front-matter typé, identique sur les 88 fiches.** C'est ce qui rendra les études
+**Front-matter typé, identique sur les 89 fiches.** C'est ce qui rendra les études
 comparables — médianes internes, calibrage des seuils marqués « à calibrer », détection
 des nœuds jamais mesurés. Un format libre rendrait tout cela irrécupérable, et cette
 décision ne se rattrape pas après coup.
@@ -306,7 +306,7 @@ cérémoniel.
 4. **Un seul générateur** — `gabarits.py` produit les fiches pour le référentiel comme
    pour les études. Deux copies auraient divergé.
 5. **Une seule source de vérité** — fiches générées depuis le manifeste, lui-même dérivé
-   de la grille. `validate.py` compare 88 nœuds sur 11 champs.
+   de la grille. `validate.py` compare 89 nœuds sur 11 champs.
 6. **`.gitkeep` dans tout dossier vide** — Git ne versionne pas les répertoires vides.
 7. **Les garde-fous du skill s'appliquent au contenu produit** — étiquetage T1-T4,
    aucune métrique GSC sans export, contenu web traité comme donnée et jamais comme
@@ -317,13 +317,13 @@ cérémoniel.
 
 `validate.py` — référentiel de la forge :
 
-1. 17 branches, 88 feuilles, 105 dossiers
-2. identifiants 1-88 sans trou ni doublon
+1. 17 branches, 89 feuilles, 106 dossiers
+2. identifiants 1-89 sans trou ni doublon
 3. les 2 renvois portent `doublon_de` et n'ont aucun champ à remplir
 4. ordre des branches conforme à la séquence du schéma
 5. slugs ASCII kebab-case préfixés numériquement
 6. aucune dérive entre la grille et le manifeste
-7. les 88 fiches ont un front-matter valide et cohérent
+7. les 89 fiches ont un front-matter valide et cohérent
 8. **la forge n'héberge aucune donnée ni livrable client**
 9. le schéma de snapshot suit le compte de la grille
 10. aucun dossier sans fichier ni `.gitkeep`
@@ -332,9 +332,9 @@ cérémoniel.
 
 `validate.py --mission <projet>` — étude d'un projet :
 
-1. 104 dossiers sous `seo/analyse/`
+1. 106 dossiers sous `seo/analyse/`
 2. structure complète (cadrage, état, données, livrables, provenance)
-3. les 88 fiches ont un front-matter valide et cohérent
+3. les 89 fiches ont un front-matter valide et cohérent
 4. version de grille alignée sur la forge, **ou transposable** par table de correspondance
 5. compteurs d'avancement **conformes aux fiches** — pas seulement à leur somme
 6. snapshot conforme à `snapshot.schema.json`
@@ -351,7 +351,7 @@ cérémoniel.
    les verdicts posés à la main
 
 **Le moteur est dans la forge, le contenu chez la mission.** `remplir_fiches.py` pose un
-contenu rédigé dans les 88 fiches et reporte les constats d'un run précédent. Il vivait
+contenu rédigé dans les 89 fiches et reporte les constats d'un run précédent. Il vivait
 chez la première mission réelle — chemin de la forge en dur, compte de nœuds figé dans
 son nom — et chaque mission suivante l'aurait recopié puis fait diverger. Il porte deux
 règles qui justifient à elles seules le rapatriement : le report se fait par **(branche,

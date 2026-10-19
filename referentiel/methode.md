@@ -45,7 +45,7 @@ inscrit dans `.forge-seo.json` de l'étude.
 
 | Fichier | À charger pour |
 |---|---|
-| `referentiel/grille-noeuds.md` | **toujours** — 17 branches, 87 nœuds, portée par modèle |
+| `referentiel/grille-noeuds.md` | **toujours** — 17 branches, 89 nœuds, portée par modèle |
 | `referentiel/sources-donnees.md` | déclarer ce qui sera mesurable, avant d'analyser |
 | `referentiel/scoring.md` | chiffrer gain / effort / confiance et prioriser |
 | `referentiel/strategie-future.md` | le volet trajectoire 12-24 mois |
@@ -88,7 +88,7 @@ python <forge>/scripts/rapport_html.py --projet . --verifier              # rest
 python <forge>/scripts/validate.py  --mission .                           # contrôle
 ```
 
-`livrables.py` génère ce qui se déduit des fiches — les 87 nœuds du snapshot, la dette
+`livrables.py` génère ce qui se déduit des fiches — les 89 nœuds du snapshot, la dette
 d'instrumentation, les compteurs d'avancement — et **préserve** ce qui relève du
 jugement : cible, sensibilité, maturité, actions. Il refuse d'écrire un snapshot non
 conforme à son schéma : un contrat qu'on n'applique pas n'est pas un contrat.
@@ -166,7 +166,7 @@ le client achète au second audit.
 - [ ] Étape 0 produite avant toute analyse
 - [ ] **Zéro chiffre sans étiquette** `[T1]` / `[T2]` / `[T3]` / `[T4]`
 - [ ] Zéro position, impression, clic ou CTR SERP sans export GSC ni lecture connecteur datée
-- [ ] Table de couverture **87/87**, aucun nœud absent
+- [ ] Table de couverture **89/89**, aucun nœud absent
 - [ ] ≤ 10 forts, ≤ 15 faibles, chacun avec preuve **et** mécanisme
 - [ ] Cible 12/24 mois avec calcul visible, fourchette, sensibilité
 - [ ] Aucune projection présentée comme une prévision

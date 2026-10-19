@@ -22,4 +22,4 @@ Doublon du schema source. La branche `Indexation` fait autorite :
 l'audit se fait dans **`07-indexation/`**, jamais ici.
 
 Cette fiche n'a **aucun champ a remplir**. Elle existe pour que le compte
-des 87 noeuds reste exact et pour qu'on ne puisse pas se tromper de casier.
+des 89 noeuds reste exact et pour qu'on ne puisse pas se tromper de casier.

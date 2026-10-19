@@ -191,7 +191,7 @@ def _volet(cellule: str) -> str:
 def lire(chemin: Path | None = None) -> dict:
     """Retourne {'branches': [...], 'noeuds': [...]} depuis la grille.
 
-    Echoue si les comptes ne sont pas exactement 17 branches et 87 noeuds :
+    Echoue si les comptes ne sont pas exactement 17 branches et 89 noeuds :
     c'est le controle qui aurait attrape le defaut du fichier .MD d'origine.
     """
     chemin = chemin or GRILLE

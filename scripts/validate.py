@@ -141,7 +141,7 @@ class Rapport:
 
 
 def controler_fiches(base: Path, noeuds: list[dict]) -> list[str]:
-    """Presence, validite et coherence du front-matter des 87 fiches."""
+    """Presence, validite et coherence du front-matter des 89 fiches."""
     invalides: list[str] = []
     for n in noeuds:
         fiche = base / n["chemin"] / "_fiche.md"

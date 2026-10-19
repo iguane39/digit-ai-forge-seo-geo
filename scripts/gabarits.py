@@ -233,7 +233,7 @@ def fiche_noeud(n: dict, modele: str | None = None) -> str:
                 f"l'audit se fait dans **`{renvoi}/`**, jamais ici.",
                 "",
                 "Cette fiche n'a **aucun champ a remplir**. Elle existe pour que le compte",
-                "des 87 noeuds reste exact et pour qu'on ne puisse pas se tromper de casier.",
+                f"des {NB_NOEUDS} noeuds reste exact et pour qu'on ne puisse pas se tromper de casier.",
                 "",
             ]
         )
@@ -458,7 +458,7 @@ def readme_mission(client: str | None) -> str:
     return f"""# {titre}
 
 Espace de travail SEO de ce projet. Genere par **forge-seo**, qui fournit la
-methode et le referentiel des 87 noeuds ; **tout ce qui est produit ici reste
+methode et le referentiel des {NB_NOEUDS} noeuds ; **tout ce qui est produit ici reste
 ici**.
 
 ## Ou va quoi
@@ -484,7 +484,7 @@ deux rend le rapport impossible a composer.
 
 **Ouvrir `METHODE.md`** : garde-fous, runbook en 5 etapes, contrat de sortie. Il en
 existe une copie ici, prise a la creation de l'etude ; la source vit dans le projet
-forge-seo sous `referentiel/`, avec la grille des 87 noeuds, le bareme de scoring, la
+forge-seo sous `referentiel/`, avec la grille des {NB_NOEUDS} noeuds, le bareme de scoring, la
 matrice des sources et la methode du volet strategie.
 
 Rien ne se declenche tout seul : l'audit commence quand on ouvre ce fichier.
