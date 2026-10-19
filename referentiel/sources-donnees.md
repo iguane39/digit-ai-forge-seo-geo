@@ -4,6 +4,8 @@
 
 **Version 1.1.1 — 2026-10-19.** TF-1869 : numéros de nœuds et comptes réalignés sur la grille à 89 nœuds. La matrice et le tableau « Principe » dataient de la grille à 87 nœuds, avant l'insertion des nœuds 21 et 59 ; un contrôle (15 de `validate.py`) les confronte désormais à la grille.
 
+**Version 1.1.2 — 2026-10-19.** TF-1901 : une ligne de matrice pour le rapport « Generative AI performance » de la Search Console (nœuds 58 et 70). Les gestes datés vivent dans `gestes-google-verifies.md` ; la grille n'est pas modifiée.
+
 À charger en **R0**, pour déclarer honnêtement ce qui sera mesurable avant d'analyser.
 
 ## Principe
@@ -66,6 +68,7 @@ La matrice dit, pour chaque source, si elle est disponible, quels nœuds elle se
 | **Déclaratif client** | à demander | 65-69, 78 | nœud non renseigné, à marquer `à collecter` (pas `non mesurable`) |
 | **Export GSC** | à demander | 5, 17, 19, 35-38, 40, 44, 49, 53, 70, 71, 72, 75, 76, 77 | sans export **ni connecteur** : **17 nœuds** en non mesurable |
 | **Connecteur GSC** (lecture seule, compte du client) | à ouvrir avec le client | les mêmes nœuds que la ligne « Export GSC » | ces **17 nœuds** sont mesurables tant que la voie est ouverte, `[T1 observé]` ; voie fermée : retour à l'export, puis **17 nœuds** non mesurables |
+| **Rapport « Generative AI performance » (Search Console)** | à demander | 58, 70 | sans export **ni connecteur** : **2 nœuds** sans la mesure officielle des impressions dans les fonctions génératives de Google ; le nœud 58 garde son test manuel daté. Gestes et limites : `gestes-google-verifies.md` |
 | **Export GA** | à demander | 10, 45, 46, 47, 73, 77 | sans export **ni connecteur** : **6 nœuds** en non mesurable |
 | **Connecteur GA4** (lecture seule, compte du client) | à ouvrir avec le client | les mêmes nœuds que la ligne « Export GA » | ces **6 nœuds** sont mesurables tant que la voie est ouverte, `[T1 observé]` ; voie fermée : retour à l'export, puis **6 nœuds** non mesurables |
 | **CRM / e-commerce** | à demander | 7, 8, 10, 73, 74 | **5 nœuds** en non mesurable |

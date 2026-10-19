@@ -50,6 +50,7 @@ inscrit dans `.forge-seo.json` de l'étude.
 | `referentiel/scoring.md` | chiffrer gain / effort / confiance et prioriser |
 | `referentiel/strategie-future.md` | le volet trajectoire 12-24 mois |
 | `referentiel/recherche-multilingue.md` | mots-clés multilingues, CPC, cadence des données de recherche — nœuds 3, 6, 9, 17, 20, 21, 39-43, 51 (TF-0792) |
+| `referentiel/gestes-google-verifies.md` | gestes Google datés et sourcés (filtre regex GSC, rapport IA générative, avis sur llms.txt, Trends par catégorie, badge) — nœuds 17, 19, 27, 51, 55, 58, 59, 70 (TF-1901) |
 | `referentiel/cadrage.template.md` | si aucun cadrage n'est fourni |
 | `referentiel/snapshot.schema.json` | comprendre le contrat du snapshot |
 
