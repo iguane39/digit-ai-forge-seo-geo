@@ -52,11 +52,11 @@ Ces exports transforment 24 nœuds non mesurables en nœuds mesurés. Les fourni
 
 | Export | Statut | Fourni ? | Chemin / période |
 |---|---|---|---|
-| **Google Search Console** — requêtes, pages, impressions, clics, CTR, position (12 mois si possible) | OPTIONNEL — *sans lui ni lecture connecteur, **16 nœuds** en non mesurable : positions, impressions, clics, CTR SERP, longue traîne, requêtes sous-exploitées, couverture d'indexation, découverte, pages profondes, indexation de masse, pics, contenus à renforcer. **La cible chiffrée à 12 mois perd sa baseline***  | | |
+| **Google Search Console** — requêtes, pages, impressions, clics, CTR, position (12 mois si possible) | OPTIONNEL — *sans lui ni lecture connecteur, **17 nœuds** en non mesurable : positions, impressions, clics, CTR SERP, longue traîne, requêtes sous-exploitées, couverture d'indexation, découverte, pages profondes, indexation de masse, pics, contenus à renforcer. **La cible chiffrée à 12 mois perd sa baseline***  | | |
 | **Google Search Console** — rapport d'indexation des pages | OPTIONNEL — *sans lui, l'état de couverture déclaré par Google reste inconnu* | | |
-| **Google Analytics** — sessions, sources, conversions, segment organique | OPTIONNEL — *sans lui ni lecture connecteur, **5 nœuds** en non mesurable : trafic référent, trafic social, comportement post-clic, leads, vitesse de monétisation. **Aucun gain ne peut être exprimé en leads*** | | |
-| **CRM / e-commerce** — valeur client, panier moyen, coût du lead | OPTIONNEL — *sans lui, **4 nœuds** en non mesurable. **Aucun gain ne peut être exprimé en euros, et le ROI est déclaré non calculable*** | | |
-| **Logs serveur ou CDN** | OPTIONNEL — *sans eux, le budget de crawl réel et le crawl gaspillé restent invisibles (nœud 29)* | | |
+| **Google Analytics** — sessions, sources, conversions, segment organique | OPTIONNEL — *sans lui ni lecture connecteur, **6 nœuds** en non mesurable : trafic référent, trafic social, comportement post-clic, leads, vitesse de monétisation. **Aucun gain ne peut être exprimé en leads*** | | |
+| **CRM / e-commerce** — valeur client, panier moyen, coût du lead | OPTIONNEL — *sans lui, **5 nœuds** en non mesurable. **Aucun gain ne peut être exprimé en euros, et le ROI est déclaré non calculable*** | | |
+| **Logs serveur ou CDN** | OPTIONNEL — *sans eux, le budget de crawl réel et le crawl gaspillé restent invisibles (nœud 30)* | | |
 | **Accès à un index de backlinks** (Ahrefs, Semrush, Majestic) | OPTIONNEL — *sans lui, le profil de liens est réduit aux liens détectables en recherche web, et la difficulté SEO est estimée par proxy structurel — un classement relatif, pas une mesure* | | |
 | **Source de volume de recherche** | OPTIONNEL — *sans elle, le volume est remplacé par les impressions GSC comme plancher observé, ou déclaré inconnu. **Il ne sera jamais estimé de mémoire*** | | |
 

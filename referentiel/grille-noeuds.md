@@ -376,6 +376,6 @@ est un résultat et non une dette d'instrumentation.*
 | `CADRAGE` | 5 |
 | **Total** | **89** |
 
-**Sans aucun export client**, 53 nœuds sur 87 restent instrumentés (61 %), et 24 basculent en non mesurable (18 `EX` + 6 `NM`), dont l'intégralité de la mesure de performance. C'est le chiffre à annoncer en R0.
+**Sans aucun export client**, 55 nœuds sur 89 restent instrumentés (62 %), et 24 basculent en non mesurable (18 `EX` + 6 `NM`), dont l'intégralité de la mesure de performance. C'est le chiffre à annoncer en R0.
 
-Ces comptes valent pour une étude **locale**, qui mobilise les 87 nœuds. Sur un autre modèle, les nœuds hors portée s'ajoutent — 5 pour la branche `Local`, jusqu'à 8 de plus selon le modèle.
+Ces comptes valent pour une étude **locale**, qui mobilise les 89 nœuds. Sur un autre modèle, les nœuds hors portée s'ajoutent — 5 pour la branche `Local`, jusqu'à 8 de plus selon le modèle.

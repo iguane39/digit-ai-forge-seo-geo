@@ -389,8 +389,8 @@ Deposer les exports dans `donnees/` puis cocher.
 - [ ] Connecteur GSC / GA4 -- lecture seule, compte du client (voie `connecteur` de
       `referentiel/sources-donnees.md`). Date de lecture et periode, par mesure :
 
-Sans export GSC ni connecteur : 16 noeuds non mesurables, et la cible chiffree a 12 mois
-perd sa baseline. Sans export GA ni connecteur : 5 noeuds. Sans CRM : 4 noeuds, et aucun
+Sans export GSC ni connecteur : 17 noeuds non mesurables, et la cible chiffree a 12 mois
+perd sa baseline. Sans export GA ni connecteur : 6 noeuds. Sans CRM : 5 noeuds, et aucun
 gain exprimable en euros.
 
 ## Contexte libre
@@ -474,7 +474,7 @@ ici**.
 | `.forge-seo.json` | provenance : chemin de la forge, version de grille, date | tracabilite |
 
 `donnees/` est indexe par **source**, `analyse/` par **concept SEO**. Un export GSC
-alimente 16 noeuds repartis dans 7 branches : les deux indexations ne peuvent pas
+alimente 17 noeuds repartis dans 8 branches : les deux indexations ne peuvent pas
 etre la meme.
 
 `analyse/` est la matiere premiere, `livrables/` le document assemble. Confondre les

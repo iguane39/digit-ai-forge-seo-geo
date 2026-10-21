@@ -148,7 +148,7 @@ archivé) : le référentiel fait foi, l'archive non.
 forge ou un dossier qui la contient.
 
 **Deux axes délibérément séparés.** `donnees/` est indexé par **source**, `analyse/`
-par **concept SEO** — un export GSC alimente 16 nœuds répartis dans 7 branches, les deux
+par **concept SEO** — un export GSC alimente 17 nœuds répartis dans 8 branches, les deux
 indexations ne peuvent pas être la même. Et `analyse/` est la matière première quand
 `livrables/` est le document assemblé : les confondre rend le rapport impossible à
 composer.

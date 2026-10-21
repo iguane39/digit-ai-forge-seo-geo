@@ -7,7 +7,7 @@
     "Un identifiant retiré ne se réaffecte JAMAIS à un autre nœud : il sort, il ne se recycle pas.",
     "Les évolutions se chaînent. Une étude qui a sauté plusieurs versions est récupérable tant qu'une suite d'entrées relie sa version à la version courante."
   ],
-  "version_courante": "27e2527398eb",
+  "version_courante": "7ebe97e92dea",
   "evolutions": [
     {
       "de": "3d0af44aae9a",
@@ -166,6 +166,15 @@
       "identifiants_nouveaux": [
         21
       ]
+    },
+    {
+      "de": "27e2527398eb",
+      "vers": "7ebe97e92dea",
+      "date": "2026-10-21",
+      "motif": "TF-1894 (decision humaine D-41 (a) du 19/10/2026) : les syntheses LISIBLES de la grille annoncaient encore « 53 noeuds sur 87 » (61 %) et « les 87 noeuds » pour une grille de 89 noeuds, dont 55 instrumentes (62 %). Meme defaut que TF-0653, un cran plus loin : le controle 13 juge les trois tables, pas la phrase qui les suit. Corrige contre la mesure du manifeste ; le controle 15 juge desormais aussi cette phrase et les textes hors matrice (README, methode, cadrage, grille, gabarits). AUCUN IDENTIFIANT NE BOUGE : seule la phrase de synthese change, la grille porte les memes 89 noeuds.",
+      "correspondances": {},
+      "identifiants_retires": [],
+      "identifiants_nouveaux": []
     }
   ],
   "historique_anterieur_au_registre": {

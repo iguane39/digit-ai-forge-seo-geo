@@ -749,6 +749,162 @@ def controler_matrice_sources(chemin: Path | None = None, grille: Path | None = 
                     f"de {len(noeuds)} nœuds, tableau « Principe » recalculé — {len(ecarts)} écart(s)")
 
 
+# TF-1894 (21/10/2026, decision humaine D-41 (a)) — LES TEXTES HORS MATRICE SUIVENT LA GRILLE AUSSI.
+#
+# LE FAIT. Le controle 15 (TF-1869) jugeait `sources-donnees.md` et rien d'autre. Le 19/10/2026, apres
+# son realignement, des textes qui disent la meme chose ailleurs affirmaient encore « 16 noeuds » sur
+# Search Console (la matrice en liste 17), « 5 » sur GA (6), « 4 » sur le CRM (5), « nœud 29 » pour les
+# logs (devenu le 30), « 7 branches » pour un export GSC (8) et « 53 noeuds sur 87 » (55 sur 89) : le
+# cadrage que remplit le client, les gabarits qui alimentent chaque etude, le README et la synthese de
+# la grille. Ce sont des textes que lit un client avant de decider quels exports fournir.
+#
+# CE QUE LE CONTROLE JUGE, SANS RECOPIER NI GRILLE NI MATRICE (tout est relu, rien n'est fige) :
+#   - un compte de noeuds a partir de 50 est un compte de la grille : le total, le total sans la branche
+#     Local, les noeuds instrumentes, les noeuds d'un modele — jamais un autre (« 87 noeuds » echoue).
+#     Un « de 82 a 87 noeuds » est un fait d'histoire, il n'est pas juge ;
+#   - « N noeuds sur M restent instrumentes (P %) », « K basculent en non mesurable », « E `EX` + F `NM` »
+#     et « transforment K noeuds non mesurables » egalent les comptes de la grille ;
+#   - un compte de moins de 50 noeuds, dans une phrase (ou une ligne de tableau) dont la derniere source
+#     nommee est GSC, GA ou le CRM, egale le nombre d'identifiants de la ligne correspondante de la matrice ;
+#   - « repartis dans B branches » egale le nombre de branches distinctes des noeuds de l'export GSC ;
+#   - un « noeud N » dans une phrase qui parle des logs serveur est un noeud de la ligne « Logs serveur ».
+# Les compteurs d'une phrase sont donc jugés contre la MATRICE, que le controle 15 juge contre la grille.
+TEXTES_HORS_MATRICE = (
+    RACINE / "README.md",
+    RACINE / "referentiel" / "methode.md",
+    RACINE / "referentiel" / "cadrage.template.md",
+    RACINE / "referentiel" / "grille-noeuds.md",
+    RACINE / "scripts" / "gabarits.py",
+)
+#: Seuil a partir duquel « N noeuds » parle de la grille entiere et non d'une source ou d'une branche.
+SEUIL_COMPTE_DE_GRILLE = 50
+_SOURCES_DU_TEXTE = (  # (ancre dans le texte, ligne de la matrice qui fait foi)
+    (re.compile(r"\bGSC\b|Search\s+Console"), "Export GSC"),
+    (re.compile(r"\bGA\b|Google\s+Analytics"), "Export GA"),
+    (re.compile(r"CRM|e-commerce"), "CRM / e-commerce"),
+)
+_RE_LOGS_DU_TEXTE = re.compile(r"logs?\s+serveur|budget\s+de\s+crawl", re.IGNORECASE)
+_RE_FRONTIERE_D_UNITE = re.compile(r"\n\s*\n|\.\s|\n(?=\s*\|)")
+_RE_COMPTE_DU_TEXTE = re.compile(r"(?<!à )(?<!\d)(\d+)\s+n(?:œ|oe)uds?\b")
+_RE_SUR_RESTENT = re.compile(r"(\d+)\s+n(?:œ|oe)uds\s+sur\s+(\d+)\s+restent")
+_RE_POURCENT = re.compile(r"restent\s+instrumentés\s*\((\d+)\s*%\)")
+_RE_BASCULENT = re.compile(r"(\d+)\s+basculent\s+en\s+non\s+mesurable|transforment\s+(\d+)\s+n(?:œ|oe)uds\s+non\s+mesurables")
+_RE_EX_NM = re.compile(r"(\d+)\s+`EX`\s*\+\s*(\d+)\s+`NM`")
+_RE_REPARTIS = re.compile(r"r[ée]partis\s+dans\s+(\d+)\s+branches")
+_RE_NUMERO_DE_NOEUD = re.compile(r"n(?:œ|oe)ud\s+(\d+)\b(?![-–\d])")
+
+
+def controler_textes_hors_matrice(
+    textes: dict[str, str] | None = None, sources: Path | None = None, grille: Path | None = None
+) -> tuple[list[str], str]:
+    """Les textes qui parlent des nœuds hors de la matrice disent-ils ce que la grille et la matrice portent ?
+
+    `textes` : {nom: contenu} ; par defaut les fichiers de TEXTES_HORS_MATRICE, lus sur disque.
+    """
+    noeuds = lire(grille)["noeuds"]
+    par_id = {n["id"]: n for n in noeuds}
+    total = len(noeuds)
+    statuts = [n["statut"] for n in noeuds]
+    instrumentes, non_mesurables = statuts.count("SD"), statuts.count("EX") + statuts.count("NM")
+    sans_local = total - sum(1 for n in noeuds if n["branche"] == "Local")
+    comptes_de_grille = {total, sans_local, instrumentes} | {
+        sum(1 for n in noeuds if modele in n["modeles"]) for n in noeuds for modele in n["modeles"]
+    }
+    ecarts: list[str] = []
+
+    # La matrice fait foi pour les comptes par source : on la relit, comme le controle 15 la juge.
+    texte_m = (sources or FICHIER_SOURCES).read_text(encoding="utf-8")
+    corps = texte_m.split("\n## Matrice source", 1)[-1].split("\n## ", 1)[0]
+    ids_matrice: dict[str, list[int]] = {}
+    for l in corps.splitlines():
+        cellules = [c.strip() for c in l.strip().strip("|").split("|")]
+        if l.startswith("| **") and len(cellules) == 4:
+            ids_matrice[re.sub(r"\*\*|\s*\(.*$", "", cellules[0]).strip()] = _identifiants_de_cellule(cellules[2])
+    for nom in [s[1] for s in _SOURCES_DU_TEXTE] + ["Logs serveur"]:
+        if not ids_matrice.get(nom):
+            ecarts.append(f"matrice : ligne « {nom} » absente ou sans identifiant, les textes ne peuvent pas être jugés")
+    branches_gsc = len({par_id[i]["branche"] for i in ids_matrice.get("Export GSC", []) if i in par_id})
+
+    if textes is None:
+        textes = {}
+        for chemin in TEXTES_HORS_MATRICE:
+            try:
+                nom = chemin.relative_to(RACINE).as_posix()
+            except ValueError:  # copie jetable d'un banc : le nom seul
+                nom = chemin.name
+            if chemin.exists():
+                textes[nom] = chemin.read_text(encoding="utf-8")
+            else:
+                ecarts.append(f"{nom} : texte hors matrice absent, rien à confronter")
+
+    jugees = 0
+    for nom, texte in textes.items():
+        def lieu(pos: int) -> str:
+            return f"{nom}:{texte.count(chr(10), 0, pos) + 1}"
+
+        def unite_avant(pos: int) -> str:
+            debut = 0
+            for m in _RE_FRONTIERE_D_UNITE.finditer(texte, 0, pos):
+                debut = m.end()
+            return texte[debut:pos]
+
+        def juger(pos: int, dit: int, attendu: int, quoi: str) -> None:
+            nonlocal jugees
+            jugees += 1
+            if dit != attendu:
+                ecarts.append(f"{lieu(pos)} : {quoi} — le texte dit {dit}, la grille ou la matrice porte {attendu}")
+
+        for m in _RE_SUR_RESTENT.finditer(texte):
+            juger(m.start(1), int(m.group(1)), instrumentes, "nœuds instrumentés sans export")
+            juger(m.start(2), int(m.group(2)), total, "total de la grille")
+        for m in _RE_POURCENT.finditer(texte):
+            juger(m.start(1), int(m.group(1)), round(100 * instrumentes / total), "part des nœuds instrumentés (%)")
+        for m in _RE_BASCULENT.finditer(texte):
+            g = 1 if m.group(1) else 2
+            juger(m.start(g), int(m.group(g)), non_mesurables, "nœuds non mesurables sans export (EX + NM)")
+        for m in _RE_EX_NM.finditer(texte):
+            juger(m.start(1), int(m.group(1)), statuts.count("EX"), "nœuds `EX`")
+            juger(m.start(2), int(m.group(2)), statuts.count("NM"), "nœuds `NM`")
+        for m in _RE_REPARTIS.finditer(texte):
+            juger(m.start(1), int(m.group(1)), branches_gsc, "branches des nœuds de l'export GSC")
+
+        for m in _RE_COMPTE_DU_TEXTE.finditer(texte):
+            n = int(m.group(1))
+            if _RE_SUR_RESTENT.match(texte, m.start()):
+                continue  # jugé plus haut, avec son total
+            if n >= SEUIL_COMPTE_DE_GRILLE:
+                jugees += 1
+                if n not in comptes_de_grille:
+                    ecarts.append(
+                        f"{lieu(m.start(1))} : « {n} nœuds » n'est aucun compte de la grille "
+                        f"(total {total}, sans la branche Local {sans_local}, instrumentés {instrumentes})"
+                    )
+                continue
+            avant = unite_avant(m.start())
+            source = None
+            for ancre, ligne in _SOURCES_DU_TEXTE:
+                for a in ancre.finditer(avant):
+                    if source is None or a.start() >= source[0]:
+                        source = (a.start(), ligne)
+            if source is not None and ids_matrice.get(source[1]):
+                juger(m.start(1), n, len(ids_matrice[source[1]]), f"nœuds de la ligne « {source[1]} » de la matrice")
+
+        for m in _RE_NUMERO_DE_NOEUD.finditer(texte):
+            if _RE_LOGS_DU_TEXTE.search(unite_avant(m.start())) and ids_matrice.get("Logs serveur"):
+                jugees += 1
+                if int(m.group(1)) not in ids_matrice["Logs serveur"]:
+                    ecarts.append(
+                        f"{lieu(m.start(1))} : « nœud {m.group(1)} » pour les logs serveur — "
+                        f"la matrice porte {ids_matrice['Logs serveur']}"
+                    )
+
+    if jugees == 0:
+        ecarts.append("aucune affirmation de nœuds relue dans les textes : le contrôle ne lit plus rien")
+
+    return ecarts, (f"{len(textes)} texte(s) hors matrice, {jugees} affirmation(s) confrontée(s) à la grille "
+                    f"et à la matrice — {len(ecarts)} écart(s)")
+
+
 _RE_LECTURE_DATEE = re.compile(r"\blue?\s+le\s+\d{4}-\d{2}-\d{2}\b", re.IGNORECASE)
 _RE_DATE_ISO = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 
@@ -973,11 +1129,14 @@ def valider_referentiel(json_mode: bool = False) -> int:
     )
 
     # TF-1869 : la matrice des sources et le tableau « Principe » suivent la grille du jour.
+    # TF-1894 : les textes hors matrice (README, cadrage, gabarits, synthese de la grille) aussi.
     ecarts_m, resume_m = controler_matrice_sources()
+    ecarts_t, resume_t = controler_textes_hors_matrice()
+    ecarts_m += ecarts_t
     r.controle(
-        "15. la matrice des sources et le tableau « Principe » disent ce que la grille porte",
+        "15. la matrice des sources, le tableau « Principe » et les textes hors matrice disent ce que la grille porte",
         not ecarts_m,
-        resume_m,
+        f"{resume_m} ; {resume_t}",
         ecarts_m[:6],
     )
 
