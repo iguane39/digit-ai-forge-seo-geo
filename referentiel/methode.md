@@ -51,6 +51,7 @@ inscrit dans `.forge-seo.json` de l'étude.
 | `referentiel/strategie-future.md` | le volet trajectoire 12-24 mois |
 | `referentiel/recherche-multilingue.md` | mots-clés multilingues, CPC, cadence des données de recherche — nœuds 3, 6, 9, 17, 20, 21, 39-43, 51 (TF-0792) |
 | `referentiel/gestes-google-verifies.md` | gestes Google datés et sourcés (filtre regex GSC, rapport IA générative, avis sur llms.txt, Trends par catégorie, badge) — nœuds 17, 19, 27, 51, 55, 58, 59, 70 (TF-1901) |
+| `referentiel/cloudflare.json` | si le site passe par Cloudflare : réglages datés et sourcés qui changent ce que voit un moteur ou un robot d'IA (politiques des robots, robots.txt géré, AI Crawl Control, Logpush), et syntaxe de chaque véhicule de redirection — nœuds 14, 27, 28, 30, 31, 32, 36, 45, 59 (TF-1997) ; contrôle : `scripts/oracle_redirections.py` |
 | `referentiel/cadrage.template.md` | si aucun cadrage n'est fourni |
 | `referentiel/snapshot.schema.json` | comprendre le contrat du snapshot |
 
@@ -66,7 +67,7 @@ dans la forge.
 | # | Étape | Produit | Où | Outillée |
 |---|---|---|---|---|
 | 0 | **Cadrage** | périmètre, plafond de run, nœuds non mesurables comptés | lire `seo/cadrage.md` et `seo/etat.json` | — |
-| 1 | **Collecte** | données brutes horodatées | `seo/donnees/{gsc,ga,crm,logs,crawl}/` | `crawler.py` |
+| 1 | **Collecte** | données brutes horodatées | `seo/donnees/{gsc,ga,crm,logs,crawl}/` | `crawler.py` ; `oracle_redirections.py` pour les domaines et chemins qui redirigent vers le site |
 | 2 | **Constat** | ce qui est, mesuré, avec niveau de preuve | `seo/analyse/**/_fiche.md` § Constat | humain |
 | 3 | **Interprétation** | le mécanisme : ce que ça coûte et pourquoi | `seo/analyse/**/_fiche.md` § Interprétation | humain |
 | 4 | **Projection** | cible 12/24 mois, bornée, calcul visible | `seo/livrables/snapshot-*.json` | humain |

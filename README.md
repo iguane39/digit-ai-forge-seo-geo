@@ -84,6 +84,17 @@ python c:/dev/digit-ai-forge-seo-geo/scripts/agents_ia.py --projet . --logs seo/
 #    plus net. Un chemin --logs faux, lui, reste un refus : une coquille n'est pas
 #    une absence de donnée.
 
+# 3 quater. (noeud 28) redirections qui préservent le chemin, si des domaines ou des
+#    chemins redirigent vers le site
+python c:/dev/digit-ai-forge-seo-geo/scripts/oracle_redirections.py --sonder https://ancien-domaine.fr
+python c:/dev/digit-ai-forge-seo-geo/scripts/oracle_redirections.py --regles public/_redirects --projet .
+#    la sonde demande un chemin témoin unique et exige de le retrouver dans Location ;
+#    --regles lit un fichier _redirects ou un export JSON de l'API Cloudflare (Page Rules,
+#    Single Redirects, Bulk Redirects). Syntaxe de chaque véhicule, datée et sourcée :
+#    referentiel/cloudflare.json. Fait mesuré le 25/08/2026 : $1 préserve le chemin dans
+#    une Page Rule, mais s'écrit ${1} dans une Single Redirect et :splat dans _redirects.
+#    Un ancien site renvoyé exprès sur l'accueil se consigne par --assume <id>.
+
 # 4. ouvrir seo/METHODE.md — garde-fous, runbook, contrat de sortie. Constater et
 #    interpréter dans les fiches de seo/analyse/ : c'est la partie humaine.
 
@@ -168,12 +179,13 @@ forge-seo/
 │   ├── cadrage.template.md      formulaire d'entrée détaillé
 │   ├── snapshot.schema.json     contrat de l'état persistant, appliqué
 │   ├── correspondances-grille.json  évolutions de la grille, ancien id → nouvel id
-│   └── agents-ia.json           catalogue daté des agents IA nommés (noeuds 29/58)
+│   ├── agents-ia.json           catalogue daté des agents IA nommés (noeuds 29/58)
+│   └── cloudflare.json          réglages Cloudflare datés (robots d'IA, indexation) et syntaxe des redirections
 ├── seo/                 arborescence canonique générée depuis referentiel/ — lecture seule
 ├── scripts/             grille · gabarits · scaffold · new_mission · validate
 │                        · schema · crawler · crux · agents_ia · livrables
 │                        · scorer_actions · gabarit_html · rapport_html
-│                        · oracle_interaction · remplir_fiches · autotest
+│                        · oracle_interaction · oracle_redirections · remplir_fiches · autotest
 ├── assets/vendor/       composant de filtres, copie verbatim tracée
 ├── output/              livrables : 01-decisions/ et 02-veille/
 ├── prompts/             archives datées du chantier
@@ -210,7 +222,7 @@ il n'y a aucune liste à tenir à jour — et joue en plus les deux vérificatio
 cette convention (`validate.py`, `autotest.py`). Chaque script reste lançable seul, à
 l'identique : le runner n'est qu'un chef d'orchestre. Une vérification dont la sortie ne
 porte pas de compte « N/M » est déclarée **muette** et fait échouer la recette, plutôt que
-d'être comptée 0 en silence. État mesuré le 18/10/2026 : **13 vérifications, 222 cas**.
+d'être comptée 0 en silence. État mesuré le 29/10/2026 : **16 vérifications, 378 cas**.
 
 `python -m pytest scripts/` ne collecte **rien** et c'est normal : ces vérifications sont
 des scripts à `main()`, pas des fonctions `test_*` (pytest sort alors en 5, « no tests ran » —

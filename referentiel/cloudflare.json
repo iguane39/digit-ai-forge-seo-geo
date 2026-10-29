@@ -1,0 +1,530 @@
+{
+  "objet": "Référentiel daté des réglages Cloudflare qui touchent le crawl, l'indexation et les robots d'IA, et des véhicules de redirection avec la syntaxe que chacun substitue (TF-1997).",
+  "pourquoi": "Jusqu'au 29/10/2026, la forge ne citait Cloudflare que pour Logpush, alors que les sites audités passent souvent par Cloudflare pour le DNS, les redirections et le filtrage des robots. Un agent autorisé par robots.txt peut être bloqué en amont, un robots.txt servi peut différer de celui du dépôt, et une variable de redirection valable dans un véhicule reste littérale dans un autre : le 25/08/2026, une Page Rule a préservé le chemin grâce à $1, forme que les Single Redirects écrivent ${1} et que _redirects écrit :splat.",
+  "contrat": [
+    "DONNÉE, pas du code : scripts/oracle_redirections.py lit ici la syntaxe des références (motif, gabarit d'écriture), la cible littérale, le code et les paramètres par défaut de chaque véhicule ; un changement de syntaxe chez Cloudflare se corrige ici.",
+    "cible_litterale à true : aucune forme de référence n'est substituée dans la cible de ce véhicule ; une référence d'un autre véhicule y arrive telle quelle dans l'en-tête Location.",
+    "Périssable (loi 4 de la Factory) : chaque entrée porte la page qui la fonde, la date que la page affiche (« Last updated ») et une citation verbatim de sa version Markdown officielle. Revérifier avant toute citation dans un livrable (garde-fou 4 de methode.md).",
+    "Les nœuds sont cités par identifiant ET par chemin ; scripts/test_referentiel_cloudflare.py refuse une paire que le manifeste ne porte plus, pour qu'une évolution de grille ne réaffecte pas un réglage en silence.",
+    "Ce qui n'a pas été mesuré est écrit « non mesuré » : aucune zone réelle n'a été lue pour ce référentiel, seulement la documentation publique."
+  ],
+  "version": "1.0.0",
+  "date_verification": "2026-10-29",
+  "provenance": "40 pages lues le 2026-10-29 par curl -sL sur https://developers.cloudflare.com/<chemin>/index.md, version Markdown que chaque page déclare, toutes en HTTP 200, dont 24 citées ici ; index de départ https://developers.cloudflare.com/llms.txt et les index de quatre produits (AI Crawl Control, Bots, Rules, Web Analytics). Chaque citation a été comparée mot pour mot à sa page le jour même.",
+  "codes_permanents": {
+    "valeurs": [301, 308],
+    "regle": "Tout autre code de redirection est traité comme non permanent : un moteur garde alors l'URL d'origine en index.",
+    "sources": [
+      {
+        "page": "https://developers.cloudflare.com/rules/url-forwarding/single-redirects/settings/",
+        "date_affichee": "2026-05-05",
+        "citation": "**301 - Permanent Redirect**: The page has permanently moved to a new address."
+      },
+      {
+        "page": "https://developers.cloudflare.com/rules/url-forwarding/single-redirects/settings/",
+        "date_affichee": "2026-05-05",
+        "citation": "**308 - Advanced: Permanent, HTTP method preserved**: The page has permanently moved to a new address."
+      }
+    ]
+  },
+  "prerequis_redirection": {
+    "regle": "Single Redirects, Bulk Redirects et Page Rules ne s'appliquent qu'à un enregistrement DNS proxifié : sans lui, la redirection ne se déclenche jamais, ce que le pilot a aussi mesuré le 25/08/2026.",
+    "sources": [
+      {
+        "page": "https://developers.cloudflare.com/rules/url-forwarding/",
+        "date_affichee": "2026-08-14",
+        "citation": "Single Redirects and Bulk Redirects require that you [proxy the DNS records](https://developers.cloudflare.com/dns/proxy-status/) of your domain (or subdomain) through Cloudflare."
+      },
+      {
+        "page": "https://developers.cloudflare.com/rules/page-rules/how-to/url-forwarding/",
+        "date_affichee": "2026-05-05",
+        "citation": "Page Rules require a [proxied DNS record](https://developers.cloudflare.com/dns/proxy-status/) to work."
+      }
+    ]
+  },
+  "ordre_execution": {
+    "regle": "Les Single Redirects passent avant les Bulk Redirects, et les produits Rules passent avant les Page Rules : sur une même URL, la première règle qui correspond gagne. Une Page Rule correcte peut donc être masquée par une Single Redirect fautive.",
+    "sources": [
+      {
+        "page": "https://developers.cloudflare.com/rules/url-forwarding/",
+        "date_affichee": "2026-08-14",
+        "citation": "Also, if you configure URL redirects using different Cloudflare products (Single Redirects and Bulk Redirects), the product executed first will apply, if there is a rule match (in this case, Single Redirects)."
+      },
+      {
+        "page": "https://developers.cloudflare.com/rules/url-forwarding/",
+        "date_affichee": "2026-08-14",
+        "citation": "This means that Page Rules will be overridden if there is a match for both Page Rules and the Rules products listed above."
+      }
+    ]
+  },
+  "vehicules_redirection": [
+    {
+      "id": "page-rules",
+      "nom": "Page Rules, réglage Forwarding URL",
+      "portee": "zone",
+      "statut": "hérité : Cloudflare recommande les produits Rules et annonce une migration automatique des Page Rules ; la même page la dit prévue « late 2025 or beyond » puis « during 2025 », son état au 29/10/2026 n'est pas mesuré.",
+      "joker": "*",
+      "references": [
+        {"motif": "\\$([1-9][0-9]?)", "porte": "joker", "sonde": true, "gabarit": "$%d"}
+      ],
+      "forme_reference": "$1, $2… (le n-ième joker du motif, compté de gauche à droite, hôte compris) ; la référence d'API écrit « ${num} », forme que la page des jokers ne décrit pas : seule $n est attestée par une mesure, celle du 25/08/2026.",
+      "echappement_dollar": "\\$",
+      "cible_litterale": false,
+      "code_par_defaut": null,
+      "codes_admis": [301, 302],
+      "conservation_chemin": "le motif porte un joker dans le chemin ET la cible le reprend par $n ; avec *example.com/*, le chemin est $2, $1 étant le sous-domaine.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/rules/page-rules/reference/wildcard-matching/",
+          "date_affichee": "2026-04-16",
+          "citation": "You can reference a matched wildcard later using the `$<X>` syntax, where `<X>` indicates the index of a glob pattern. For example, `$1` represents the first wildcard match and `$2` represents the second wildcard match."
+        },
+        {
+          "page": "https://developers.cloudflare.com/rules/page-rules/reference/wildcard-matching/",
+          "date_affichee": "2026-04-16",
+          "citation": "To add a `$` character in the forwarding URL, escape it by adding a backslash `\\` in front like `\\$`."
+        },
+        {
+          "page": "https://developers.cloudflare.com/rules/page-rules/how-to/url-forwarding/",
+          "date_affichee": "2026-05-05",
+          "citation": "If you use a basic redirect, such as forwarding the apex domain (`example.com`) to `www.example.com`, then you lose anything else in the URL."
+        },
+        {
+          "page": "https://developers.cloudflare.com/api/resources/page_rules/methods/list/",
+          "date_affichee": "non datée",
+          "citation": "The URL to redirect the request to. Notes: ${num} refers to the position of ’\\*’ in the constraint value."
+        },
+        {
+          "page": "https://developers.cloudflare.com/rules/reference/page-rules-migration/",
+          "date_affichee": "2026-04-16",
+          "citation": "To make the transition seamless, Cloudflare will handle the migration of your existing Page Rules automatically. This process is planned for late 2025 or beyond, with no action required on your part."
+        },
+        {
+          "page": "https://developers.cloudflare.com/rules/reference/page-rules-migration/",
+          "date_affichee": "2026-04-16",
+          "citation": "All other Page Rules settings will be migrated during 2025."
+        }
+      ]
+    },
+    {
+      "id": "single-redirects-joker",
+      "nom": "Single Redirects, redirection par motif (fonction wildcard_replace)",
+      "portee": "zone",
+      "statut": "produit recommandé ; c'est la cible que le guide de migration donne aux Page Rules de renvoi.",
+      "joker": "*",
+      "references": [
+        {"motif": "\\$\\{([1-9][0-9]?)\\}", "porte": "joker", "sonde": true, "gabarit": "${%d}"}
+      ],
+      "forme_reference": "${1} à ${8} ; le guide de migration traduit la cible https://example.com/$1 d'une Page Rule en https://example.com/${1}, et un motif http*:// décale le chemin en ${2}.",
+      "echappement_dollar": "$$",
+      "cible_litterale": false,
+      "code_par_defaut": 301,
+      "codes_admis": [301, 302, 307, 308],
+      "conservation_chemin": "le motif porte un joker dans le chemin ET le remplacement le reprend par ${n} ; un motif de chemin seul (/ancien/*) appliqué à http.request.full_uri ne correspond jamais, et la fonction rend alors l'URL d'origine.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/ruleset-engine/rules-language/functions/",
+          "date_affichee": "2026-10-14",
+          "citation": "The replacement string can contain references to wildcard capture groups (for example, `${1}` and `${2}`), up to eight replacement references."
+        },
+        {
+          "page": "https://developers.cloudflare.com/ruleset-engine/rules-language/functions/",
+          "date_affichee": "2026-10-14",
+          "citation": "To enter a literal `$` character in the `replacement` parameter, you must escape it using `$$`."
+        },
+        {
+          "page": "https://developers.cloudflare.com/ruleset-engine/rules-language/functions/",
+          "date_affichee": "2026-10-14",
+          "citation": "If there is no match, the function will return `source` unchanged."
+        },
+        {
+          "page": "https://developers.cloudflare.com/rules/reference/page-rules-migration/",
+          "date_affichee": "2026-04-16",
+          "citation": "**Target URL**: `https://example.com/${1}`"
+        },
+        {
+          "page": "https://developers.cloudflare.com/rules/url-forwarding/single-redirects/settings/",
+          "date_affichee": "2026-05-05",
+          "citation": "**Status code**: The HTTP status code of the redirect response (*301 - Permanent Redirect* by default)."
+        }
+      ]
+    },
+    {
+      "id": "single-redirects-statique",
+      "nom": "Single Redirects, redirection statique (target_url.value)",
+      "portee": "zone",
+      "statut": "produit recommandé.",
+      "joker": null,
+      "references": [],
+      "forme_reference": "aucune : la cible est recopiée telle quelle dans l'en-tête Location.",
+      "echappement_dollar": null,
+      "cible_litterale": true,
+      "code_par_defaut": 301,
+      "codes_admis": [301, 302, 307, 308],
+      "conservation_chemin": "impossible : si l'expression de la règle couvre plusieurs chemins, tous aboutissent à la même URL.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/rules/url-forwarding/single-redirects/settings/",
+          "date_affichee": "2026-05-05",
+          "citation": "**URL**: A literal string that will be used in the `Location` HTTP header returned in the redirect response."
+        }
+      ]
+    },
+    {
+      "id": "single-redirects-dynamique",
+      "nom": "Single Redirects, redirection dynamique par expression (hors wildcard_replace)",
+      "portee": "zone",
+      "statut": "produit recommandé.",
+      "joker": null,
+      "references": [],
+      "forme_reference": "aucune forme $n ni ${n} : le chemin se reprend par un champ de la requête, comme concat(\"https://example.com\", http.request.uri.path) ; une chaîne entre guillemets reste littérale.",
+      "echappement_dollar": null,
+      "cible_litterale": true,
+      "code_par_defaut": 301,
+      "codes_admis": [301, 302, 307, 308],
+      "conservation_chemin": "l'expression de la cible lit http.request.uri.path, http.request.uri ou http.request.full_uri, ou passe par regex_replace().",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/rules/url-forwarding/single-redirects/settings/",
+          "date_affichee": "2026-05-05",
+          "citation": "The result of evaluating this expression will be used in the `Location` HTTP header returned in the redirect response."
+        }
+      ]
+    },
+    {
+      "id": "bulk-redirects",
+      "nom": "Bulk Redirects (listes de redirections du compte)",
+      "portee": "compte",
+      "statut": "produit recommandé pour les gros volumes.",
+      "joker": null,
+      "references": [],
+      "forme_reference": "aucune : le chemin se conserve par paramètres, subpath_matching et preserve_path_suffix.",
+      "echappement_dollar": null,
+      "cible_litterale": true,
+      "code_par_defaut": 301,
+      "codes_admis": [301, 302, 307, 308],
+      "parametres_par_defaut": {"subpath_matching": false, "preserve_path_suffix": true},
+      "conservation_chemin": "subpath_matching à true ET preserve_path_suffix à true, sa valeur par défaut ; preserve_path_suffix à false envoie tous les sous-chemins sur la cible exacte.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/rules/url-forwarding/",
+          "date_affichee": "2026-08-14",
+          "citation": "These URL redirects are essentially static — they do not support string replacement operations or regular expressions."
+        },
+        {
+          "page": "https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/reference/parameters/",
+          "date_affichee": "2026-06-26",
+          "citation": "If **Preserve path suffix** is disabled, the same request would still match the URL redirect, but it would redirect from `/my-folder/foo` to `/another-folder/`."
+        },
+        {
+          "page": "https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/reference/parameters/",
+          "date_affichee": "2026-06-26",
+          "citation": "API field: `preserve_path_suffix` `Boolean` default: true"
+        },
+        {
+          "page": "https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/reference/parameters/",
+          "date_affichee": "2026-06-26",
+          "citation": "API field: `status_code` `Integer` default: 301"
+        }
+      ]
+    },
+    {
+      "id": "fichier-redirects",
+      "nom": "fichier _redirects (Workers Static Assets et Pages)",
+      "portee": "fichier du dépôt, déployé avec les ressources statiques",
+      "statut": "voie des sites statiques ; ne s'applique pas aux requêtes servies par le code d'un Worker ou par Pages Functions.",
+      "joker": "*",
+      "references": [
+        {"motif": ":splat", "porte": "joker", "sonde": true, "gabarit": ":splat"},
+        {"motif": ":([A-Za-z]\\w*)", "porte": "nom", "sonde": false, "gabarit": ":%s"}
+      ],
+      "forme_reference": ":splat pour l'unique joker, :nom pour un paramètre nommé ; $1 et ${1} n'y sont pas des références.",
+      "echappement_dollar": null,
+      "cible_litterale": false,
+      "code_par_defaut": 302,
+      "codes_admis": [301, 302, 303, 307, 308],
+      "conservation_chemin": "la source porte * et la destination :splat, ou la source porte :nom et la destination le reprend ; sans code écrit, la redirection est un 302.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/workers/static-assets/redirects/",
+          "date_affichee": "2026-08-25",
+          "citation": "On matching, a splat (asterisk, `*`) will greedily match all characters. You may only include a single splat in the URL."
+        },
+        {
+          "page": "https://developers.cloudflare.com/workers/static-assets/redirects/",
+          "date_affichee": "2026-08-25",
+          "citation": "The matched value can be used in the redirect location with `:splat`."
+        },
+        {
+          "page": "https://developers.cloudflare.com/workers/static-assets/redirects/",
+          "date_affichee": "2026-08-25",
+          "citation": "Only one redirect can be defined per line and must follow this format, otherwise it will be ignored."
+        },
+        {
+          "page": "https://developers.cloudflare.com/workers/static-assets/redirects/",
+          "date_affichee": "2026-08-25",
+          "citation": "| Redirects (301, 302, 303, 307, 308) | ✅ | `/home / 301` | 302 is used as the default status code. |"
+        },
+        {
+          "page": "https://developers.cloudflare.com/pages/configuration/redirects/",
+          "date_affichee": "2026-08-25",
+          "citation": "The matched value can be used in the redirect location with `:splat`."
+        }
+      ]
+    }
+  ],
+  "reglages": [
+    {
+      "id": "politiques-robots-ia",
+      "produit": "Bots",
+      "nom": "Configure AI bot policies (Search, Agent, Training)",
+      "effet": "Bloque à la périphérie, sur toute la zone ou sur les seules pages à publicité, les robots vérifiés du comportement choisi et des robots non vérifiés semblables. Depuis le 15/09/2026, un domaine neuf bloque par défaut Training et Agent sur les pages à publicité ; Agent couvre les robots qui lisent une page à la demande d'une personne, la catégorie « utilisateur » de agents-ia.json. Les robots mixtes, recherche et entraînement, tombent sous tout blocage de l'entraînement.",
+      "offre": "toutes",
+      "noeuds": [{"id": 59, "chemin": "11-geo/06-acces-directives-ia"}],
+      "a_verifier": "Lire la politique de la zone avant de juger le nœud : la posture du nœud 59 (agents de recherche autorisés par défaut, tout blocage décidé et daté) se confronte à ce réglage, pas au seul robots.txt. Une zone créée après le 15/09/2026 sans choix explicite porte les nouveaux défauts.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/bots/additional-configurations/block-ai-bots/",
+          "date_affichee": "2026-07-01",
+          "citation": "On September 15, 2026, Cloudflare will set updated defaults for new domains: bots classified as Training or as Agent will be blocked on pages that display ads, and Search will remain allowed."
+        },
+        {
+          "page": "https://developers.cloudflare.com/bots/additional-configurations/block-ai-bots/",
+          "date_affichee": "2026-07-01",
+          "citation": "**Agent**: automated activity acting in real time on a person's behalf, such as chat fetch bots and browser-use agents."
+        },
+        {
+          "page": "https://developers.cloudflare.com/bots/additional-configurations/block-ai-bots/",
+          "date_affichee": "2026-07-01",
+          "citation": "Mixed-purpose crawlers that combine Search and Training will also be blocked by all configurations to block AI training, including the legacy \"Block AI bots\" option."
+        },
+        {
+          "page": "https://developers.cloudflare.com/bots/concepts/bot/verified-bots/",
+          "date_affichee": "2026-10-08",
+          "citation": "Search, Agent, and Training are also available as managed presets you can act on across all plans."
+        }
+      ]
+    },
+    {
+      "id": "block-ai-bots-herite",
+      "produit": "Bots",
+      "nom": "Block AI bots (réglage hérité, retiré le 15/09/2026)",
+      "effet": "Bloque les robots vérifiés d'entraînement et des robots non vérifiés semblables. Une zone configurée avant le 15/09/2026 peut encore le porter.",
+      "offre": "toutes",
+      "noeuds": [{"id": 59, "chemin": "11-geo/06-acces-directives-ia"}],
+      "a_verifier": "Si la zone le porte encore, relire la liste des robots bloqués : depuis le 15/09/2026, il bloque aussi les robots mixtes.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/bots/additional-configurations/block-ai-bots/",
+          "date_affichee": "2026-07-01",
+          "citation": "This setting blocks verified bots that are classified as crawling for the purpose of AI training, as well as a number of unverified bots that behave similarly."
+        }
+      ]
+    },
+    {
+      "id": "ai-crawl-control-actions",
+      "produit": "AI Crawl Control (anciennement AI Audit)",
+      "nom": "action par robot d'IA : Allow, Block, Charge (bêta privée)",
+      "effet": "Un blocage crée ou met à jour une règle WAF de la zone. Le robot reçoit alors une réponse 403, ou 402 si la zone le choisit sur une offre payante. Sur l'offre gratuite, les robots sont reconnus par leur seul user agent.",
+      "offre": "toutes ; réponse de blocage personnalisable sur les offres payantes",
+      "noeuds": [{"id": 59, "chemin": "11-geo/06-acces-directives-ia"}],
+      "a_verifier": "Un agent autorisé par robots.txt mais bloqué ici répond 403 ou 402 : c'est le blocage CDN ou WAF que le nœud 59 demande de constater. Les journaux le montrent ; sans eux, il n'est pas visible de l'extérieur pour un robot vérifié.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/ai-crawl-control/features/manage-ai-crawlers/",
+          "date_affichee": "2026-07-28",
+          "citation": "When you block a crawler in AI Crawl Control, the system creates or updates a WAF custom rule on your zone to enforce that block."
+        },
+        {
+          "page": "https://developers.cloudflare.com/ai-crawl-control/",
+          "date_affichee": "2026-08-14",
+          "citation": "AI Crawl Control (formerly AI Audit) gives you visibility into which AI services are accessing your content, and provides tools to manage access according to your preferences."
+        }
+      ]
+    },
+    {
+      "id": "robots-txt-gere",
+      "produit": "Bots",
+      "nom": "robots.txt géré (Bot Preference Sync) et Content Signals",
+      "effet": "Préfixe au robots.txt de l'origine un bloc géré, des Disallow pour des robots d'entraînement nommés et une ligne Content-signal, ou crée le fichier s'il n'existe pas. Sans robots.txt à l'origine ni réglage géré, un domaine de l'offre gratuite sert quand même la politique Content Signals.",
+      "offre": "toutes",
+      "noeuds": [
+        {"id": 28, "chemin": "06-technique/01-crawl"},
+        {"id": 59, "chemin": "11-geo/06-acces-directives-ia"}
+      ],
+      "a_verifier": "Juger le robots.txt SERVI, celui que lit crawler.py, et le comparer au fichier du dépôt : le bloc géré commence par « # BEGIN Cloudflare Managed content ». Un robots.txt présent en 200 n'établit pas que l'origine en porte un. La Search Console peut signaler « Syntax not understood » sur Content-signal ; Cloudflare dit n'en avoir observé aucun effet.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/bots/additional-configurations/managed-robots-txt/",
+          "date_affichee": "2026-10-22",
+          "citation": "Cloudflare prepends managed directives and the Content Signals Policy to your `robots.txt` only when **Enable Bot Preference Sync** is turned on and at least one of your Search, Agent, or Training policies is set to **Block**, **Block on pages with ads**, or, for Training, **Disallow**."
+        },
+        {
+          "page": "https://developers.cloudflare.com/bots/additional-configurations/managed-robots-txt/",
+          "date_affichee": "2026-10-22",
+          "citation": "Domains on the Free plan that do not have their own `robots.txt` file and do not use the managed `robots.txt` feature will display the Content Signals Policy when a crawler requests the `robots.txt` file for your domain."
+        },
+        {
+          "page": "https://developers.cloudflare.com/bots/additional-configurations/managed-robots-txt/",
+          "date_affichee": "2026-10-22",
+          "citation": "Google Search Console may occasionally report `Syntax not understood` for Content Signals and newer directives in the `robots.txt` standard."
+        }
+      ]
+    },
+    {
+      "id": "ai-labyrinth",
+      "produit": "Bots",
+      "nom": "AI Labyrinth",
+      "effet": "Injecte dans le HTML des liens invisibles en nofollow, vus des seuls robots, qui mènent les robots non conformes dans un labyrinthe de pages.",
+      "offre": "toutes (cité parmi les fonctions de l'offre gratuite)",
+      "noeuds": [
+        {"id": 14, "chemin": "03-architecture/04-maillage-interne"},
+        {"id": 28, "chemin": "06-technique/01-crawl"}
+      ],
+      "a_verifier": "crawler.py est un robot : s'il reçoit ces liens, ses comptes de liens internes et de pages peuvent être faussés. Non mesuré ; à vérifier par les événements « AI Labyrinth Served » de la zone, ou par des liens internes vers des pages absentes du sitemap.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/bots/additional-configurations/ai-labyrinth/",
+          "date_affichee": "2026-09-17",
+          "citation": "These links do not impact your search engine optimization (SEO) or your website's appearance, and are only seen by bots."
+        }
+      ]
+    },
+    {
+      "id": "bot-fight-mode",
+      "produit": "Bots",
+      "nom": "Bot Fight Mode (offre gratuite) et Super Bot Fight Mode (offres payantes)",
+      "effet": "Oppose un défi coûteux en calcul au trafic qui ressemble à des robots connus. Bot Fight Mode ne se contourne ni par une règle WAF ni par une Page Rule ; Super Bot Fight Mode admet des exceptions par règle Skip.",
+      "offre": "Bot Fight Mode : offre gratuite ; Super Bot Fight Mode : offres payantes",
+      "noeuds": [
+        {"id": 28, "chemin": "06-technique/01-crawl"},
+        {"id": 59, "chemin": "11-geo/06-acces-directives-ia"}
+      ],
+      "a_verifier": "Un crawl qui rend des défis au lieu des pages mesure le défi, pas le site : le dire au constat et demander une exception pour l'audit, jamais conclure sur ces pages.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/bots/get-started/bot-fight-mode/",
+          "date_affichee": "2026-08-03",
+          "citation": "You cannot bypass or skip Bot Fight Mode using WAF custom rules or Page Rules."
+        },
+        {
+          "page": "https://developers.cloudflare.com/bots/get-started/super-bot-fight-mode/",
+          "date_affichee": "2026-08-03",
+          "citation": "To configure exceptions to Super Bot Fight Mode, create a custom rule with the [*Skip* action](https://developers.cloudflare.com/waf/custom-rules/skip/)."
+        }
+      ]
+    },
+    {
+      "id": "redirects-for-ai-training",
+      "produit": "AI Crawl Control",
+      "nom": "Redirects for AI Training (réglage de zone redirects_for_ai_training)",
+      "effet": "Pour les robots vérifiés de la catégorie AI Crawler, une page dont la canonical pointe vers une autre URL de la même origine répond par un 301 vers la canonical. Navigateurs, moteurs de recherche et assistants reçoivent la page inchangée.",
+      "offre": "Pro ou Business",
+      "noeuds": [
+        {"id": 31, "chemin": "06-technique/04-canonical"},
+        {"id": 59, "chemin": "11-geo/06-acces-directives-ia"}
+      ],
+      "a_verifier": "Une canonical croisée par erreur envoie ces robots sur une autre page. crawler.py n'est pas un robot vérifié : il ne voit pas ces 301, qui ne se constatent que dans la zone ou ses journaux.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/ai-crawl-control/reference/redirects-for-ai-training/",
+          "date_affichee": "2026-07-01",
+          "citation": "If no canonical tag is found, the canonical is cross-origin, or the page is self-canonical, the origin response passes through unchanged."
+        },
+        {
+          "page": "https://developers.cloudflare.com/ai-crawl-control/reference/redirects-for-ai-training/",
+          "date_affichee": "2026-07-01",
+          "citation": "1. Log into the [Cloudflare dashboard ↗︎](https://dash.cloudflare.com/) and select your account (you need a Pro or Business plan)."
+        }
+      ]
+    },
+    {
+      "id": "markdown-for-agents",
+      "produit": "Cloudflare (réglage de zone content_converter)",
+      "nom": "Markdown for Agents",
+      "effet": "Convertit à la volée le HTML de l'origine en Markdown pour un client qui demande text/markdown. Sans en-tête content-signal à l'origine, la réponse convertie porte par défaut Content-Signal: ai-train=yes, search=yes, ai-input=yes.",
+      "offre": "Pro ou Business",
+      "noeuds": [
+        {"id": 27, "chemin": "05-contenu/06-contenu-pense-pour-les-llm"},
+        {"id": 59, "chemin": "11-geo/06-acces-directives-ia"}
+      ],
+      "a_verifier": "Rejouer une page à enjeu avec l'en-tête Accept: text/markdown et lire ce que reçoit un agent. Comparer l'en-tête Content-Signal au Content-signal du robots.txt géré (ai-train=no dans son exemple) : les deux pages lues permettent une contradiction, non mesurée sur une zone réelle.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/",
+          "date_affichee": "2026-10-09",
+          "citation": "When the origin response does not include a `content-signal` header, Markdown for Agents adds a default `Content-Signal: ai-train=yes, search=yes, ai-input=yes`, signaling that the content can be used for AI Training, Search results, and AI Input, which includes agentic use."
+        },
+        {
+          "page": "https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/",
+          "date_affichee": "2026-10-09",
+          "citation": "1. Log into the [Cloudflare dashboard ↗︎](https://dash.cloudflare.com/) and select your account (you need a Pro or Business plan)."
+        }
+      ]
+    },
+    {
+      "id": "crawler-hints",
+      "produit": "Cache",
+      "nom": "Crawler Hints (IndexNow)",
+      "effet": "Signale à IndexNow les contenus probablement modifiés, repérés par un cache MISS. Le réglage vaut pour toute la zone ; une page s'en exclut par X-Robots-Tag: noindex ou meta robots noindex.",
+      "offre": "toutes",
+      "noeuds": [{"id": 36, "chemin": "07-indexation/03-decouverte-google"}],
+      "a_verifier": "La page ne nomme pas les moteurs qui consomment IndexNow, et le nœud 36 mesure Google : ne rien conclure pour Google de ce réglage.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/cache/advanced-configuration/crawler-hints/",
+          "date_affichee": "2026-08-14",
+          "citation": "When enabled, Crawler Hints is a global setting for your entire website."
+        }
+      ]
+    },
+    {
+      "id": "web-analytics",
+      "produit": "Web Analytics",
+      "nom": "Cloudflare Web Analytics",
+      "effet": "Mesure d'audience par balise JavaScript, de type RUM (mesure chez le visiteur), gratuite, sans proxy ni changement de DNS, sans donnée personnelle des visiteurs.",
+      "offre": "toutes",
+      "noeuds": [
+        {"id": 32, "chemin": "06-technique/05-performance"},
+        {"id": 45, "chemin": "09-signaux/02-trafic-referent"}
+      ],
+      "a_verifier": "Étiqueter la source « Cloudflare Web Analytics », jamais CrUX ni GA : le nœud 32 cite CrUX et le nœud 45 cite GA, et la matrice sources-donnees.md ne porte pas cette source au 29/10/2026.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/web-analytics/about/",
+          "date_affichee": "2026-04-17",
+          "citation": "The data displayed in Web Analytics is real user monitoring (RUM)."
+        },
+        {
+          "page": "https://developers.cloudflare.com/web-analytics/about/",
+          "date_affichee": "2026-04-17",
+          "citation": "Cloudflare Web Analytics does not collect or use your visitors’ personal data."
+        }
+      ]
+    },
+    {
+      "id": "logpush",
+      "produit": "Logs",
+      "nom": "Logpush (jeu de données HTTP requests)",
+      "effet": "Exporte les journaux de requêtes de la périphérie, y compris les requêtes servies par le cache que l'origine ne voit pas. Offres Free, Pro et Business en tarif à l'usage, 25 Go par mois inclus par compte ; Enterprise par l'équipe commerciale. Aucun historique : les journaux d'avant l'activation sont perdus.",
+      "offre": "toutes (Free, Pro, Business en tarif à l'usage)",
+      "noeuds": [
+        {"id": 30, "chemin": "06-technique/03-logs-serveur"},
+        {"id": 59, "chemin": "11-geo/06-acces-directives-ia"}
+      ],
+      "a_verifier": "Activer Logpush peut coûter au client au-delà du volume inclus : c'est sa décision. Prévoir l'activation au moins 30 jours avant l'analyse, faute d'historique.",
+      "sources": [
+        {
+          "page": "https://developers.cloudflare.com/logs/logpush/pricing/",
+          "date_affichee": "2026-10-12",
+          "citation": "Logpush is available with self-service, usage-based pricing on Free, Pro, and Business plans."
+        },
+        {
+          "page": "https://developers.cloudflare.com/logs/logpush/",
+          "date_affichee": "2026-10-22",
+          "citation": "Logpush only pushes logs once as they become available and cannot backfill historical data."
+        }
+      ]
+    }
+  ]
+}

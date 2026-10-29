@@ -61,8 +61,9 @@ COMMENT_L_OBTENIR = [
     "/var/log/apache2/access.log*, déjà au Combined Log Format.",
     "Hébergement mutualisé — cPanel › Raw Access Logs, ou Plesk › Logs, "
     "téléchargement en .gz accepté tel quel par ce script.",
-    "Derrière Cloudflare — Logpush (offre Enterprise) ; à défaut, l'origine ne voit "
-    "que le trafic non servi par le cache et sous-compte les agents IA.",
+    "Derrière Cloudflare — Logpush, ouvert aux offres Free, Pro et Business en tarif à "
+    "l'usage, 25 Go par mois inclus (page lue le 29/10/2026, referentiel/cloudflare.json) ; "
+    "à défaut, l'origine ne voit que le trafic non servi par le cache et sous-compte les agents IA.",
     "Aucun export possible — le volet « trafic réel des agents IA » reste non "
     "mesurable, et le nœud 58 se juge alors sur robots.txt et llms.txt SEULS : "
     "un agent autorisé par robots.txt peut rester bloqué par un WAF/CDN sans que "
